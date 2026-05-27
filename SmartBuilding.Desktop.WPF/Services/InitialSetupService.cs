@@ -147,7 +147,7 @@ public sealed class InitialSetupService
                 CloudSyncMessage: "Configuration locale enregistrée. Synchronisation cloud reportée (hors ligne).");
         }
 
-        var auth = await AuthenticateCloudAsync(
+        var auth = await AuthenticateCloudWithFallbackAsync(
             request.AdminUsername.Trim(),
             request.AdminPassword,
             cancellationToken);
@@ -261,6 +261,26 @@ public sealed class InitialSetupService
         {
             return (false, ex.Message);
         }
+    }
+
+    private async Task<(bool Success, string Message)> AuthenticateCloudWithFallbackAsync(
+        string username,
+        string password,
+        CancellationToken cancellationToken)
+    {
+        var primary = await AuthenticateCloudAsync(username, password, cancellationToken);
+        if (primary.Success)
+            return primary;
+
+        // Le portail cloud possède un compte bootstrap admin/admin.
+        // Il sert uniquement à obtenir le JWT de synchronisation initiale.
+        var bootstrap = await AuthenticateCloudAsync("admin", "admin", cancellationToken);
+        if (bootstrap.Success)
+            return (true, "Authentification cloud OK via compte bootstrap admin.");
+
+        return (
+            false,
+            $"Compte local refusé ({primary.Message}); bootstrap admin/admin refusé ({bootstrap.Message}).");
     }
 
     private static void PersistApiToken(string token)
