@@ -1,10 +1,27 @@
+from django.db.models import Sum
 from django.utils import timezone
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import AccessToken
 
-from api.models import ServerSyncEvent, User
+from api.models import (
+    Building,
+    ConsumptionRecord,
+    Employee,
+    Equipment,
+    FinancialTransaction,
+    Incident,
+    InventoryItem,
+    LeaseContract,
+    Premise,
+    RentPayment,
+    ServerSyncEvent,
+    SyncedEntityStore,
+    Tenant,
+    User,
+    Visitor,
+)
 from api.permissions import IsExecutive
 from api.responses import api_fail, api_ok
 from api.serializers import (
@@ -14,6 +31,23 @@ from api.serializers import (
 )
 from api.services.dashboard import get_executive_overview, get_executive_summary, get_sync_health
 from api.sync import apply_push, get_changes_since, is_syncable
+
+
+def _money(value):
+    return float(value or 0)
+
+
+def _iso(value):
+    return value.isoformat() if value else None
+
+
+def _module_payload(title, rows, kpis=None, actions=None):
+    return {
+        "title": title,
+        "kpis": kpis or [],
+        "rows": rows,
+        "actions": actions or [],
+    }
 
 
 class HealthView(APIView):
@@ -254,3 +288,280 @@ class ExecutiveSyncLogView(APIView):
             for r in rows
         ]
         return api_ok(data)
+
+
+class ExecutiveModuleDataView(APIView):
+    permission_classes = [IsExecutive]
+
+    def get(self, request, slug):
+        handlers = {
+            "personnel": self._personnel,
+            "locations": self._locations,
+            "contrats": self._contrats,
+            "finance": self._finance,
+            "presence": self._presence,
+            "documents": self._documents,
+            "maintenance": self._maintenance,
+            "incidents": self._incidents,
+            "supervision": self._supervision,
+            "validations": self._validations,
+            "activites-logs": self._activities,
+            "utilisateurs": self._users,
+            "rapports": self._reports,
+            "synchronisation": self._sync,
+            "parametres": self._settings,
+            "audit-securite": self._audit,
+        }
+        handler = handlers.get(slug)
+        if handler is None:
+            return api_fail("Module inconnu.", status=404)
+        return api_ok(handler())
+
+    def _personnel(self):
+        rows = [
+            {
+                "Matricule": e.employee_number or "—",
+                "Nom": e.full_name,
+                "Poste": e.position or "—",
+                "Département": e.department or "—",
+                "Téléphone": e.phone or "—",
+                "Statut": "Actif" if e.is_active else "Inactif",
+            }
+            for e in Employee.objects.filter(deleted_at__isnull=True).order_by("full_name")[:300]
+        ]
+        return _module_payload(
+            "Personnel",
+            rows,
+            [
+                {"label": "Employés", "value": Employee.objects.filter(deleted_at__isnull=True).count()},
+                {"label": "Actifs", "value": Employee.objects.filter(deleted_at__isnull=True, is_active=True).count()},
+            ],
+        )
+
+    def _locations(self):
+        rows = [
+            {
+                "Code": p.code or "—",
+                "Local": p.name,
+                "Bâtiment": p.building_name or "—",
+                "Étage": p.floor or "—",
+                "Loyer": _money(p.monthly_rent),
+                "Statut": "Occupé" if p.is_occupied else "Libre",
+            }
+            for p in Premise.objects.filter(deleted_at__isnull=True).order_by("code")[:300]
+        ]
+        total = Premise.objects.filter(deleted_at__isnull=True).count()
+        occupied = Premise.objects.filter(deleted_at__isnull=True, is_occupied=True).count()
+        return _module_payload(
+            "Locations",
+            rows,
+            [
+                {"label": "Locaux", "value": total},
+                {"label": "Occupés", "value": occupied},
+                {"label": "Libres", "value": max(total - occupied, 0)},
+            ],
+        )
+
+    def _contrats(self):
+        rows = [
+            {
+                "Référence": c.contract_number or f"CT-{str(c.id)[:8]}",
+                "Début": _iso(c.start_date),
+                "Fin": _iso(c.end_date),
+                "Loyer mensuel": _money(c.monthly_rent),
+                "Garantie": _money(c.deposit),
+                "Statut": c.status or "—",
+            }
+            for c in LeaseContract.objects.filter(deleted_at__isnull=True).order_by("-updated_at")[:300]
+        ]
+        return _module_payload(
+            "Contrats",
+            rows,
+            [
+                {"label": "Contrats", "value": LeaseContract.objects.filter(deleted_at__isnull=True).count()},
+                {"label": "Actifs", "value": LeaseContract.objects.filter(deleted_at__isnull=True, status__icontains="actif").count()},
+            ],
+        )
+
+    def _finance(self):
+        rows = [
+            {
+                "Date": _iso(t.transaction_date),
+                "Type": "Dépense" if t.type == FinancialTransaction.TxType.DEPENSE else "Recette",
+                "Catégorie": t.category or "—",
+                "Description": t.description or "—",
+                "Montant": _money(t.amount),
+                "Statut": t.status or "—",
+            }
+            for t in FinancialTransaction.objects.filter(deleted_at__isnull=True).order_by("-transaction_date")[:300]
+        ]
+        expenses = FinancialTransaction.objects.filter(deleted_at__isnull=True, type=FinancialTransaction.TxType.DEPENSE).aggregate(t=Sum("amount"))["t"] or 0
+        income = FinancialTransaction.objects.filter(deleted_at__isnull=True, type=FinancialTransaction.TxType.RECETTE).aggregate(t=Sum("amount"))["t"] or 0
+        return _module_payload(
+            "Finance",
+            rows,
+            [
+                {"label": "Recettes", "value": _money(income)},
+                {"label": "Dépenses", "value": _money(expenses)},
+                {"label": "Solde", "value": _money(income - expenses)},
+            ],
+        )
+
+    def _presence(self):
+        rows = [
+            {
+                "Employé": e.full_name,
+                "Département": e.department or "—",
+                "Poste": e.position or "—",
+                "Statut présence": "Présent/actif" if e.is_active else "Absent/inactif",
+                "Dernière maj": _iso(e.updated_at),
+            }
+            for e in Employee.objects.filter(deleted_at__isnull=True).order_by("full_name")[:300]
+        ]
+        return _module_payload("Présence", rows, [{"label": "Présents/actifs", "value": Employee.objects.filter(deleted_at__isnull=True, is_active=True).count()}])
+
+    def _documents(self):
+        rows = [
+            {"Type": "Contrat location", "Référence": c.contract_number or str(c.id)[:8], "Statut": c.status or "—", "Dernière maj": _iso(c.updated_at)}
+            for c in LeaseContract.objects.filter(deleted_at__isnull=True).order_by("-updated_at")[:200]
+        ]
+        return _module_payload("Documents", rows, [{"label": "Documents suivis", "value": len(rows)}])
+
+    def _maintenance(self):
+        rows = [
+            {"Équipement": e.name, "Catégorie": e.category or "—", "Statut": e.status or "—", "Localisation": e.location or "—", "Dernière maj": _iso(e.updated_at)}
+            for e in Equipment.objects.filter(deleted_at__isnull=True).order_by("name")[:300]
+        ]
+        return _module_payload("Maintenance", rows, [{"label": "Équipements", "value": Equipment.objects.filter(deleted_at__isnull=True).count()}])
+
+    def _incidents(self):
+        rows = [
+            {"Code": i.code or "—", "Titre": i.title, "Sévérité": i.severity, "Statut": i.status, "Lieu": i.location or "—", "Coût": _money(i.cost)}
+            for i in Incident.objects.filter(deleted_at__isnull=True).order_by("-reported_at")[:300]
+        ]
+        return _module_payload("Incidents", rows, [{"label": "Incidents", "value": Incident.objects.filter(deleted_at__isnull=True).count()}])
+
+    def _supervision(self):
+        summary = get_executive_summary()
+        rows = [
+            {"Indicateur": "Revenus mensuels", "Valeur": _money(summary["monthlyRevenue"]), "Statut": "Suivi"},
+            {"Indicateur": "Dépenses mensuelles", "Valeur": _money(summary["monthlyExpenses"]), "Statut": "À contrôler"},
+            {"Indicateur": "Occupation", "Valeur": f"{summary['occupancyRate']} %", "Statut": "Live"},
+            {"Indicateur": "Incidents ouverts", "Valeur": summary["openIncidents"], "Statut": "Prioritaire"},
+        ]
+        return _module_payload("Supervision", rows, summary["quickStats"])
+
+    def _validations(self):
+        pending_statuses = ["En attente", "Attente", "Pending", "À valider", "A valider"]
+        qs = FinancialTransaction.objects.filter(
+            deleted_at__isnull=True,
+            type=FinancialTransaction.TxType.DEPENSE,
+        ).filter(status__in=pending_statuses).order_by("-updated_at")
+        rows = [
+            {
+                "id": str(t.id),
+                "Date": _iso(t.transaction_date),
+                "Référence": t.reference or f"DEP-{str(t.id)[:8]}",
+                "Catégorie": t.category or "—",
+                "Description": t.description or "—",
+                "Demandeur": t.recorded_by or "Comptable",
+                "Montant": _money(t.amount),
+                "Statut": t.status or "En attente",
+                "_actions": ["approve", "reject"],
+            }
+            for t in qs[:300]
+        ]
+        total_amount = sum((t.amount for t in qs), 0)
+        return _module_payload(
+            "Validations",
+            rows,
+            [
+                {"label": "Dépenses à valider", "value": qs.count()},
+                {"label": "Montant en attente", "value": _money(total_amount)},
+            ],
+            actions=["approve-expense", "reject-expense"],
+        )
+
+    def _activities(self):
+        rows = [
+            {"Utilisateur": r.username or "Système", "Rôle": r.user_role or "—", "Type": r.entity_type, "Direction": r.direction, "Succès": "Oui" if r.success else "Non", "Date": _iso(r.created_at)}
+            for r in ServerSyncEvent.objects.all().order_by("-created_at")[:300]
+        ]
+        return _module_payload("Activités & Logs", rows, [{"label": "Logs", "value": ServerSyncEvent.objects.count()}])
+
+    def _users(self):
+        rows = [
+            {"Utilisateur": u.username, "Nom": u.full_name or "—", "Email": u.email or "—", "Rôle": u.role, "Actif": "Oui" if u.is_active else "Non", "Dernière connexion": _iso(u.last_login_at)}
+            for u in User.objects.filter(deleted_at__isnull=True).order_by("username")[:300]
+        ]
+        return _module_payload("Utilisateurs", rows, [{"label": "Utilisateurs", "value": User.objects.filter(deleted_at__isnull=True).count()}])
+
+    def _reports(self):
+        summary = get_executive_summary()
+        rows = [
+            {"Rapport": "Situation financière", "Contenu": "Recettes, dépenses, solde", "Valeur clé": _money(summary["netBalance"])},
+            {"Rapport": "Occupation", "Contenu": "Locaux occupés/libres", "Valeur clé": f"{summary['occupancyRate']} %"},
+            {"Rapport": "Incidents", "Contenu": "Incidents ouverts", "Valeur clé": summary["openIncidents"]},
+        ]
+        return _module_payload("Rapports", rows, summary["quickStats"])
+
+    def _sync(self):
+        health = get_sync_health()
+        rows = [
+            {"Mesure": "Événements", "Valeur": health["totalEvents"]},
+            {"Mesure": "Réussis", "Valeur": health["successfulEvents"]},
+            {"Mesure": "Échoués", "Valeur": health["failedEvents"]},
+            {"Mesure": "Taux succès", "Valeur": f"{health['successRate']} %"},
+            {"Mesure": "Dernière sync", "Valeur": health["lastSyncAt"] or "—"},
+        ]
+        return _module_payload("Synchronisation", rows, [{"label": "Taux succès", "value": f"{health['successRate']} %"}])
+
+    def _settings(self):
+        rows = [
+            {"Paramètre": "Bâtiments synchronisés", "Valeur": Building.objects.filter(deleted_at__isnull=True).count()},
+            {"Paramètre": "Entités brutes sync", "Valeur": SyncedEntityStore.objects.count()},
+            {"Paramètre": "Utilisateurs actifs", "Valeur": User.objects.filter(deleted_at__isnull=True, is_active=True).count()},
+        ]
+        return _module_payload("Paramètres", rows)
+
+    def _audit(self):
+        rows = [
+            {"Contrôle": "Authentification JWT", "Statut": "Active", "Détail": "API protégée"},
+            {"Contrôle": "Rôles exécutifs", "Statut": "Actif", "Détail": "PDG / Administrateur"},
+            {"Contrôle": "Journal sync", "Statut": "Actif", "Détail": f"{ServerSyncEvent.objects.count()} événements"},
+        ]
+        return _module_payload("Audit & Sécurité", rows)
+
+
+class ExpenseValidationActionView(APIView):
+    permission_classes = [IsExecutive]
+
+    def post(self, request, expense_id, action):
+        try:
+            tx = FinancialTransaction.objects.get(
+                id=expense_id,
+                deleted_at__isnull=True,
+                type=FinancialTransaction.TxType.DEPENSE,
+            )
+        except FinancialTransaction.DoesNotExist:
+            return api_fail("Dépense introuvable.", status=404)
+
+        if action == "approve":
+            tx.status = "Approuvé"
+        elif action == "reject":
+            tx.status = "Rejeté"
+        else:
+            return api_fail("Action invalide.", status=400)
+
+        tx.updated_at = timezone.now()
+        tx.is_synced = False
+        tx.save(update_fields=["status", "updated_at", "is_synced"])
+        ServerSyncEvent.objects.create(
+            username=request.user.username,
+            user_role=request.user.role,
+            entity_type="FinancialTransaction",
+            direction=f"validation:{action}",
+            records_count=1,
+            success=True,
+        )
+        return api_ok({"id": str(tx.id), "status": tx.status})
