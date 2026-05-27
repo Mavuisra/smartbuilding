@@ -5,6 +5,7 @@ using System.Net.Http;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading;
 using System.Windows;
 
 namespace SmartBuilding.Desktop.WPF.Services;
@@ -54,7 +55,7 @@ public static class AppAutoUpdater
                 var relative = Path.GetRelativePath(stagingRoot, sourceFile);
                 var destFile = Path.Combine(installDir, relative);
                 Directory.CreateDirectory(Path.GetDirectoryName(destFile)!);
-                File.Copy(sourceFile, destFile, overwrite: true);
+                CopyFileWithRetry(sourceFile, destFile, overwrite: true, retries: 8, delayMs: 200);
             }
 
             // Redémarrage sur la version installée.
@@ -81,6 +82,29 @@ public static class AppAutoUpdater
         }
 
         return true;
+    }
+
+    private static void CopyFileWithRetry(string sourceFile, string destFile, bool overwrite, int retries, int delayMs)
+    {
+        for (var attempt = 0; attempt <= retries; attempt++)
+        {
+            try
+            {
+                File.Copy(sourceFile, destFile, overwrite);
+                return;
+            }
+            catch (IOException) when (attempt < retries)
+            {
+                Thread.Sleep(delayMs);
+            }
+            catch (UnauthorizedAccessException) when (attempt < retries)
+            {
+                Thread.Sleep(delayMs);
+            }
+        }
+
+        // Dernier essai sans protection
+        File.Copy(sourceFile, destFile, overwrite);
     }
 
     public static async Task<bool> CheckAndApplyIfNeededAsync(Action<double, string> reportProgress, CancellationToken ct = default)
