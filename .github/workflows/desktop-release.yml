@@ -13,6 +13,7 @@ jobs:
     env:
       DESKTOP_API_BASE_URL: ${{ secrets.DESKTOP_API_BASE_URL }}
       DESKTOP_API_BASE_URL_VAR: ${{ vars.DESKTOP_API_BASE_URL }}
+      DEFAULT_DESKTOP_API_BASE_URL: https://smartbuilding-0kbk.onrender.com/
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -73,7 +74,8 @@ jobs:
             }
           }
           if ([string]::IsNullOrWhiteSpace($baseUrl)) {
-            throw "DESKTOP_API_BASE_URL absent. Configure soit le secret Actions DESKTOP_API_BASE_URL, soit la variable repo DESKTOP_API_BASE_URL (URL Render)."
+            $baseUrl = $env:DEFAULT_DESKTOP_API_BASE_URL
+            Write-Host "Avertissement: DESKTOP_API_BASE_URL non défini, fallback appliqué: $baseUrl"
           }
 
           $baseUrl = $baseUrl.Trim()
