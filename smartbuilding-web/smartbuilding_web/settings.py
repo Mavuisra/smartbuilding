@@ -126,8 +126,10 @@ if _database_url.startswith("postgresql://"):
 
     pg_options: dict[str, str] = {}
     host = parsed.hostname or ""
-    # Render Postgres (interne ou externe) : SSL requis
-    if host.startswith("dpg-") or "render.com" in host:
+    # Render Postgres : interne (dpg-xxx-a) → prefer ; externe (*.render.com) → require
+    if host.startswith("dpg-") and "render.com" not in host:
+        pg_options["sslmode"] = os.getenv("DATABASE_SSLMODE", "prefer")
+    elif host.startswith("dpg-") or "render.com" in host:
         pg_options["sslmode"] = os.getenv("DATABASE_SSLMODE", "require")
 
     DATABASES = {
