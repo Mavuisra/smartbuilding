@@ -5,6 +5,7 @@ from django.db.models import Sum
 from django.utils import timezone
 
 from api.models import (
+    Employee,
     FinancialTransaction,
     Incident,
     LeaseContract,
@@ -177,7 +178,82 @@ def get_sync_health(window_hours: int = 24) -> dict:
 
 
 def get_executive_overview() -> dict:
+    summary = get_executive_summary()
+    pending_contracts = list(
+        LeaseContract.objects.filter(deleted_at__isnull=True)
+        .exclude(status__icontains="actif")
+        .order_by("-updated_at")[:6]
+    )
+    pending_payments = list(
+        FinancialTransaction.objects.filter(
+            deleted_at__isnull=True,
+            type=FinancialTransaction.TxType.DEPENSE,
+            status__icontains="attente",
+        )
+        .order_by("-updated_at")[:6]
+    )
+    active_employees = Employee.objects.filter(deleted_at__isnull=True, is_active=True).count()
+    total_employees = Employee.objects.filter(deleted_at__isnull=True).count()
+
+    validations = []
+    for c in pending_contracts:
+        validations.append(
+            {
+                "type": "Contrat",
+                "reference": c.contract_number or f"CT-{str(c.id)[:8].upper()}",
+                "description": "Validation contractuelle",
+                "requester": "Gestionnaire",
+                "requestDate": c.updated_at.isoformat(),
+                "amount": float(c.monthly_rent),
+                "status": c.status or "En attente",
+            }
+        )
+    for p in pending_payments:
+        validations.append(
+            {
+                "type": "Dépense",
+                "reference": p.reference or f"DEP-{str(p.id)[:8].upper()}",
+                "description": p.description[:60],
+                "requester": p.recorded_by or "Comptable",
+                "requestDate": p.updated_at.isoformat(),
+                "amount": float(p.amount),
+                "status": p.status or "En attente",
+            }
+        )
+    validations = validations[:8]
+
+    recent_activities = [
+        {
+            "text": item["text"],
+            "timestamp": item["timestamp"],
+            "category": "Synchronisation",
+        }
+        for item in summary["recentSyncActivity"][:5]
+    ]
+    for inc in (
+        Incident.objects.filter(deleted_at__isnull=True)
+        .order_by("-updated_at")
+        .values("title", "updated_at")[:5]
+    ):
+        recent_activities.append(
+            {
+                "text": f"Incident signalé: {inc['title']}",
+                "timestamp": inc["updated_at"].isoformat(),
+                "category": "Incident",
+            }
+        )
+    recent_activities.sort(key=lambda x: x["timestamp"], reverse=True)
+
     return {
-        "summary": get_executive_summary(),
+        "summary": summary,
         "syncHealth": get_sync_health(),
+        "pendingValidations": validations,
+        "recentActivities": recent_activities[:10],
+        "presence": {
+            "activeEmployees": active_employees,
+            "totalEmployees": total_employees,
+            "rate": round((active_employees / total_employees) * 100, 1)
+            if total_employees
+            else 0.0,
+        },
     }

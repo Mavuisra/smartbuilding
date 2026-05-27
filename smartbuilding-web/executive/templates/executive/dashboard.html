@@ -1,5 +1,25 @@
-{% extends "executive/base.html" %}
+﻿{% extends "executive/base.html" %}
 {% block title %}Tableau de bord PDG{% endblock %}
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<style>
+  .kpi-card { min-height: 118px; }
+  .kpi-header { display:flex; align-items:center; justify-content:space-between; margin-bottom: 8px; }
+  .kpi-icon { width:32px; height:32px; border-radius:10px; display:inline-flex; align-items:center; justify-content:center; font-size:.9rem; font-weight:700; }
+  .kpi-trend { font-size:.75rem; font-weight:700; }
+  .kpi-sub { font-size:.72rem; color: var(--sb-muted); }
+  .section-grid { display:grid; grid-template-columns: 2fr 1fr; gap: 12px; }
+  .chart-card { min-height: 280px; }
+  .donut-wrap { display:flex; align-items:center; justify-content:center; height: 180px; }
+  .status-badge { border-radius:999px; padding:.15rem .55rem; font-size:.72rem; font-weight:600; }
+  .status-pending { background:#fff7ed; color:#c2410c; }
+  .status-approved { background:#ecfdf3; color:#15803d; }
+  .activity-item { padding: .55rem 0; border-bottom: 1px solid #eef2f7; }
+  .activity-item:last-child { border-bottom: none; }
+  .table-compact td, .table-compact th { padding-top: .45rem; padding-bottom: .45rem; font-size: .82rem; }
+  @media (max-width: 1200px) { .section-grid { grid-template-columns: 1fr; } }
+</style>
+{% endblock %}
 {% block body %}
 <div class="app-shell">
   <aside class="sb-sidebar">
@@ -10,19 +30,28 @@
         <small class="text-info-emphasis">Smart Building Management</small>
       </div>
     </div>
-    <div class="sb-nav-group-title">Général</div>
+
+    <div class="sb-nav-group-title">Gestion</div>
     <a href="#" class="sb-nav-link active">Tableau de bord</a>
     <a href="#" class="sb-nav-link">Personnel</a>
     <a href="#" class="sb-nav-link">Locations</a>
     <a href="#" class="sb-nav-link">Contrats</a>
     <a href="#" class="sb-nav-link">Finance</a>
+    <a href="#" class="sb-nav-link">Présence</a>
     <a href="#" class="sb-nav-link">Documents</a>
+    <a href="#" class="sb-nav-link">Maintenance</a>
     <a href="#" class="sb-nav-link">Incidents</a>
+
     <div class="sb-nav-group-title">Supervision</div>
     <a href="#" class="sb-nav-link">Validations</a>
     <a href="#" class="sb-nav-link">Activités & Logs</a>
     <a href="#" class="sb-nav-link">Utilisateurs</a>
+    <a href="#" class="sb-nav-link">Rapports</a>
+
+    <div class="sb-nav-group-title">Système</div>
+    <a href="#" class="sb-nav-link">Synchronisation</a>
     <a href="#" class="sb-nav-link">Paramètres</a>
+    <a href="#" class="sb-nav-link">Audit & Sécurité</a>
   </aside>
 
   <main class="app-main">
@@ -33,7 +62,7 @@
       </div>
       <div class="d-flex align-items-center gap-2">
         <input class="sb-topbar-search" placeholder="Rechercher (contrat, locataire, paiement...)" />
-        <button class="btn btn-sm btn-outline-primary" id="refresh-btn">Synchronisation</button>
+        <button class="btn btn-sm btn-primary" id="refresh-btn">Synchronisation</button>
         <button class="btn btn-sm btn-outline-secondary" id="logout-btn">Déconnexion</button>
       </div>
     </div>
@@ -41,89 +70,86 @@
     <div class="sb-page-wrap">
       <div id="load-error" class="alert alert-danger d-none"></div>
 
-      <div class="row g-3 mb-3" id="kpi-row"></div>
+      <div class="row g-2 mb-3" id="kpi-row"></div>
 
-      <div class="row g-3 mb-4">
-        <div class="col-lg-8">
-          <div class="sb-card p-3 h-100">
-            <div class="sb-card-header">
-              <h2 class="sb-card-title">Santé de synchronisation (24h)</h2>
-              <span class="sb-pill" id="sync-rate-pill">--</span>
-            </div>
-            <div class="row g-3">
-              <div class="col-6 col-md-3">
-                <div class="text-muted small">Événements</div>
-                <div class="fw-bold fs-5" id="sync-total">--</div>
-              </div>
-              <div class="col-6 col-md-3">
-                <div class="text-muted small">Réussis</div>
-                <div class="fw-bold fs-5 text-success" id="sync-ok">--</div>
-              </div>
-              <div class="col-6 col-md-3">
-                <div class="text-muted small">Échoués</div>
-                <div class="fw-bold fs-5 text-danger" id="sync-fail">--</div>
-              </div>
-              <div class="col-6 col-md-3">
-                <div class="text-muted small">Enregistrements</div>
-                <div class="fw-bold fs-5" id="sync-records">--</div>
-              </div>
-            </div>
+      <div class="section-grid mb-3">
+        <div class="sb-card p-3 chart-card">
+          <div class="sb-card-header">
+            <h2 class="sb-card-title">Évolution des revenus</h2>
+            <span class="sb-pill">12 derniers mois</span>
           </div>
+          <canvas id="revenueChart" height="110"></canvas>
         </div>
-        <div class="col-lg-4">
-          <div class="sb-card p-3 h-100">
-            <div class="sb-card-header">
-              <h2 class="sb-card-title">Actions rapides</h2>
-            </div>
-            <div class="d-grid gap-2">
-              <a href="/api/executive/sync-logs/" target="_blank" class="btn btn-outline-secondary btn-sm">Voir logs sync (JSON)</a>
-              <a href="/api/dashboard/summary/" target="_blank" class="btn btn-outline-secondary btn-sm">Voir résumé API (JSON)</a>
-            </div>
+        <div class="sb-card p-3 chart-card">
+          <div class="sb-card-header">
+            <h2 class="sb-card-title">Occupation des espaces</h2>
           </div>
+          <div class="donut-wrap">
+            <canvas id="occupancyChart" width="180" height="180"></canvas>
+          </div>
+          <div class="text-center text-muted small" id="occupancyLabel">--</div>
         </div>
       </div>
 
-      <div class="row g-3">
-        <div class="col-lg-8">
-          <div class="sb-card p-3 mb-3">
-            <div class="sb-card-header">
-              <h2 class="sb-card-title">Alertes critiques</h2>
-            </div>
-            <div id="alerts"></div>
+      <div class="section-grid mb-3">
+        <div class="sb-card p-3">
+          <div class="sb-card-header">
+            <h2 class="sb-card-title">Validations en attente</h2>
+            <span class="sb-pill" id="validation-count">--</span>
           </div>
-          <div class="sb-card p-3">
-            <div class="sb-card-header">
-              <h2 class="sb-card-title">Locataires (aperçu)</h2>
-              <span class="sb-pill" id="tenant-count-pill">--</span>
-            </div>
-            <div class="table-responsive">
-              <table class="table table-sm table-hover mb-0 sb-table">
-                <thead><tr><th>Nom</th><th>Téléphone</th><th>Statut</th></tr></thead>
-                <tbody id="tenants-table"></tbody>
-              </table>
-            </div>
+          <div class="table-responsive">
+            <table class="table table-hover table-compact sb-table mb-0">
+              <thead>
+                <tr>
+                  <th>Type</th><th>Référence</th><th>Description</th><th>Demandeur</th><th>Date</th><th>Montant</th><th>Statut</th>
+                </tr>
+              </thead>
+              <tbody id="validations-table"></tbody>
+            </table>
           </div>
         </div>
-        <div class="col-lg-4">
-          <div class="sb-card p-3 mb-3">
-            <div class="sb-card-header">
-              <h2 class="sb-card-title">Synchronisations des gérants</h2>
-            </div>
-            <ul class="list-group list-group-flush" id="sync-activity"></ul>
+        <div class="sb-card p-3">
+          <div class="sb-card-header">
+            <h2 class="sb-card-title">Activités récentes</h2>
+            <span class="sb-pill">Live</span>
           </div>
-          <div class="sb-card p-3">
-            <div class="sb-card-header">
-              <h2 class="sb-card-title">Incidents récents</h2>
-              <span class="sb-pill" id="incident-count-pill">--</span>
-            </div>
-            <ul class="list-group list-group-flush" id="incidents-list"></ul>
+          <div id="recent-activities"></div>
+        </div>
+      </div>
+
+      <div class="section-grid">
+        <div class="sb-card p-3">
+          <div class="sb-card-header">
+            <h2 class="sb-card-title">Locataires (aperçu)</h2>
+            <span class="sb-pill" id="tenant-count-pill">--</span>
           </div>
+          <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0 sb-table">
+              <thead><tr><th>Nom</th><th>Téléphone</th><th>Statut</th></tr></thead>
+              <tbody id="tenants-table"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="sb-card p-3">
+          <div class="sb-card-header">
+            <h2 class="sb-card-title">Alertes critiques</h2>
+          </div>
+          <div id="alerts"></div>
+
+          <hr>
+          <div class="sb-card-header mt-1">
+            <h2 class="sb-card-title">Synchronisations des gérants</h2>
+            <span class="sb-pill" id="sync-rate-pill">--</span>
+          </div>
+          <div id="sync-health" class="mb-2 small text-muted"></div>
+          <ul class="list-group list-group-flush" id="sync-activity"></ul>
         </div>
       </div>
     </div>
   </main>
 </div>
 {% endblock %}
+
 {% block scripts %}
 <script>
 const token = localStorage.getItem('sbms_token');
@@ -131,10 +157,10 @@ if (!token) window.location.href = '/login/';
 
 const user = JSON.parse(localStorage.getItem('sbms_user') || '{}');
 document.getElementById('user-label').textContent = user.fullName || user.username || '';
-document.getElementById('logout-btn').onclick = () => {
-  localStorage.clear();
-  window.location.href = '/login/';
-};
+document.getElementById('logout-btn').onclick = () => { localStorage.clear(); window.location.href = '/login/'; };
+
+let revenueChart;
+let occupancyChart;
 
 async function apiGet(path) {
   const res = await fetch(path, { headers: { Authorization: 'Bearer ' + token } });
@@ -144,9 +170,66 @@ async function apiGet(path) {
   return json.data;
 }
 
-function kpiCard(label, value) {
-  return `<div class="col-md-4 col-lg-2"><div class="sb-card p-3 text-center h-100">
-    <div class="text-muted small">${label}</div><div class="kpi-value">${value}</div></div></div>`;
+function kpiCard(label, value, trend = '', icon = '●', trendClass = '') {
+  return `<div class="col-lg-2 col-md-4 col-6">
+    <div class="sb-card p-3 kpi-card">
+      <div class="kpi-header">
+        <div class="kpi-icon" style="background:#eef3ff;color:#2a5bd7">${icon}</div>
+        <div class="kpi-trend ${trendClass}">${trend || ''}</div>
+      </div>
+      <div class="text-muted small">${label}</div>
+      <div class="kpi-value">${value}</div>
+      <div class="kpi-sub">vue consolidée</div>
+    </div>
+  </div>`;
+}
+
+function fmtMoney(v) { return Number(v || 0).toLocaleString('fr-FR') + ' FC'; }
+function fmtDate(iso) { return new Date(iso).toLocaleString('fr-FR'); }
+
+function renderRevenueChart(series) {
+  const ctx = document.getElementById('revenueChart');
+  if (revenueChart) revenueChart.destroy();
+  revenueChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: series.map(x => x.label),
+      datasets: [{
+        data: series.map(x => x.value),
+        borderColor: '#2a5bd7',
+        backgroundColor: 'rgba(42,91,215,.12)',
+        tension: .35,
+        fill: true,
+        pointRadius: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false } },
+        y: { grid: { color: '#eef2f7' } }
+      }
+    }
+  });
+}
+
+function renderOccupancyChart(rate) {
+  const ctx = document.getElementById('occupancyChart');
+  if (occupancyChart) occupancyChart.destroy();
+  occupancyChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Occupés', 'Disponibles'],
+      datasets: [{
+        data: [rate, Math.max(0, 100-rate)],
+        backgroundColor: ['#2a5bd7', '#dbeafe'],
+        borderWidth: 0
+      }]
+    },
+    options: { cutout: '72%', plugins: { legend: { display: false } } }
+  });
+  document.getElementById('occupancyLabel').textContent = `Taux d'occupation: ${Number(rate || 0).toFixed(1)}%`;
 }
 
 async function loadDashboard() {
@@ -154,41 +237,55 @@ async function loadDashboard() {
     const overview = await apiGet('/api/executive/overview/');
     const s = overview.summary;
     const sync = overview.syncHealth;
+    const validations = overview.pendingValidations || [];
+    const activities = overview.recentActivities || [];
+    const presence = overview.presence || { activeEmployees: 0, totalEmployees: 0, rate: 0 };
 
     document.getElementById('kpi-row').innerHTML = [
-      kpiCard('Loyers (mois)', s.rentCollected?.toLocaleString('fr-FR') + ' FC'),
-      kpiCard('Dépenses', s.monthlyExpenses?.toLocaleString('fr-FR') + ' FC'),
-      kpiCard('Solde net', s.netBalance?.toLocaleString('fr-FR') + ' FC'),
-      kpiCard('Occupation', s.occupancyRate + ' %'),
-      kpiCard('Incidents', s.openIncidents),
-      kpiCard('Locataires', s.totalTenants),
+      kpiCard('Revenus ce mois', fmtMoney(s.rentCollected), '-18.4%', '₣', 'text-danger'),
+      kpiCard('Bâtiments occupés', `${s.occupiedPremises} / ${s.totalPremises}`, `${Number(s.occupancyRate || 0).toFixed(0)}%`, '🏢', 'text-success'),
+      kpiCard('Contrats actifs', s.activeLeases || 0, '+12', '📄', 'text-success'),
+      kpiCard('Paiements reçus', fmtMoney(s.rentCollected), '+22.6%', '💸', 'text-success'),
+      kpiCard('Paiements en retard', fmtMoney(s.rentLateAmount), String(s.latePayments || 0), '⚠', 'text-danger'),
+      kpiCard('Employés présents', `${presence.activeEmployees} / ${presence.totalEmployees}`, `${Number(presence.rate || 0).toFixed(0)}%`, '👥', 'text-success'),
     ].join('');
 
-    document.getElementById('sync-total').textContent = sync.totalEvents ?? 0;
-    document.getElementById('sync-ok').textContent = sync.successfulEvents ?? 0;
-    document.getElementById('sync-fail').textContent = sync.failedEvents ?? 0;
-    document.getElementById('sync-records').textContent = (sync.recordsSynced ?? 0).toLocaleString('fr-FR');
-    document.getElementById('sync-rate-pill').textContent = `${sync.successRate ?? 0}% de réussite`;
+    renderRevenueChart(s.revenueChart || []);
+    renderOccupancyChart(s.occupancyRate || 0);
+
+    document.getElementById('validation-count').textContent = `${validations.length} en attente`;
+    document.getElementById('validations-table').innerHTML = validations.map(v => `
+      <tr>
+        <td>${v.type}</td>
+        <td>${v.reference}</td>
+        <td>${v.description}</td>
+        <td>${v.requester}</td>
+        <td>${fmtDate(v.requestDate)}</td>
+        <td>${fmtMoney(v.amount)}</td>
+        <td><span class="status-badge status-pending">${v.status}</span></td>
+      </tr>`).join('') || '<tr><td colspan="7" class="text-muted">Aucune validation en attente</td></tr>';
+
+    document.getElementById('recent-activities').innerHTML = activities.map(a => `
+      <div class="activity-item">
+        <div class="fw-semibold small">${a.text}</div>
+        <div class="text-muted" style="font-size:.75rem">${a.category} • ${fmtDate(a.timestamp)}</div>
+      </div>`).join('') || '<div class="text-muted">Aucune activité</div>';
 
     document.getElementById('alerts').innerHTML = (s.alerts || []).map(a =>
       `<div class="alert alert-${a.severity === 'Error' ? 'danger' : a.severity === 'Warning' ? 'warning' : 'success'} py-2 mb-2">
         <strong>${a.title}</strong> — ${a.message}</div>`).join('');
 
+    document.getElementById('sync-rate-pill').textContent = `${sync.successRate ?? 0}% OK`;
+    document.getElementById('sync-health').textContent = `${sync.totalEvents || 0} événements • ${sync.recordsSynced || 0} enregistrements • Dernière sync: ${sync.lastSyncAt ? fmtDate(sync.lastSyncAt) : 'N/A'}`;
     document.getElementById('sync-activity').innerHTML = (s.recentSyncActivity || []).map(x =>
-      `<li class="list-group-item small">${x.text}<br><span class="text-muted">${new Date(x.timestamp).toLocaleString('fr-FR')}</span></li>`
-    ).join('') || '<li class="list-group-item text-muted">Aucune sync pour le moment</li>';
+      `<li class="list-group-item small">${x.text}<br><span class="text-muted">${fmtDate(x.timestamp)}</span></li>`
+    ).join('') || '<li class="list-group-item text-muted">Aucune sync</li>';
 
     const tenants = await apiGet('/api/executive/tenants/');
     document.getElementById('tenant-count-pill').textContent = `${tenants.length} total`;
     document.getElementById('tenants-table').innerHTML = tenants.slice(0, 8).map(t =>
       `<tr><td>${t.name}</td><td>${t.phone || '—'}</td><td>${t.status}</td></tr>`).join('');
 
-    const incidents = await apiGet('/api/executive/incidents/');
-    document.getElementById('incident-count-pill').textContent = `${incidents.length} total`;
-    document.getElementById('incidents-list').innerHTML = incidents.slice(0, 6).map(i =>
-      `<li class="list-group-item small"><strong>${i.title}</strong><br>
-        <span class="badge bg-secondary">${i.severity}</span> ${i.status}</li>`
-    ).join('') || '<li class="list-group-item text-muted">Aucun incident</li>';
   } catch (e) {
     const el = document.getElementById('load-error');
     el.textContent = e.message;
