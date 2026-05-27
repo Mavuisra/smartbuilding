@@ -122,7 +122,7 @@ public partial class InitialSetupViewModel : ObservableObject
                 SidebarColorHex = SelectedSidebarColor,
                 SecondaryColorHex = SelectedSecondaryColor
             });
-            SetupStatus = $"Base locale: OK ({result.LocalDbPath}). {result.CloudSyncMessage}";
+            SetupStatus = $"Local : OK ({result.LocalDbPath}){Environment.NewLine}Cloud : {result.CloudSyncMessage}";
             if (result.CloudSyncAttempted && !result.CloudSyncSuccess)
             {
                 ErrorMessage = "La synchronisation cloud a échoué. Vérifiez la connexion/API puis cliquez à nouveau sur Terminer.";
