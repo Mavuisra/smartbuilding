@@ -34,14 +34,27 @@ public partial class App : System.Windows.Application
             args.Handled = true;
         };
 
+        // Mode interne: application d’une mise à jour (l’exe est lancé depuis un dossier staging).
+        if (AppAutoUpdater.TryApplyUpdateIfRequested(e.Args))
+            return;
+
         var splash = new SplashWindow();
         splash.Show();
         await PumpUiAsync();
 
-        var splashStarted = Environment.TickCount64;
-
         try
         {
+            splash.UpdateProgress(5, "Vérification des mises à jour...");
+            await PumpUiAsync();
+
+            if (await AppAutoUpdater.CheckAndApplyIfNeededAsync(splash.UpdateProgress))
+            {
+                Shutdown(0);
+                return;
+            }
+
+            var splashStarted = Environment.TickCount64;
+
             splash.UpdateProgress(5, "Préparation de l'application...");
             await PumpUiAsync();
 

@@ -18,5 +18,8 @@ _testout/
 *.db-shm
 *.db-wal
 
+## Local build artifacts
+artifacts/
+
 ## Logs
 *.log

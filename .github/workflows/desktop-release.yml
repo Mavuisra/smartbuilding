@@ -1,0 +1,58 @@
+name: Desktop Release
+
+on:
+  push:
+    branches: [ "main" ]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Compute version
+        id: ver
+        shell: pwsh
+        run: |
+          $version = "1.0.$env:GITHUB_RUN_NUMBER"
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: Publish desktop (win-x64, self-contained)
+        shell: pwsh
+        run: |
+          $version = "${{ steps.ver.outputs.version }}"
+          $outDir = "${{ github.workspace }}\artifacts\publish"
+          $zipOut = "${{ github.workspace }}\artifacts"
+          $zipName = "smartbuilding-desktop-win-x64-v$version.zip"
+
+          if (Test-Path $outDir) { Remove-Item $outDir -Recurse -Force }
+          New-Item -ItemType Directory -Path $outDir -Force | Out-Null
+
+          dotnet publish "SmartBuilding.Desktop.WPF\SmartBuilding.Desktop.WPF.csproj" `
+            -c Release -r win-x64 --self-contained true `
+            -p:Version=$version `
+            -p:PublishTrimmed=false `
+            -p:IncludeNativeLibrariesForSelfExtract=true `
+            -o $outDir
+
+          if (Test-Path (Join-Path $zipOut $zipName)) { Remove-Item (Join-Path $zipOut $zipName) -Force }
+
+          # On zippe le dossier de publication. Le code d’application gère un éventuel dossier enveloppe.
+          Compress-Archive -Path (Join-Path $outDir '*') -DestinationPath (Join-Path $zipOut $zipName) -Force
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.ver.outputs.version }}
+          files: artifacts/smartbuilding-desktop-win-x64-v${{ steps.ver.outputs.version }}.zip
+          generate_release_notes: true
+
