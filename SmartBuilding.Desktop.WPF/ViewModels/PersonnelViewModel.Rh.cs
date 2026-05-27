@@ -35,7 +35,7 @@ public partial class PersonnelViewModel
     [ObservableProperty] private string _payrollPenaltiesText = "0";
     [ObservableProperty] private string _payrollAdvancesText = "0";
     [ObservableProperty] private string _payrollDeductionsText = "0";
-    [ObservableProperty] private string _payrollNetPreview = "0 €";
+    [ObservableProperty] private string _payrollNetPreview = "0";
     [ObservableProperty] private string? _payrollError;
 
     [ObservableProperty] private bool _isDisciplinaryDialogOpen;
@@ -204,7 +204,7 @@ public partial class PersonnelViewModel
                 ParseDecimal(PayrollPenaltiesText),
                 ParseDecimal(PayrollAdvancesText),
                 ParseDecimal(PayrollDeductionsText));
-            PayrollNetPreview = $"{calc.NetAmount:N2} €";
+            PayrollNetPreview = MoneyFormatter.Format(calc.NetAmount);
         }
         catch
         {

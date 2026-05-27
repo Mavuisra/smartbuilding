@@ -1046,7 +1046,7 @@
                                         <TextBox Grid.Row="2" Grid.Column="1" Margin="8,0,0,10" Style="{StaticResource MaterialDesignOutlinedTextBox}"
                                                  materialDesign:HintAssist.Hint="Département" Text="{Binding FormDepartment, UpdateSourceTrigger=PropertyChanged}"/>
                                         <TextBox Grid.Row="3" Grid.Column="0" Margin="0,0,8,10" Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                                 materialDesign:HintAssist.Hint="Salaire de base (€)" Text="{Binding FormBaseSalaryText, UpdateSourceTrigger=PropertyChanged}"/>
+                                                 materialDesign:HintAssist.Hint="Salaire de base (devise paramétrée)" Text="{Binding FormBaseSalaryText, UpdateSourceTrigger=PropertyChanged}"/>
                                         <TextBox Grid.Row="3" Grid.Column="1" Margin="8,0,0,10" Style="{StaticResource MaterialDesignOutlinedTextBox}"
                                                  materialDesign:HintAssist.Hint="Superviseur" Text="{Binding FormSupervisor, UpdateSourceTrigger=PropertyChanged}"/>
                                     </Grid>
@@ -1381,7 +1381,7 @@
                             <TextBox Grid.Row="3" Grid.Column="1" Margin="8,0,0,12" Style="{StaticResource MaterialDesignOutlinedTextBox}"
                                      materialDesign:HintAssist.Hint="Email" Text="{Binding FormEmail, UpdateSourceTrigger=PropertyChanged}"/>
                             <TextBox Grid.Row="4" Grid.Column="0" Margin="0,0,8,12" Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                     materialDesign:HintAssist.Hint="Salaire de base (€)" Text="{Binding FormBaseSalaryText, UpdateSourceTrigger=PropertyChanged}"/>
+                                     materialDesign:HintAssist.Hint="Salaire de base (devise paramétrée)" Text="{Binding FormBaseSalaryText, UpdateSourceTrigger=PropertyChanged}"/>
                             <CheckBox Grid.Row="4" Grid.Column="1" Content="Employé actif" Margin="8,8,0,12" IsChecked="{Binding FormIsActive}" VerticalAlignment="Center"/>
                         </Grid>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
