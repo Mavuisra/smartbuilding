@@ -7,7 +7,7 @@
         Width="900" Height="640"
         WindowStartupLocation="CenterScreen"
         ResizeMode="NoResize"
-        Background="#F3F6FA">
+        Background="#F5F8F6">
     <Window.Resources>
         <conv:IntEqualsToVisibilityConverter x:Key="IntEqualsToVisibilityConverter"/>
     </Window.Resources>
@@ -19,7 +19,7 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <Border Background="#1E3A8A" CornerRadius="14" Padding="18" Grid.Row="0" Margin="0,0,0,14">
+        <Border Background="#1B3D3B" CornerRadius="14" Padding="18" Grid.Row="0" Margin="0,0,0,14">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -28,10 +28,10 @@
                 <StackPanel>
                     <TextBlock Text="Bienvenue dans SBMS" Foreground="White" FontSize="26" FontWeight="Bold"/>
                     <TextBlock Text="Assistant de première configuration locale"
-                               Foreground="#DBEAFE" FontSize="13"/>
+                               Foreground="#D1FAE5" FontSize="13"/>
                 </StackPanel>
-                <Border Grid.Column="1" Background="#FFFFFF22" CornerRadius="8" Padding="10,6" VerticalAlignment="Center">
-                    <TextBlock Text="{Binding StepIndex, StringFormat=Étape {0}/3}" Foreground="White" FontWeight="SemiBold"/>
+                <Border Grid.Column="1" Background="#2D6A4F" CornerRadius="8" Padding="10,6" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding StepIndex, StringFormat=Étape {0}/3}" Foreground="#F0FDF4" FontWeight="SemiBold"/>
                 </Border>
             </Grid>
         </Border>
@@ -171,9 +171,9 @@
                                 <ComboBox ItemsSource="{Binding ColorOptions}" SelectedItem="{Binding SelectedSecondaryColor}" Margin="0,4,0,0"/>
                             </StackPanel>
                         </Grid>
-                        <Border Background="#F8FAFC" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,8,0,0">
+                        <Border Background="#F0FDF4" BorderBrush="#BBF7D0" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,8,0,0">
                             <TextBlock Text="Après validation, vous pourrez vous connecter immédiatement avec le compte administrateur créé."
-                                       Foreground="#334155" TextWrapping="Wrap"/>
+                                       Foreground="#14532D" TextWrapping="Wrap"/>
                         </Border>
                     </StackPanel>
                 </Grid>
@@ -181,12 +181,18 @@
         </Border>
 
         <DockPanel Grid.Row="2" Margin="0,14,0,0">
-            <TextBlock Text="{Binding ErrorMessage}" Foreground="#DC2626" VerticalAlignment="Center"/>
+            <StackPanel>
+                <TextBlock Text="{Binding ErrorMessage}" Foreground="#DC2626" VerticalAlignment="Center"/>
+                <TextBlock Text="{Binding SetupStatus}" Foreground="#166534" VerticalAlignment="Center" Margin="0,4,0,0"/>
+            </StackPanel>
             <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
-                <Button Content="Annuler" Command="{Binding CancelCommand}" Margin="0,0,8,0"/>
-                <Button Content="Précédent" Command="{Binding PreviousCommand}" Margin="0,0,8,0"/>
-                <Button Content="Suivant" Command="{Binding NextCommand}" Margin="0,0,8,0"/>
-                <Button Content="Terminer" Command="{Binding FinishCommand}" Background="#2563EB" Foreground="White"/>
+                <Button Content="Annuler" Command="{Binding CancelCommand}" Margin="0,0,8,0"
+                        Background="#0F172A" Foreground="White"/>
+                <Button Content="Précédent" Command="{Binding PreviousCommand}" Margin="0,0,8,0"
+                        Background="#E2E8F0" Foreground="#0F172A"/>
+                <Button Content="Suivant" Command="{Binding NextCommand}" Margin="0,0,8,0"
+                        Background="#2D6A4F" Foreground="White"/>
+                <Button Content="Terminer" Command="{Binding FinishCommand}" Background="#16A34A" Foreground="White"/>
             </StackPanel>
         </DockPanel>
     </Grid>

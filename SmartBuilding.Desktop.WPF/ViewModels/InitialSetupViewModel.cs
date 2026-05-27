@@ -13,6 +13,7 @@ public partial class InitialSetupViewModel : ObservableObject
     [ObservableProperty] private int _stepIndex;
     [ObservableProperty] private bool _isBusy;
     [ObservableProperty] private string? _errorMessage;
+    [ObservableProperty] private string? _setupStatus;
 
     [ObservableProperty] private string _adminFullName = string.Empty;
     [ObservableProperty] private string _adminUsername = "admin";
@@ -37,7 +38,7 @@ public partial class InitialSetupViewModel : ObservableObject
     [ObservableProperty] private string _selectedSecondaryColor = "#0D9488";
 
     public IReadOnlyList<string> ThemeModes { get; } = ["Clair", "Sombre", "Personnalisé"];
-    public IReadOnlyList<string> ColorOptions { get; } = ["#2D6A4F", "#1B3D3B", "#2563EB", "#7C3AED", "#DC2626"];
+    public IReadOnlyList<string> ColorOptions { get; } = ["#2D6A4F", "#1B3D3B", "#0F172A", "#000000", "#16A34A"];
 
     public event Action<bool>? CloseRequested;
 
@@ -72,6 +73,7 @@ public partial class InitialSetupViewModel : ObservableObject
     private void Next()
     {
         ErrorMessage = null;
+        SetupStatus = null;
         if (!ValidateCurrentStep())
             return;
         StepIndex++;
@@ -99,7 +101,8 @@ public partial class InitialSetupViewModel : ObservableObject
         IsBusy = true;
         try
         {
-            await _setupService.CompleteInitialSetupAsync(new InitialSetupRequest
+            SetupStatus = "Enregistrement local en cours...";
+            var result = await _setupService.CompleteInitialSetupAsync(new InitialSetupRequest
             {
                 AdminFullName = AdminFullName,
                 AdminUsername = AdminUsername,
@@ -119,6 +122,12 @@ public partial class InitialSetupViewModel : ObservableObject
                 SidebarColorHex = SelectedSidebarColor,
                 SecondaryColorHex = SelectedSecondaryColor
             });
+            SetupStatus = $"Base locale: OK ({result.LocalDbPath}). {result.CloudSyncMessage}";
+            if (result.CloudSyncAttempted && !result.CloudSyncSuccess)
+            {
+                ErrorMessage = "La synchronisation cloud a échoué. Vérifiez la connexion/API puis cliquez à nouveau sur Terminer.";
+                return;
+            }
             CloseRequested?.Invoke(true);
         }
         catch (Exception ex)

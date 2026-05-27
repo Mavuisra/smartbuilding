@@ -1,5 +1,7 @@
 using System.IO;
+using Microsoft.Extensions.Configuration;
 using Microsoft.EntityFrameworkCore;
+using SmartBuilding.Application.Interfaces;
 using SmartBuilding.Desktop.WPF.Models;
 using SmartBuilding.Domain.Entities.Auth;
 using SmartBuilding.Domain.Entities.Building;
@@ -18,11 +20,19 @@ public sealed class InitialSetupService
 
     private readonly SmartBuildingDbContext _db;
     private readonly AppConfigurationService _appConfiguration;
+    private readonly ISyncService _syncService;
+    private readonly IConfiguration _configuration;
 
-    public InitialSetupService(SmartBuildingDbContext db, AppConfigurationService appConfiguration)
+    public InitialSetupService(
+        SmartBuildingDbContext db,
+        AppConfigurationService appConfiguration,
+        ISyncService syncService,
+        IConfiguration configuration)
     {
         _db = db;
         _appConfiguration = appConfiguration;
+        _syncService = syncService;
+        _configuration = configuration;
     }
 
     public async Task<bool> NeedsInitialSetupAsync(CancellationToken cancellationToken = default)
@@ -49,22 +59,29 @@ public sealed class InitialSetupService
         return false;
     }
 
-    public async Task CompleteInitialSetupAsync(InitialSetupRequest request, CancellationToken cancellationToken = default)
+    public async Task<InitialSetupResult> CompleteInitialSetupAsync(InitialSetupRequest request, CancellationToken cancellationToken = default)
     {
-        if (await _db.Users.AnyAsync(u => u.DeletedAt == null, cancellationToken))
-            return;
+        var admin = await _db.Users
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(
+                u => u.DeletedAt == null
+                     && u.Username.ToLower() == request.AdminUsername.Trim().ToLower(),
+                cancellationToken);
 
-        var admin = new User
+        if (admin is null)
         {
-            Username = request.AdminUsername.Trim(),
-            FullName = request.AdminFullName.Trim(),
-            Email = request.CompanyEmail.Trim(),
-            Role = UserRole.Administrateur,
-            PasswordHash = AuthService.HashPassword(request.AdminPassword),
-            IsActive = true,
-            IsSynced = false
-        };
-        _db.Users.Add(admin);
+            admin = new User();
+            _db.Users.Add(admin);
+        }
+
+        admin.Username = request.AdminUsername.Trim();
+        admin.FullName = request.AdminFullName.Trim();
+        admin.Email = request.CompanyEmail.Trim();
+        admin.Role = UserRole.Administrateur;
+        admin.PasswordHash = AuthService.HashPassword(request.AdminPassword);
+        admin.IsActive = true;
+        admin.IsSynced = false;
+        admin.MarkUpdated();
 
         var building = await _db.BuildingInfos.FirstOrDefaultAsync(cancellationToken) ?? new BuildingInfo();
         if (building.Id == Guid.Empty)
@@ -99,6 +116,39 @@ public sealed class InitialSetupService
             showKpiSparklines: true);
 
         WriteSetupCompletedFlag();
+
+        var localDbPath = ResolveSqlitePath(_configuration.GetConnectionString("Sqlite") ?? "Data Source=smartbuilding.db");
+        var localPersisted = await _db.Users.AnyAsync(
+                                 u => u.DeletedAt == null
+                                      && u.Username.ToLower() == request.AdminUsername.Trim().ToLower(),
+                                 cancellationToken)
+                             && await _db.BuildingInfos.AnyAsync(
+                                 b => b.DeletedAt == null && b.Name == request.BuildingName.Trim(),
+                                 cancellationToken)
+                             && File.Exists(localDbPath);
+        if (!localPersisted)
+            throw new InvalidOperationException("Échec de persistance locale des données de configuration.");
+
+        var online = await _syncService.IsOnlineAsync(cancellationToken);
+        if (!online)
+        {
+            return new InitialSetupResult(
+                LocalPersistenceOk: true,
+                LocalDbPath: localDbPath,
+                CloudSyncAttempted: false,
+                CloudSyncSuccess: false,
+                CloudSyncMessage: "Configuration locale enregistrée. Synchronisation cloud reportée (hors ligne).");
+        }
+
+        var sync = await _syncService.SyncAsync(manual: true, cancellationToken);
+        return new InitialSetupResult(
+            LocalPersistenceOk: true,
+            LocalDbPath: localDbPath,
+            CloudSyncAttempted: true,
+            CloudSyncSuccess: sync.Success,
+            CloudSyncMessage: sync.Success
+                ? $"Synchronisation cloud réussie ({sync.Pushed} envoyés, {sync.Pulled} reçus)."
+                : $"Configuration locale OK, mais sync cloud échouée: {sync.Error ?? "erreur inconnue"}");
     }
 
     private static string? PersistLogo(string? sourcePath)
@@ -133,7 +183,25 @@ public sealed class InitialSetupService
         Directory.CreateDirectory(folder);
         File.WriteAllText(SetupFlagPath, DateTime.UtcNow.ToString("O"));
     }
+
+    private static string ResolveSqlitePath(string connectionString)
+    {
+        const string prefix = "Data Source=";
+        var path = connectionString.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+            ? connectionString[prefix.Length..].Trim()
+            : connectionString;
+        if (!Path.IsPathRooted(path))
+            path = Path.Combine(AppContext.BaseDirectory, path);
+        return path;
+    }
 }
+
+public sealed record InitialSetupResult(
+    bool LocalPersistenceOk,
+    string LocalDbPath,
+    bool CloudSyncAttempted,
+    bool CloudSyncSuccess,
+    string CloudSyncMessage);
 
 public sealed class InitialSetupRequest
 {
