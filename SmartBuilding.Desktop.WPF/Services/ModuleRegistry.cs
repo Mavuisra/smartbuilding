@@ -8,8 +8,8 @@ public static class ModuleRegistry
     public static readonly IReadOnlyList<ModuleDefinition> All =
     [
         new("dashboard", "Tableau de bord", "Vue d'ensemble", "ViewDashboard", "main", PermissionCodes.DashboardView),
+        new("locations", "Local", "Locaux, locataires et contrats", "HomeCity", "gestion", PermissionCodes.LocationManage),
         new("personnel", "Personnel", "Employés, présences et salaires", "AccountGroup", "gestion", PermissionCodes.PersonnelView),
-        new("locations", "Locations", "Locaux, locataires et contrats", "HomeCity", "gestion", PermissionCodes.LocationManage),
         new("finances", "Finances", "Recettes, dépenses et trésorerie", "CashMultiple", "gestion", PermissionCodes.FinanceView),
         new("technique", "Technique & Sécurité", "Équipements, maintenance et incidents", "HammerWrench", "gestion", PermissionCodes.TechnicalManage),
         new("fournisseurs", "Fournisseurs", "Partenaires et contrats fournisseurs", "TruckDelivery", "gestion", PermissionCodes.SuppliersManage),
@@ -54,24 +54,20 @@ public static class ModuleRegistry
 
             foreach (var module in modules)
             {
-                if (string.Equals(module.Id, "locations", StringComparison.OrdinalIgnoreCase))
+                // Local juste avant Personnel (ordre défini dans All : … locations, personnel …)
+                if (string.Equals(module.Id, "locations", StringComparison.OrdinalIgnoreCase)
+                    && CanAccess(session, module))
+                {
+                    yield return new ShellNavExpandableModuleItem(module,
+                    [
+                        new ShellNavChildItem("locations-create", "Créer locataire & local"),
+                        new ShellNavChildItem("locations-list", "Liste des locaux"),
+                        new ShellNavChildItem("locations-rent-pay", "Paiement de loyer")
+                    ]);
                     continue;
+                }
+
                 yield return new ShellNavModuleItem(module);
-            }
-
-            // Une seule entrée « Locations » (sous-menu) dans la section GESTION — pas à chaque boucle de section.
-            if (!string.Equals(section, "gestion", StringComparison.OrdinalIgnoreCase))
-                continue;
-
-            var locationsModule = Get("locations");
-            if (CanAccess(session, locationsModule))
-            {
-                yield return new ShellNavExpandableModuleItem(locationsModule,
-                [
-                    new ShellNavChildItem("locations-create", "Créer"),
-                    new ShellNavChildItem("locations-list", "Voir"),
-                    new ShellNavChildItem("locations-rent-pay", "Paiement de loyer")
-                ]);
             }
         }
     }

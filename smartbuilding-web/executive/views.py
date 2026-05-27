@@ -2,14 +2,14 @@ from django.shortcuts import render
 
 
 MODULE_PAGES = {
+    "locations": {
+        "title": "Local",
+        "subtitle": "Locataires, espaces et occupation des locaux.",
+        "group": "Gestion",
+    },
     "personnel": {
         "title": "Personnel",
         "subtitle": "Employés, rôles et état RH synchronisés depuis le desktop.",
-        "group": "Gestion",
-    },
-    "locations": {
-        "title": "Locations",
-        "subtitle": "Locataires, espaces et occupation des locaux.",
         "group": "Gestion",
     },
     "contrats": {

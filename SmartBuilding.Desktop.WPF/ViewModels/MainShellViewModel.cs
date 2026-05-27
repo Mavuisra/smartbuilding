@@ -291,13 +291,19 @@ public partial class MainShellViewModel : BaseViewModel
             return;
         }
 
-        if (moduleId == "locations" || moduleId == "locations-list")
+        if (moduleId == "locations" || moduleId == "locations-create")
+        {
+            await OpenLocationCreateAsync();
+            return;
+        }
+
+        if (moduleId == "locations-list")
         {
             await OpenLocationListAsync();
             return;
         }
 
-        if (moduleId == "locations-create")
+        if (moduleId == "locations-contract")
         {
             await OpenContractFormAsync();
             return;

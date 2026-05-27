@@ -42,11 +42,15 @@
         <DataTemplate DataType="{x:Type models:ShellNavExpandableModuleItem}">
             <Expander IsExpanded="True" Background="Transparent" BorderThickness="0" Margin="0,2">
                 <Expander.Header>
-                    <StackPanel Orientation="Horizontal">
-                        <materialDesign:PackIcon Kind="{Binding IconKind, Converter={StaticResource StringToPackIconKindConverter}}"
-                                                 VerticalAlignment="Center" Margin="0,0,10,0"/>
-                        <TextBlock Text="{Binding Title}" VerticalAlignment="Center" Foreground="White" FontWeight="SemiBold"/>
-                    </StackPanel>
+                    <Button Command="{Binding DataContext.NavigateCommand, ElementName=ShellPanel}"
+                            CommandParameter="locations-create"
+                            Background="Transparent" BorderThickness="0" Padding="0" HorizontalContentAlignment="Left">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="{Binding IconKind, Converter={StaticResource StringToPackIconKindConverter}}"
+                                                     VerticalAlignment="Center" Margin="0,0,10,0"/>
+                            <TextBlock Text="{Binding Title}" VerticalAlignment="Center" Foreground="White" FontWeight="SemiBold"/>
+                        </StackPanel>
+                    </Button>
                 </Expander.Header>
                 <ItemsControl ItemsSource="{Binding Children}" Margin="12,4,0,4">
                     <ItemsControl.ItemTemplate>

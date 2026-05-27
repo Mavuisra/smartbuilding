@@ -32,8 +32,8 @@
                 </Grid.ColumnDefinitions>
 
                 <StackPanel>
-                    <TextBlock Text="Nouveau contrat de location" FontSize="24" FontWeight="Bold" Foreground="#111827"/>
-                    <TextBlock Text="Locations  ›  Contrats  ›  Nouveau contrat" FontSize="12" Foreground="#7A8699" Margin="0,4,0,0"/>
+                    <TextBlock Text="Local — création &amp; contrats" FontSize="24" FontWeight="Bold" Foreground="#111827"/>
+                    <TextBlock Text="Création rapide locataire + local, ou assistant contrat complet" FontSize="12" Foreground="#7A8699" Margin="0,4,0,0"/>
                 </StackPanel>
 
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
@@ -73,6 +73,117 @@
                 </Grid.ColumnDefinitions>
 
                 <StackPanel Grid.Column="0" Margin="0,0,16,0">
+                    <!-- Création rapide : locataire + local -->
+                    <Border CornerRadius="16" Margin="0,0,0,14" BorderThickness="0">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                <GradientStop Color="#0B63F6" Offset="0"/>
+                                <GradientStop Color="#2D6A4F" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Border.Background>
+                        <StackPanel Margin="18,16">
+                            <DockPanel Margin="0,0,0,12">
+                                <Button DockPanel.Dock="Right" Command="{Binding ResetQuickCreateCommand}"
+                                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                                        Foreground="White" BorderBrush="#FFFFFF55" Padding="10,6">
+                                    <TextBlock Text="Réinitialiser"/>
+                                </Button>
+                                <StackPanel>
+                                    <TextBlock Text="Création rapide" FontSize="18" FontWeight="Bold" Foreground="White"/>
+                                    <TextBlock Text="Enregistrez un locataire et son local en une seule fois" FontSize="12" Foreground="#E0E7FF" Margin="0,4,0,0"/>
+                                </StackPanel>
+                            </DockPanel>
+
+                            <Grid Visibility="{Binding IsQuickCreateExpanded, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <Border Grid.Column="0" Background="#FFFFFF" CornerRadius="12" Padding="14" Margin="0,0,8,0">
+                                    <StackPanel>
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                            <materialDesign:PackIcon Kind="AccountCircle" Foreground="#0B63F6" Width="22" Height="22" Margin="0,0,8,0"/>
+                                            <TextBlock Text="Locataire" FontWeight="Bold" FontSize="15" Foreground="#172033" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                        <TextBlock Text="Personne ou société qui loue le local" FontSize="10" Foreground="#64748B" Margin="0,0,0,10"/>
+                                        <TextBox Style="{StaticResource MaterialDesignOutlinedTextBox}" Margin="0,0,0,8"
+                                                 materialDesign:HintAssist.Hint="N° dossier"
+                                                 Text="{Binding FormQuickDossier, UpdateSourceTrigger=PropertyChanged}"/>
+                                        <TextBox Style="{StaticResource MaterialDesignOutlinedTextBox}" Margin="0,0,0,8"
+                                                 materialDesign:HintAssist.Hint="Nom complet *"
+                                                 Text="{Binding FormQuickTenantName, UpdateSourceTrigger=PropertyChanged}"/>
+                                        <TextBox Style="{StaticResource MaterialDesignOutlinedTextBox}" Margin="0,0,0,8"
+                                                 materialDesign:HintAssist.Hint="Téléphone *"
+                                                 Text="{Binding FormQuickTenantPhone, UpdateSourceTrigger=PropertyChanged}"/>
+                                        <TextBox Style="{StaticResource MaterialDesignOutlinedTextBox}" Margin="0,0,0,8"
+                                                 materialDesign:HintAssist.Hint="Email"
+                                                 Text="{Binding FormQuickTenantEmail, UpdateSourceTrigger=PropertyChanged}"/>
+                                        <TextBox Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                                 materialDesign:HintAssist.Hint="Entreprise"
+                                                 Text="{Binding FormQuickTenantCompany, UpdateSourceTrigger=PropertyChanged}"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Grid.Column="1" Background="#FFFFFF" CornerRadius="12" Padding="14" Margin="8,0,0,0">
+                                    <StackPanel>
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                            <materialDesign:PackIcon Kind="HomeCity" Foreground="#2D6A4F" Width="22" Height="22" Margin="0,0,8,0"/>
+                                            <TextBlock Text="Local" FontWeight="Bold" FontSize="15" Foreground="#172033" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                        <TextBlock Text="Espace à louer (bureau, appartement…)" FontSize="10" Foreground="#64748B" Margin="0,0,0,10"/>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+                                            <TextBox Grid.Row="0" Grid.Column="0" Margin="0,0,6,8" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                                     materialDesign:HintAssist.Hint="Code *" Text="{Binding FormCode, UpdateSourceTrigger=PropertyChanged}"/>
+                                            <TextBox Grid.Row="0" Grid.Column="1" Margin="6,0,0,8" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                                     materialDesign:HintAssist.Hint="Nom du local *" Text="{Binding FormName, UpdateSourceTrigger=PropertyChanged}"/>
+                                            <ComboBox Grid.Row="1" Grid.Column="0" Margin="0,0,6,8" Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                                                      ItemsSource="{Binding Buildings}" SelectedItem="{Binding FormBuilding}"
+                                                      materialDesign:HintAssist.Hint="Bâtiment"/>
+                                            <TextBox Grid.Row="1" Grid.Column="1" Margin="6,0,0,8" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                                     materialDesign:HintAssist.Hint="Étage" Text="{Binding FormFloor, UpdateSourceTrigger=PropertyChanged}"/>
+                                            <ComboBox Grid.Row="2" Grid.Column="0" Margin="0,0,6,8" Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                                                      ItemsSource="{Binding ContractTypes}" SelectedItem="{Binding FormType}"
+                                                      materialDesign:HintAssist.Hint="Type"/>
+                                            <TextBox Grid.Row="2" Grid.Column="1" Margin="6,0,0,8" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                                     materialDesign:HintAssist.Hint="Surface m²" Text="{Binding FormAreaText, UpdateSourceTrigger=PropertyChanged}"/>
+                                            <TextBox Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                                     materialDesign:HintAssist.Hint="Loyer mensuel (devise paramétrée)" Text="{Binding FormRentText, UpdateSourceTrigger=PropertyChanged}"/>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+                                <Button Command="{Binding SaveQuickCreateCommand}" Padding="18,10" Cursor="Hand">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource SbmsLoginPrimaryButton}">
+                                            <Setter Property="Background" Value="White"/>
+                                            <Setter Property="Foreground" Value="#0B63F6"/>
+                                        </Style>
+                                    </Button.Style>
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="LightningBolt" Margin="0,0,8,0"/>
+                                        <TextBlock Text="Créer locataire + local" FontWeight="Bold"/>
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <TextBlock Text="{Binding StatusMessage}" Foreground="#166534" FontSize="12" Margin="0,0,0,10" TextWrapping="Wrap"
+                               Visibility="{Binding StatusMessage, Converter={StaticResource NullToVisibilityConverter}}"/>
+
                     <Border Background="White" BorderBrush="#E5EAF2" BorderThickness="1" CornerRadius="16" Padding="18" Margin="0,0,0,14">
                         <ItemsControl ItemsSource="{Binding WizardSteps}">
                             <ItemsControl.ItemsPanel>
