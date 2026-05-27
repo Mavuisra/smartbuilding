@@ -2,6 +2,7 @@ import os
 from datetime import timedelta
 from pathlib import Path
 
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -103,6 +104,21 @@ else:
             "NAME": db_path if os.path.isabs(db_path) else BASE_DIR / db_path,
         }
     }
+
+# En production (Render, etc.) : PostgreSQL persistant obligatoire.
+# SQLite dans le conteneur est recréé à chaque déploiement → perte de données.
+_is_production = (
+    not DEBUG
+    or os.getenv("RENDER", "").lower() in ("1", "true", "yes")
+    or os.getenv("SBMS_PRODUCTION", "").lower() in ("1", "true", "yes")
+)
+_using_sqlite = DATABASES["default"]["ENGINE"] == "django.db.backends.sqlite3"
+if _is_production and _using_sqlite:
+    raise ImproperlyConfigured(
+        "SBMS production exige DATABASE_URL PostgreSQL (service persistant). "
+        "SQLite local dans le conteneur est effacé à chaque déploiement Git. "
+        "Liez une base PostgreSQL Render à DATABASE_URL, puis redéployez."
+    )
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},

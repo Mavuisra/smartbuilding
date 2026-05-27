@@ -221,12 +221,24 @@ def materialize_employee(data: dict):
         return
     obj, _ = Employee.objects.get_or_create(id=uid)
     map_base_fields(obj, data)
-    obj.employee_number = _employee_matricule(data)
-    obj.full_name = _employee_full_name(data)
-    obj.position = pick(data, "Position", "position") or ""
-    obj.department = pick(data, "Department", "department") or ""
-    obj.email = pick(data, "Email", "email") or ""
-    obj.phone = pick(data, "Phone", "phone") or ""
+    matricule = _employee_matricule(data)
+    if matricule:
+        obj.employee_number = matricule
+    full_name = _employee_full_name(data)
+    if full_name:
+        obj.full_name = full_name
+    position = pick(data, "Position", "position") or ""
+    if position:
+        obj.position = position
+    department = pick(data, "Department", "department") or ""
+    if department:
+        obj.department = department
+    email = pick(data, "Email", "email") or ""
+    if email:
+        obj.email = email
+    phone = pick(data, "Phone", "phone") or ""
+    if phone:
+        obj.phone = phone
     obj.is_active = parse_bool(pick(data, "IsActive", "isActive"), True)
     obj.monthly_salary = parse_decimal(
         pick(data, "BaseSalary", "baseSalary", "MonthlySalary", "monthlySalary"),

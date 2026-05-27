@@ -1,0 +1,36 @@
+# Déploiement Render — base PostgreSQL persistante (données conservées entre commits/déploiements).
+# https://render.com/docs/blueprint-spec
+
+databases:
+  - name: smartbuilding-db
+    databaseName: smartbuilding
+    user: smartbuilding
+    plan: free
+
+services:
+  - type: web
+    name: smartbuilding-web
+    runtime: python
+    rootDir: smartbuilding-web
+    buildCommand: chmod +x build.sh && ./build.sh
+    startCommand: gunicorn smartbuilding_web.wsgi:application --bind 0.0.0.0:$PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.3"
+      - key: DJANGO_DEBUG
+        value: "false"
+      - key: RENDER
+        value: "true"
+      - key: SBMS_PRODUCTION
+        value: "true"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: smartbuilding-db
+          property: connectionString
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: JWT_SIGNING_KEY
+        generateValue: true
+      # Premier déploiement uniquement : définir SBMS_RUN_SEED=true dans le dashboard Render, puis repasser à false.
+      - key: SBMS_RUN_SEED
+        value: "false"

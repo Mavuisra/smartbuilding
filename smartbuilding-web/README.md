@@ -65,8 +65,27 @@ Après connexion desktop, le token JWT est utilisé pour la sync (à brancher c�
 | GET | `/api/executive/incidents/` | Liste incidents |
 | GET | `/api/executive/sync-logs/` | Journal sync serveur |
 
-## Production
+## Production (données persistantes)
 
-- Utiliser PostgreSQL : `DATABASE_URL=postgresql://user:pass@host:5432/smartbuilding`
-- `DJANGO_DEBUG=False`
-- `gunicorn smartbuilding_web.wsgi:application`
+**Règle importante** : en ligne, la base doit être **PostgreSQL persistant** (Render Postgres, RDS, etc.).  
+Ne jamais utiliser SQLite dans le conteneur de déploiement : il est **recréé à chaque commit/déploiement** et toutes les données sont perdues.
+
+### Render (recommandé)
+
+1. Déployer avec le fichier `render.yaml` à la racine du dépôt (base `smartbuilding-db` + service web).
+2. Vérifier que `DATABASE_URL` est bien liée à PostgreSQL (dashboard Render → Environment).
+3. Premier déploiement seulement : `SBMS_RUN_SEED=true` pour créer les comptes `admin` / `pdg`, puis remettre à `false`.
+4. Les déploiements suivants exécutent uniquement `migrate` — **aucune purge** des données.
+
+### Variables utiles
+
+| Variable | Rôle |
+|----------|------|
+| `DATABASE_URL` | PostgreSQL en production |
+| `DJANGO_DEBUG` | `False` en production |
+| `RENDER` / `SBMS_PRODUCTION` | Active la protection anti-SQLite éphémère |
+| `SBMS_RUN_SEED` | `true` une seule fois pour les comptes initiaux |
+
+```bash
+gunicorn smartbuilding_web.wsgi:application
+```

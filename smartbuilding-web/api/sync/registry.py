@@ -22,7 +22,12 @@ from api.models import (
     User,
     Visitor,
 )
-from api.sync.utils import MIN_SYNC_DATETIME, normalize_sync_datetime, parse_uuid
+from api.sync.utils import (
+    MIN_SYNC_DATETIME,
+    merge_sync_payload,
+    normalize_sync_datetime,
+    parse_uuid,
+)
 
 SYNC_ENTITY_TYPES = [
     "Users",
@@ -101,6 +106,8 @@ def apply_push(entity_type: str, entities: list[dict]) -> int:
                 continue
         except SyncedEntityStore.DoesNotExist:
             store = SyncedEntityStore(id=entity_id, entity_type=entity_type)
+        else:
+            data = merge_sync_payload(store.json_data, data)
 
         store.entity_type = entity_type
         store.json_data = data

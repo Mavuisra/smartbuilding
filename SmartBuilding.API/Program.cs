@@ -42,6 +42,8 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
+// Seed non destructif : permissions / building par défaut uniquement si absents.
+// Les données métier ne sont jamais supprimées au démarrage.
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<SmartBuildingDbContext>();

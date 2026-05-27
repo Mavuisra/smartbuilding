@@ -77,6 +77,28 @@ def parse_int(value, default=0) -> int:
         return default
 
 
+def merge_sync_payload(existing: dict | None, incoming: dict) -> dict:
+    """Fusionne un push sans écraser les champs déjà renseignés par des valeurs vides."""
+    if not existing:
+        return dict(incoming)
+
+    merged = {**existing, **incoming}
+    for key, value in incoming.items():
+        if _is_empty_sync_value(value) and not _is_empty_sync_value(existing.get(key)):
+            merged[key] = existing[key]
+    return merged
+
+
+def _is_empty_sync_value(value) -> bool:
+    if value is None:
+        return True
+    if isinstance(value, str):
+        return value.strip() == ""
+    if isinstance(value, (list, tuple, dict)):
+        return len(value) == 0
+    return False
+
+
 def map_base_fields(instance, data: dict[str, Any]):
     """Champs communs BaseEntity (PascalCase ou camelCase)."""
     if uid := pick(data, "Id", "id"):
