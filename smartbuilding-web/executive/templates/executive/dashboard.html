@@ -175,7 +175,7 @@ function kpiCard(label, value, trend = '', icon = '●', trendClass = '') {
   return `<div class="col-lg-2 col-md-4 col-6">
     <div class="sb-card p-3 kpi-card">
       <div class="kpi-header">
-        <div class="kpi-icon" style="background:#eef3ff;color:#2a5bd7">${icon}</div>
+        <div class="kpi-icon" style="background:#dff5e8;color:#2d6a4f">${icon}</div>
         <div class="kpi-trend ${trendClass}">${trend || ''}</div>
       </div>
       <div class="text-muted small">${label}</div>
@@ -197,8 +197,8 @@ function renderRevenueChart(series) {
       labels: series.map(x => x.label),
       datasets: [{
         data: series.map(x => x.value),
-        borderColor: '#2a5bd7',
-        backgroundColor: 'rgba(42,91,215,.12)',
+        borderColor: '#2d6a4f',
+        backgroundColor: 'rgba(45,106,79,.14)',
         tension: .35,
         fill: true,
         pointRadius: 2
@@ -224,7 +224,7 @@ function renderOccupancyChart(rate) {
       labels: ['Occupés', 'Disponibles'],
       datasets: [{
         data: [rate, Math.max(0, 100-rate)],
-        backgroundColor: ['#2a5bd7', '#dbeafe'],
+        backgroundColor: ['#2d6a4f', '#dff5e8'],
         borderWidth: 0
       }]
     },
