@@ -73,13 +73,21 @@
                             <TextBlock Text="Annuler"/>
                         </StackPanel>
                     </Button>
-                    <Button Style="{StaticResource LocationsToolbarButton}" Margin="0,0,8,0">
+                    <Button Command="{Binding SaveDraftCommand}" Style="{StaticResource LocationsToolbarButton}" Margin="0,0,8,0">
                         <StackPanel Orientation="Horizontal">
                             <materialDesign:PackIcon Kind="ContentSaveOutline" Width="15" Height="15" Margin="0,0,6,0"/>
                             <TextBlock Text="Sauvegarder brouillon"/>
                         </StackPanel>
                     </Button>
-                    <Button Command="{Binding NextStepCommand}" Style="{StaticResource LocationsPrimaryButton}" Padding="16,8">
+                    <Button Command="{Binding ToggleTenantQuickPanelCommand}" Style="{StaticResource MaterialDesignOutlinedButton}"
+                            Foreground="#111827" BorderBrush="#111827" Padding="12,7" Margin="0,0,8,0">
+                        <TextBlock Text="Créer locataire"/>
+                    </Button>
+                    <Button Command="{Binding TogglePremiseQuickPanelCommand}" Style="{StaticResource MaterialDesignOutlinedButton}"
+                            Foreground="#111827" BorderBrush="#111827" Padding="12,7" Margin="0,0,8,0">
+                        <TextBlock Text="Créer local"/>
+                    </Button>
+                    <Button Command="{Binding NextStepCommand}" Style="{StaticResource SbmsLoginPrimaryButton}" Padding="16,8">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="{Binding NextButtonLabel}"/>
                             <materialDesign:PackIcon Kind="ArrowRight" Width="15" Height="15" Margin="8,0,0,0"/>
@@ -182,6 +190,75 @@
                     <Border Background="#FEF2F2" BorderBrush="#FECACA" BorderThickness="1" CornerRadius="10" Padding="12,8" Margin="0,0,0,14"
                             Visibility="{Binding FormError, Converter={StaticResource NullToVisibilityConverter}}">
                         <TextBlock Text="{Binding FormError}" Foreground="#DC2626" TextWrapping="Wrap"/>
+                    </Border>
+
+                    <TextBlock Text="{Binding StatusMessage}" Foreground="#111827" FontSize="12" Margin="0,0,0,10" TextWrapping="Wrap"
+                               Visibility="{Binding StatusMessage, Converter={StaticResource NullToVisibilityConverter}}"/>
+
+                    <!-- Formulaire vif : locataire -->
+                    <Border Style="{StaticResource LocationsBwFormCard}"
+                            Visibility="{Binding IsTenantQuickPanelVisible, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <StackPanel>
+                            <Border Style="{StaticResource LocationsBwFormHeader}">
+                                <TextBlock Text="Nouveau locataire" FontSize="16" FontWeight="Bold" Foreground="White"/>
+                            </Border>
+                            <UniformGrid Columns="2" Margin="14,12,14,0">
+                                <TextBox Margin="0,0,6,8" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                         materialDesign:HintAssist.Hint="N° dossier" Text="{Binding FormQuickDossier, UpdateSourceTrigger=PropertyChanged}"/>
+                                <TextBox Margin="6,0,0,8" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                         materialDesign:HintAssist.Hint="Nom complet *" Text="{Binding FormQuickTenantName, UpdateSourceTrigger=PropertyChanged}"/>
+                                <TextBox Margin="0,0,6,8" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                         materialDesign:HintAssist.Hint="Téléphone *" Text="{Binding FormQuickTenantPhone, UpdateSourceTrigger=PropertyChanged}"/>
+                                <TextBox Margin="6,0,0,8" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                         materialDesign:HintAssist.Hint="Email" Text="{Binding FormQuickTenantEmail, UpdateSourceTrigger=PropertyChanged}"/>
+                            </UniformGrid>
+                            <TextBox Margin="14,0,14,0" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                     materialDesign:HintAssist.Hint="Entreprise" Text="{Binding FormQuickTenantCompany, UpdateSourceTrigger=PropertyChanged}"/>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="14,10,14,14">
+                                <Button Command="{Binding ToggleTenantQuickPanelCommand}" Content="Fermer"
+                                        Style="{StaticResource MaterialDesignOutlinedButton}" Foreground="#111827" BorderBrush="#111827"
+                                        Padding="16,8" Margin="0,0,8,0"/>
+                                <Button Command="{Binding SaveQuickTenantCommand}" Style="{StaticResource SbmsLoginPrimaryButton}" Padding="20,9">
+                                    <TextBlock Text="Enregistrer le locataire" FontWeight="Bold"/>
+                                </Button>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Formulaire vif : local -->
+                    <Border Style="{StaticResource LocationsBwFormCard}"
+                            Visibility="{Binding IsPremiseQuickPanelVisible, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <StackPanel>
+                            <Border Style="{StaticResource LocationsBwFormHeader}">
+                                <TextBlock Text="Nouveau local" FontSize="16" FontWeight="Bold" Foreground="White"/>
+                            </Border>
+                            <UniformGrid Columns="2" Margin="14,12,14,0">
+                                <TextBox Margin="0,0,6,8" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                         materialDesign:HintAssist.Hint="Code *" Text="{Binding FormPremiseCode, UpdateSourceTrigger=PropertyChanged}"/>
+                                <TextBox Margin="6,0,0,8" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                         materialDesign:HintAssist.Hint="Nom du local *" Text="{Binding FormPremiseName, UpdateSourceTrigger=PropertyChanged}"/>
+                                <ComboBox Margin="0,0,6,8" Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                                          ItemsSource="{Binding QuickBuildings}" SelectedItem="{Binding FormPremiseBuilding}"
+                                          materialDesign:HintAssist.Hint="Bâtiment"/>
+                                <TextBox Margin="6,0,0,8" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                         materialDesign:HintAssist.Hint="Étage" Text="{Binding FormPremiseFloor, UpdateSourceTrigger=PropertyChanged}"/>
+                                <ComboBox Margin="0,0,6,8" Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                                          ItemsSource="{Binding ContractTypes}" SelectedItem="{Binding FormPremiseType}"
+                                          materialDesign:HintAssist.Hint="Type"/>
+                                <TextBox Margin="6,0,0,8" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                         materialDesign:HintAssist.Hint="Surface m²" Text="{Binding FormPremiseAreaText, UpdateSourceTrigger=PropertyChanged}"/>
+                            </UniformGrid>
+                            <TextBox Margin="14,0,14,0" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                     materialDesign:HintAssist.Hint="Loyer mensuel" Text="{Binding FormPremiseRentText, UpdateSourceTrigger=PropertyChanged}"/>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="14,10,14,14">
+                                <Button Command="{Binding TogglePremiseQuickPanelCommand}" Content="Fermer"
+                                        Style="{StaticResource MaterialDesignOutlinedButton}" Foreground="#111827" BorderBrush="#111827"
+                                        Padding="16,8" Margin="0,0,8,0"/>
+                                <Button Command="{Binding SaveQuickPremiseCommand}" Style="{StaticResource SbmsLoginPrimaryButton}" Padding="20,9">
+                                    <TextBlock Text="Enregistrer le local" FontWeight="Bold"/>
+                                </Button>
+                            </StackPanel>
+                        </StackPanel>
                     </Border>
 
                     <Border Style="{StaticResource ContractSectionCard}"

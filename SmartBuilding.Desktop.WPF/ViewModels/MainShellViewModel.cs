@@ -208,9 +208,10 @@ public partial class MainShellViewModel : BaseViewModel
 
     private async Task OpenLocationCreateAsync()
     {
-        CurrentViewModel = _locationsViewModel;
+        var vm = ActivatorUtilities.CreateInstance<LocationContractFormViewModel>(_services);
+        CurrentViewModel = vm;
         SelectedModuleId = "locations-create";
-        await _locationsViewModel.LoadCommand.ExecuteAsync(null);
+        await vm.LoadCommand.ExecuteAsync(null);
         await RefreshShellStatusAsync();
     }
 
@@ -227,7 +228,7 @@ public partial class MainShellViewModel : BaseViewModel
         var vm = ActivatorUtilities.CreateInstance<LocationBuildingFormViewModel>(_services);
         vm.Initialize(buildingId);
         CurrentViewModel = vm;
-        SelectedModuleId = "locations";
+        SelectedModuleId = "locations-list";
         await vm.LoadCommand.ExecuteAsync(null);
         await RefreshShellStatusAsync();
     }
@@ -237,19 +238,12 @@ public partial class MainShellViewModel : BaseViewModel
         var vm = ActivatorUtilities.CreateInstance<LocationTenantFormViewModel>(_services);
         vm.Initialize(tenantId);
         CurrentViewModel = vm;
-        SelectedModuleId = "locations";
+        SelectedModuleId = "locations-list";
         await vm.LoadCommand.ExecuteAsync(null);
         await RefreshShellStatusAsync();
     }
 
-    private async Task OpenContractFormAsync()
-    {
-        var vm = ActivatorUtilities.CreateInstance<LocationContractFormViewModel>(_services);
-        CurrentViewModel = vm;
-        SelectedModuleId = "locations-create";
-        await vm.LoadCommand.ExecuteAsync(null);
-        await RefreshShellStatusAsync();
-    }
+    private async Task OpenContractFormAsync() => await OpenLocationCreateAsync();
 
     private async Task OpenRentFormAsync()
     {
@@ -291,7 +285,13 @@ public partial class MainShellViewModel : BaseViewModel
             return;
         }
 
-        if (moduleId == "locations" || moduleId == "locations-create")
+        if (moduleId == "locations")
+        {
+            await OpenLocationListAsync();
+            return;
+        }
+
+        if (moduleId == "locations-create")
         {
             await OpenLocationCreateAsync();
             return;

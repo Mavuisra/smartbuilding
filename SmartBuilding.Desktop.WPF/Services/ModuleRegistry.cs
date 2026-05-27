@@ -8,7 +8,7 @@ public static class ModuleRegistry
     public static readonly IReadOnlyList<ModuleDefinition> All =
     [
         new("dashboard", "Tableau de bord", "Vue d'ensemble", "ViewDashboard", "main", PermissionCodes.DashboardView),
-        new("locations", "Local", "Locaux, locataires et contrats", "HomeCity", "gestion", PermissionCodes.LocationManage),
+        new("locations", "Location", "Locataires, locaux et contrats", "HomeCity", "gestion", PermissionCodes.LocationManage),
         new("personnel", "Personnel", "Employés, présences et salaires", "AccountGroup", "gestion", PermissionCodes.PersonnelView),
         new("finances", "Finances", "Recettes, dépenses et trésorerie", "CashMultiple", "gestion", PermissionCodes.FinanceView),
         new("technique", "Technique & Sécurité", "Équipements, maintenance et incidents", "HammerWrench", "gestion", PermissionCodes.TechnicalManage),
@@ -54,15 +54,15 @@ public static class ModuleRegistry
 
             foreach (var module in modules)
             {
-                // Local juste avant Personnel (ordre défini dans All : … locations, personnel …)
+                // Location (menu déroulant) juste avant Personnel — pas de page racine « Local »
                 if (string.Equals(module.Id, "locations", StringComparison.OrdinalIgnoreCase)
                     && CanAccess(session, module))
                 {
                     yield return new ShellNavExpandableModuleItem(module,
                     [
-                        new ShellNavChildItem("locations-create", "Créer locataire & local"),
-                        new ShellNavChildItem("locations-list", "Liste des locaux"),
-                        new ShellNavChildItem("locations-rent-pay", "Paiement de loyer")
+                        new ShellNavChildItem("locations-create", "Créer"),
+                        new ShellNavChildItem("locations-list", "Voir"),
+                        new ShellNavChildItem("locations-rent-pay", "Paiement loyer")
                     ]);
                     continue;
                 }

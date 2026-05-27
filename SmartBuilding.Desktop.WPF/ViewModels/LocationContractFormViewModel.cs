@@ -128,6 +128,11 @@ public partial class LocationContractFormViewModel : BaseViewModel
                 FormError = "Aucun locataire. Ajoutez d'abord un locataire.";
 
             await LoadPremiseStatsAsync();
+            await LoadQuickBuildingsAsync();
+            await ResetQuickTenantFieldsAsync();
+            await ResetQuickPremiseFieldsAsync();
+            IsTenantQuickPanelVisible = false;
+            IsPremiseQuickPanelVisible = false;
             RefreshContractSummaryDisplays();
         }
         finally

@@ -3,7 +3,7 @@ from django.shortcuts import render
 
 MODULE_PAGES = {
     "locations": {
-        "title": "Local",
+        "title": "Location",
         "subtitle": "Locataires, espaces et occupation des locaux.",
         "group": "Gestion",
     },

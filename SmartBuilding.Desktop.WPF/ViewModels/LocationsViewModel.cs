@@ -102,12 +102,6 @@ public partial class LocationsViewModel : BaseViewModel
     [ObservableProperty] private string _formRentText = "0";
     [ObservableProperty] private string? _formError;
 
-    [ObservableProperty] private string _formQuickDossier = string.Empty;
-    [ObservableProperty] private string _formQuickTenantName = string.Empty;
-    [ObservableProperty] private string _formQuickTenantPhone = string.Empty;
-    [ObservableProperty] private string _formQuickTenantEmail = string.Empty;
-    [ObservableProperty] private string _formQuickTenantCompany = string.Empty;
-
     [ObservableProperty] private bool _isWizardExpanded;
 
     [ObservableProperty] private ISeries[] _typeDistributionSeries = [];
@@ -251,7 +245,6 @@ public partial class LocationsViewModel : BaseViewModel
                 SelectedContractSummary = Contracts.FirstOrDefault();
 
             FormContractNumber = await _locationsService.GenerateNextContractNumberAsync();
-            await ResetQuickCreateFieldsAsync();
             CurrentStep = 0;
             RefreshContractSummaryDisplays();
         }
@@ -467,115 +460,6 @@ public partial class LocationsViewModel : BaseViewModel
         {
             IsBusy = false;
         }
-    }
-
-    [RelayCommand]
-    private async Task SaveQuickCreateAsync()
-    {
-        if (!CanManageLocations)
-        {
-            FormError = "Permission refusée.";
-            return;
-        }
-
-        if (string.IsNullOrWhiteSpace(FormQuickTenantName))
-        {
-            FormError = "Le nom du locataire est obligatoire.";
-            return;
-        }
-
-        if (string.IsNullOrWhiteSpace(FormQuickTenantPhone))
-        {
-            FormError = "Le téléphone du locataire est obligatoire.";
-            return;
-        }
-
-        if (string.IsNullOrWhiteSpace(FormName))
-        {
-            FormError = "Le nom du local est obligatoire.";
-            return;
-        }
-
-        if (string.IsNullOrWhiteSpace(FormCode))
-        {
-            FormError = "Le code du local est obligatoire.";
-            return;
-        }
-
-        FormError = null;
-        IsBusy = true;
-        try
-        {
-            var tenantError = await _locationsService.CreateTenantAsync(new Tenant
-            {
-                DossierNumber = FormQuickDossier,
-                Name = FormQuickTenantName.Trim(),
-                Phone = FormQuickTenantPhone.Trim(),
-                Email = FormQuickTenantEmail.Trim(),
-                Company = FormQuickTenantCompany.Trim(),
-                RentalStatus = LocationConstants.TenantStatus.Active
-            });
-
-            if (!string.IsNullOrEmpty(tenantError))
-            {
-                FormError = tenantError;
-                return;
-            }
-
-            if (!decimal.TryParse(FormAreaText.Replace(',', '.'), System.Globalization.NumberStyles.Any,
-                    System.Globalization.CultureInfo.InvariantCulture, out var area))
-                area = 0;
-            if (!decimal.TryParse(FormRentText.Replace(',', '.'), System.Globalization.NumberStyles.Any,
-                    System.Globalization.CultureInfo.InvariantCulture, out var rent))
-                rent = 0;
-
-            var premiseError = await _locationsService.CreatePremiseAsync(new Premise
-            {
-                Code = FormCode.Trim(),
-                Name = FormName.Trim(),
-                Building = string.IsNullOrWhiteSpace(FormBuilding) ? "Tour SBMS" : FormBuilding.Trim(),
-                Floor = FormFloor.Trim(),
-                PremiseType = string.IsNullOrWhiteSpace(FormType) ? "Bureau" : FormType,
-                AreaSqM = area,
-                MonthlyRent = rent,
-                IsOccupied = false,
-                OccupancyStatus = LocationConstants.PremiseOccupancyStatus.Available
-            });
-
-            if (!string.IsNullOrEmpty(premiseError))
-            {
-                FormError = premiseError;
-                return;
-            }
-
-            StatusMessage = $"Locataire « {FormQuickTenantName.Trim()} » et local « {FormName.Trim()} » enregistrés.";
-            await LoadAsync();
-            await ResetQuickCreateFieldsAsync();
-        }
-        finally
-        {
-            IsBusy = false;
-        }
-    }
-
-    [RelayCommand]
-    private async Task ResetQuickCreateAsync() => await ResetQuickCreateFieldsAsync();
-
-    private async Task ResetQuickCreateFieldsAsync()
-    {
-        FormQuickTenantName = string.Empty;
-        FormQuickTenantPhone = string.Empty;
-        FormQuickTenantEmail = string.Empty;
-        FormQuickTenantCompany = string.Empty;
-        FormQuickDossier = await _locationsService.GenerateNextDossierNumberAsync();
-        FormCode = await _locationsService.GenerateNextCodeAsync();
-        FormName = string.Empty;
-        FormBuilding = Buildings.Count > 1 ? Buildings[1] : "Tour SBMS";
-        FormFloor = string.Empty;
-        FormType = "Bureau";
-        FormAreaText = "0";
-        FormRentText = "0";
-        FormError = null;
     }
 
     [RelayCommand]
