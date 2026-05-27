@@ -22,7 +22,7 @@ from api.models import (
     User,
     Visitor,
 )
-from api.sync.utils import parse_datetime, parse_uuid
+from api.sync.utils import MIN_SYNC_DATETIME, normalize_sync_datetime, parse_uuid
 
 SYNC_ENTITY_TYPES = [
     "Users",
@@ -80,10 +80,10 @@ def apply_push(entity_type: str, entities: list[dict]) -> int:
         if not entity_id:
             continue
 
-        updated_at = parse_datetime(
+        updated_at = normalize_sync_datetime(
             payload.get("updatedAt") or payload.get("UpdatedAt")
         ) or timezone.now()
-        deleted_at = parse_datetime(
+        deleted_at = normalize_sync_datetime(
             payload.get("deletedAt") or payload.get("DeletedAt")
         )
         json_raw = payload.get("jsonData") or payload.get("JsonData") or "{}"
@@ -124,6 +124,8 @@ def get_changes_since(
 ) -> list[dict[str, Any]]:
     if not is_syncable(entity_type):
         return []
+
+    since = normalize_sync_datetime(since, MIN_SYNC_DATETIME) or MIN_SYNC_DATETIME
 
     qs = (
         SyncedEntityStore.objects.filter(

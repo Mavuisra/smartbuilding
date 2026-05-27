@@ -20,5 +20,5 @@ class SyncPushRequestSerializer(serializers.Serializer):
 
 class SyncPullQuerySerializer(serializers.Serializer):
     entityType = serializers.CharField(max_length=64)
-    since = serializers.DateTimeField()
+    since = serializers.CharField()
 

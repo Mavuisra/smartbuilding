@@ -31,6 +31,7 @@ from api.serializers import (
 )
 from api.services.dashboard import get_executive_overview, get_executive_summary, get_sync_health
 from api.sync import apply_push, get_changes_since, is_syncable
+from api.sync.utils import MIN_SYNC_DATETIME, normalize_sync_datetime
 
 
 def _money(value):
@@ -180,7 +181,10 @@ class SyncPullView(APIView):
                 status=400,
             )
         entity_type = serializer.validated_data["entityType"]
-        since = serializer.validated_data["since"]
+        since = normalize_sync_datetime(
+            serializer.validated_data["since"],
+            MIN_SYNC_DATETIME,
+        ) or MIN_SYNC_DATETIME
         if not is_syncable(entity_type):
             return api_fail(f"Type de sync inconnu : {entity_type}", status=400)
 

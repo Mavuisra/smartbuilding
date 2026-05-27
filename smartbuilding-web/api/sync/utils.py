@@ -1,5 +1,8 @@
-from datetime import datetime
+from datetime import datetime, timezone as dt_timezone
 from typing import Any
+
+
+MIN_SYNC_DATETIME = datetime(1970, 1, 1, tzinfo=dt_timezone.utc)
 
 
 def pick(data: dict, *keys, default=None):
@@ -27,8 +30,24 @@ def parse_datetime(value) -> datetime | None:
         return None
 
 
-def parse_date(value):
+def normalize_sync_datetime(value, default=None) -> datetime | None:
     dt = parse_datetime(value)
+    if dt is None:
+        return default
+
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=dt_timezone.utc)
+    else:
+        dt = dt.astimezone(dt_timezone.utc)
+
+    if dt < MIN_SYNC_DATETIME:
+        return default if default is not None else MIN_SYNC_DATETIME
+
+    return dt
+
+
+def parse_date(value):
+    dt = normalize_sync_datetime(value)
     return dt.date() if dt else None
 
 
@@ -63,9 +82,9 @@ def map_base_fields(instance, data: dict[str, Any]):
     if uid := pick(data, "Id", "id"):
         instance.id = parse_uuid(uid)
     if created := pick(data, "CreatedAt", "createdAt"):
-        instance.created_at = parse_datetime(created) or instance.created_at
+        instance.created_at = normalize_sync_datetime(created, instance.created_at) or instance.created_at
     if updated := pick(data, "UpdatedAt", "updatedAt"):
-        instance.updated_at = parse_datetime(updated) or instance.updated_at
+        instance.updated_at = normalize_sync_datetime(updated, instance.updated_at) or instance.updated_at
     deleted = pick(data, "DeletedAt", "deletedAt")
-    instance.deleted_at = parse_datetime(deleted)
+    instance.deleted_at = normalize_sync_datetime(deleted)
     instance.is_synced = True
