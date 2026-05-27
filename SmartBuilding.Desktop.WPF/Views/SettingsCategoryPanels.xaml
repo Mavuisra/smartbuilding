@@ -380,6 +380,29 @@
                         <StackPanel>
                             <TextBlock Text="Mise à jour de l'application" FontWeight="SemiBold" FontSize="12"/>
                             <TextBlock Text="{Binding UpdateStatus}" FontSize="11" Foreground="{StaticResource SbmsTextMutedBrush}" Margin="0,4,0,0"/>
+                            <Grid Margin="0,8,0,0"
+                                  Visibility="{Binding IsUpdateProgressVisible, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Progression" FontSize="10" FontWeight="SemiBold" Foreground="#1B3D3B"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding UpdateProgressText}" FontSize="10" FontWeight="Bold" Foreground="#2D6A4F"/>
+                                </Grid>
+                                <ProgressBar Grid.Row="1"
+                                             Minimum="0"
+                                             Maximum="100"
+                                             Value="{Binding UpdateProgressValue}"
+                                             Height="8"
+                                             Margin="0,4,0,0"
+                                             Foreground="#2D6A4F"
+                                             Background="#DDEBE5"/>
+                            </Grid>
                             <TextBlock FontSize="11" Margin="0,4,0,0">
                                 <Run Text="Version actuelle : "/>
                                 <Run Text="{Binding UpdateCurrentVersion}" FontWeight="SemiBold"/>

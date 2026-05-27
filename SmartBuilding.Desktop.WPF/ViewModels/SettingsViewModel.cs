@@ -73,6 +73,9 @@ public partial class SettingsViewModel : BaseViewModel
     [ObservableProperty] private bool _isUpdateAvailable;
     [ObservableProperty] private bool _isCheckingUpdate;
     [ObservableProperty] private bool _isInstallingUpdate;
+    [ObservableProperty] private double _updateProgressValue;
+    [ObservableProperty] private string _updateProgressText = "0%";
+    [ObservableProperty] private bool _isUpdateProgressVisible;
 
     private AppAutoUpdater.AvailableUpdate? _availableUpdate;
 
@@ -307,6 +310,17 @@ public partial class SettingsViewModel : BaseViewModel
                 timeFormat,
                 MaintenanceMode,
                 LogoPath);
+
+            await _settingsService.SaveCompanyProfileAsync(
+                CompanyName,
+                BuildingAddress,
+                BuildingCity,
+                BuildingCountry,
+                BuildingPhone,
+                BuildingEmail,
+                BuildingWebsite,
+                BuildingNationalId,
+                BuildingFloors);
 
             await _settingsService.SaveAppearancePrefsAsync(
                 FromThemeModeLabel(SelectedThemeMode),
@@ -561,15 +575,25 @@ public partial class SettingsViewModel : BaseViewModel
         try
         {
             UpdateStatus = "Téléchargement...";
+            UpdateProgressValue = 0;
+            UpdateProgressText = "0%";
+            IsUpdateProgressVisible = true;
             await AppAutoUpdater.DownloadAndApplyUpdateAsync(
                 _availableUpdate,
-                (p, s) => UpdateStatus = $"{s} ({Math.Round(p)}%)");
+                (p, s) =>
+                {
+                    var rounded = Math.Clamp(Math.Round(p), 0, 100);
+                    UpdateProgressValue = rounded;
+                    UpdateProgressText = $"{rounded}%";
+                    UpdateStatus = s;
+                });
         }
         catch (Exception ex)
         {
             UpdateStatus = "Installation échouée.";
             ErrorMessage = ex.Message;
             IsInstallingUpdate = false;
+            IsUpdateProgressVisible = false;
         }
     }
 

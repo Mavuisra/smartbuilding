@@ -73,7 +73,19 @@ public static class AppAutoUpdater
         Directory.CreateDirectory(updateRoot);
 
         var zipPath = Path.Combine(updateRoot, "update.zip");
-        await DownloadFileAsync(http, update.DownloadUrl, zipPath, ct);
+        await DownloadFileAsync(
+            http,
+            update.DownloadUrl,
+            zipPath,
+            (downloadPercent, bytesRead, totalBytes) =>
+            {
+                var overall = 10 + downloadPercent * 0.45;
+                var sizeLabel = totalBytes > 0
+                    ? $"{FormatBytes(bytesRead)} / {FormatBytes(totalBytes)}"
+                    : FormatBytes(bytesRead);
+                reportProgress?.Invoke(overall, $"Téléchargement de la mise à jour... {Math.Round(downloadPercent)}% ({sizeLabel})");
+            },
+            ct);
 
         reportProgress?.Invoke(55, "Extraction du package...");
         var stagingDir = Path.Combine(updateRoot, "staging");
@@ -92,7 +104,8 @@ public static class AppAutoUpdater
             CreateNoWindow = true
         });
 
-        System.Windows.Application.Current?.Dispatcher.Invoke(() => System.Windows.Application.Current.Shutdown());
+        reportProgress?.Invoke(100, "Mise à jour téléchargée. Fermeture de l'application...");
+        System.Windows.Application.Current?.Dispatcher.Invoke(() => System.Windows.Application.Current.Shutdown(0));
         return true;
     }
 
@@ -113,6 +126,7 @@ public static class AppAutoUpdater
 
         try
         {
+            Thread.Sleep(1500);
             if (!Directory.Exists(installDir))
                 throw new DirectoryNotFoundException(installDir);
             if (!Directory.Exists(stagingDir))
@@ -227,7 +241,19 @@ public static class AppAutoUpdater
             var zipPath = Path.Combine(updateRoot, "update.zip");
             reportProgress(40, "Téléchargement de la mise à jour...");
 
-            await DownloadFileAsync(http, asset.DownloadUrl, zipPath, ct);
+            await DownloadFileAsync(
+                http,
+                asset.DownloadUrl,
+                zipPath,
+                (downloadPercent, bytesRead, totalBytes) =>
+                {
+                    var overall = 40 + downloadPercent * 0.25;
+                    var sizeLabel = totalBytes > 0
+                        ? $"{FormatBytes(bytesRead)} / {FormatBytes(totalBytes)}"
+                        : FormatBytes(bytesRead);
+                    reportProgress(overall, $"Téléchargement de la mise à jour... {Math.Round(downloadPercent)}% ({sizeLabel})");
+                },
+                ct);
 
             var stagingDir = Path.Combine(updateRoot, "staging");
             reportProgress(65, "Extraction de la mise à jour...");
@@ -277,15 +303,52 @@ public static class AppAutoUpdater
         return match ?? candidates.FirstOrDefault();
     }
 
-    private static async Task DownloadFileAsync(HttpClient http, string url, string destPath, CancellationToken ct)
+    private static async Task DownloadFileAsync(
+        HttpClient http,
+        string url,
+        string destPath,
+        Action<double, long, long>? progress,
+        CancellationToken ct)
     {
         using var response = await http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
         response.EnsureSuccessStatusCode();
 
+        var totalBytes = response.Content.Headers.ContentLength ?? -1L;
+        var totalRead = 0L;
+        var buffer = new byte[81920];
+
         await using var contentStream = await response.Content.ReadAsStreamAsync(ct);
         await using var fileStream = File.Create(destPath);
 
-        await contentStream.CopyToAsync(fileStream, ct);
+        while (true)
+        {
+            var read = await contentStream.ReadAsync(buffer, ct);
+            if (read == 0)
+                break;
+
+            await fileStream.WriteAsync(buffer.AsMemory(0, read), ct);
+            totalRead += read;
+
+            var percent = totalBytes > 0
+                ? Math.Min(100, totalRead * 100.0 / totalBytes)
+                : 0;
+            progress?.Invoke(percent, totalRead, totalBytes);
+        }
+
+        progress?.Invoke(100, totalRead, totalBytes);
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        if (bytes < 0)
+            return "taille inconnue";
+        if (bytes < 1024)
+            return $"{bytes} B";
+        if (bytes < 1024 * 1024)
+            return $"{bytes / 1024.0:F1} KB";
+        if (bytes < 1024L * 1024 * 1024)
+            return $"{bytes / (1024.0 * 1024):F1} MB";
+        return $"{bytes / (1024.0 * 1024 * 1024):F1} GB";
     }
 
     private static string GetLocalNormalizedVersion()
