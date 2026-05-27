@@ -1,5 +1,6 @@
 from django.utils import timezone
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import AccessToken
 
@@ -138,7 +139,9 @@ class SyncPullView(APIView):
             records_count=len(entities),
             success=True,
         )
-        return api_ok(
+        # Compat desktop EXE:
+        # le client WPF lit directement SyncPullResponse (sans enveloppe ApiResponse).
+        return Response(
             {
                 "serverTimestamp": timezone.now().isoformat().replace("+00:00", "Z"),
                 "entities": entities,

@@ -15,13 +15,23 @@ from api.views import (
 
 urlpatterns = [
     path("health/", HealthView.as_view(), name="health"),
+    path("health", HealthView.as_view()),
     path("auth/login/", LoginView.as_view(), name="auth-login"),
+    path("auth/login", LoginView.as_view()),
     path("sync/push/", SyncPushView.as_view(), name="sync-push"),
+    path("sync/push", SyncPushView.as_view()),
     path("sync/pull/", SyncPullView.as_view(), name="sync-pull"),
+    path("sync/pull", SyncPullView.as_view()),
     path("sync/status/", SyncStatusView.as_view(), name="sync-status"),
+    path("sync/status", SyncStatusView.as_view()),
     path("dashboard/summary/", DashboardSummaryView.as_view(), name="dashboard-summary"),
+    path("dashboard/summary", DashboardSummaryView.as_view()),
     path("executive/overview/", ExecutiveOverviewView.as_view(), name="executive-overview"),
+    path("executive/overview", ExecutiveOverviewView.as_view()),
     path("executive/tenants/", ExecutiveTenantsView.as_view(), name="executive-tenants"),
+    path("executive/tenants", ExecutiveTenantsView.as_view()),
     path("executive/incidents/", ExecutiveIncidentsView.as_view(), name="executive-incidents"),
+    path("executive/incidents", ExecutiveIncidentsView.as_view()),
     path("executive/sync-logs/", ExecutiveSyncLogView.as_view(), name="executive-sync-logs"),
+    path("executive/sync-logs", ExecutiveSyncLogView.as_view()),
 ]
