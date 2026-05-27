@@ -23,6 +23,7 @@ public partial class App : System.Windows.Application
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        ShutdownMode = ShutdownMode.OnExplicitShutdown;
 
         DispatcherUnhandledException += (_, args) =>
         {
@@ -210,6 +211,8 @@ public partial class App : System.Windows.Application
             var appConfig = _host.Services.GetRequiredService<AppConfigurationService>();
             await appConfig.LoadAndApplyAsync();
 
+            MainWindow = mainWindow;
+            ShutdownMode = ShutdownMode.OnMainWindowClose;
             mainWindow.Show();
         }
         catch (Exception ex)
