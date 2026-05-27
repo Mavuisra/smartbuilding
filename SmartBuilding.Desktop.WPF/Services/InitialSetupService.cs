@@ -46,7 +46,7 @@ public sealed class InitialSetupService
             }
         }
 
-        return !File.Exists(SetupFlagPath);
+        return false;
     }
 
     public async Task CompleteInitialSetupAsync(InitialSetupRequest request, CancellationToken cancellationToken = default)

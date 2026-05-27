@@ -170,15 +170,22 @@ public partial class App : System.Windows.Application
                     var setupOk = setupWindow.ShowDialog() == true;
                     if (!setupOk)
                     {
-                        Shutdown(0);
-                        return;
+                        // Ne jamais fermer l'app si l'assistant est annulé :
+                        // on laisse l'utilisateur accéder à l'écran de connexion.
+                        splash = new SplashWindow();
+                        splash.Show();
+                        await PumpUiAsync();
+                        splash.UpdateProgress(90, "Chargement de l'interface...");
+                        await PumpUiAsync();
                     }
-
-                    splash = new SplashWindow();
-                    splash.Show();
-                    await PumpUiAsync();
-                    splash.UpdateProgress(90, "Chargement de l'interface...");
-                    await PumpUiAsync();
+                    else
+                    {
+                        splash = new SplashWindow();
+                        splash.Show();
+                        await PumpUiAsync();
+                        splash.UpdateProgress(90, "Chargement de l'interface...");
+                        await PumpUiAsync();
+                    }
                 }
                 else
                 {
