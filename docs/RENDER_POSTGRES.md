@@ -20,13 +20,39 @@ Exemple de format (sans exposer le vrai mot de passe) :
 postgresql://UTILISATEUR:MOT_DE_PASSE@dpg-xxxxx-a/NOM_BASE
 ```
 
-## Lier la base au service web
+## Lier la base au service web (obligatoire)
 
-1. Render → votre base PostgreSQL (`dimplomate`)
-2. Copier **Internal Database URL**
-3. Render → service web `smartbuilding-0kbk` → **Environment**
-4. Coller dans `DATABASE_URL` → **Save Changes**
-5. **Manual Deploy** → Deploy latest commit
+Render met `RENDER=true` automatiquement. Sans `DATABASE_URL` sur le **service web**, le build échoue.
+
+### Méthode A — Connexions (recommandé)
+
+1. Render → service web **smartbuilding-0kbk**
+2. Onglet **Connections** (ou **Connect**)
+3. **Connect** la base PostgreSQL **dimplomate**
+4. Render ajoute `DATABASE_URL` automatiquement
+
+### Méthode B — Variable manuelle
+
+1. Render → base **dimplomate** → copier **Internal Database URL**
+2. Render → service web → **Environment**
+3. Clé : `DATABASE_URL` — valeur : l’URL interne complète
+4. **Save Changes**
+
+### Commande de build Render
+
+Dans **Settings → Build Command** du service web :
+
+```bash
+cd smartbuilding-web && chmod +x build.sh && ./build.sh
+```
+
+**Start Command** :
+
+```bash
+cd smartbuilding-web && gunicorn smartbuilding_web.wsgi:application --bind 0.0.0.0:$PORT
+```
+
+Puis **Manual Deploy** → dernier commit.
 
 ## Après un échec de déploiement
 

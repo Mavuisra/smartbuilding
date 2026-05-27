@@ -73,10 +73,41 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "smartbuilding_web.wsgi.application"
 
-_database_url = (os.getenv("DATABASE_URL") or "").strip()
-if not _database_url:
-    _database_url = f"sqlite:///{BASE_DIR / 'db.sqlite3'}"
-elif _database_url.startswith("postgres://"):
+
+def _resolve_database_url() -> str:
+    """Résout l'URL PostgreSQL (Render : variable sur le service WEB, pas seulement la base)."""
+    raw = (
+        os.getenv("DATABASE_URL")
+        or os.getenv("POSTGRES_URL")
+        or os.getenv("INTERNAL_DATABASE_URL")
+        or ""
+    ).strip().strip('"').strip("'")
+
+    if raw:
+        return raw
+
+    user = os.getenv("POSTGRES_USER") or os.getenv("PGUSER")
+    password = os.getenv("POSTGRES_PASSWORD") or os.getenv("PGPASSWORD")
+    host = os.getenv("POSTGRES_HOST") or os.getenv("PGHOST")
+    port = os.getenv("POSTGRES_PORT") or os.getenv("PGPORT") or "5432"
+    name = os.getenv("POSTGRES_DB") or os.getenv("PGDATABASE")
+    if user and password and host and name:
+        return f"postgresql://{user}:{password}@{host}:{port}/{name}"
+
+    on_render = os.getenv("RENDER", "").lower() in ("1", "true", "yes")
+    if on_render or os.getenv("SBMS_PRODUCTION", "").lower() in ("1", "true", "yes"):
+        raise ImproperlyConfigured(
+            "DATABASE_URL absente sur le service WEB Render. "
+            "Dashboard Render → smartbuilding-web → Environment : collez l'URL interne "
+            "PostgreSQL (postgresql://…@dpg-…-a/dimplomate). "
+            "Ou onglet Connexions → lier la base « dimplomate » au service web."
+        )
+
+    return f"sqlite:///{BASE_DIR / 'db.sqlite3'}"
+
+
+_database_url = _resolve_database_url()
+if _database_url.startswith("postgres://"):
     # Render fournit souvent postgres:// au lieu de postgresql://
     _database_url = "postgresql://" + _database_url[len("postgres://") :]
 
@@ -119,21 +150,6 @@ else:
             "NAME": db_path if os.path.isabs(db_path) else BASE_DIR / db_path,
         }
     }
-
-# En production (Render, etc.) : PostgreSQL persistant obligatoire.
-# SQLite dans le conteneur est recréé à chaque déploiement → perte de données.
-_is_production = (
-    not DEBUG
-    or os.getenv("RENDER", "").lower() in ("1", "true", "yes")
-    or os.getenv("SBMS_PRODUCTION", "").lower() in ("1", "true", "yes")
-)
-_using_sqlite = DATABASES["default"]["ENGINE"] == "django.db.backends.sqlite3"
-if _is_production and _using_sqlite:
-    raise ImproperlyConfigured(
-        "SBMS production exige DATABASE_URL PostgreSQL (service persistant). "
-        "SQLite local dans le conteneur est effacé à chaque déploiement Git. "
-        "Liez une base PostgreSQL Render à DATABASE_URL, puis redéployez."
-    )
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
