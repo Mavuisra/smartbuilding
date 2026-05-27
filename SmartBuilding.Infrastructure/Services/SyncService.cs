@@ -61,6 +61,7 @@ public class SyncService : ISyncService
         var pulled = 0;
         var conflicts = 0;
         var hadFailure = false;
+        var failures = new List<string>();
 
         try
         {
@@ -74,6 +75,8 @@ public class SyncService : ISyncService
                 if (adapter is null)
                 {
                     hadFailure = true;
+                    var failure = $"{entityType}: adaptateur desktop manquant";
+                    failures.Add(failure);
                     _logger.LogWarning("Adaptateur sync manquant pour {EntityType}", entityType);
                     continue;
                 }
@@ -92,7 +95,10 @@ public class SyncService : ISyncService
                     else
                     {
                         hadFailure = true;
-                        _logger.LogWarning("Push échoué pour {EntityType}: {Status}", entityType, pushResponse.StatusCode);
+                        var body = await ReadErrorBodyAsync(pushResponse, cancellationToken);
+                        var failure = $"{entityType} push: HTTP {(int)pushResponse.StatusCode} {pushResponse.StatusCode} {body}";
+                        failures.Add(failure);
+                        _logger.LogWarning("Push échoué pour {EntityType}: {Status} {Body}", entityType, pushResponse.StatusCode, body);
                     }
                 }
 
@@ -103,7 +109,10 @@ public class SyncService : ISyncService
                 if (!pullResponse.IsSuccessStatusCode)
                 {
                     hadFailure = true;
-                    _logger.LogWarning("Pull échoué pour {EntityType}: {Status}", entityType, pullResponse.StatusCode);
+                    var body = await ReadErrorBodyAsync(pullResponse, cancellationToken);
+                    var failure = $"{entityType} pull: HTTP {(int)pullResponse.StatusCode} {pullResponse.StatusCode} {body}";
+                    failures.Add(failure);
+                    _logger.LogWarning("Pull échoué pour {EntityType}: {Status} {Body}", entityType, pullResponse.StatusCode, body);
                     continue;
                 }
 
@@ -128,7 +137,9 @@ public class SyncService : ISyncService
                 return new SyncResult(true, pushed, pulled, conflicts, null);
             }
 
-            var message = "Synchronisation partielle — certains types n'ont pas été synchronisés.";
+            var message = failures.Count > 0
+                ? "Synchronisation partielle — " + string.Join(" | ", failures.Take(5))
+                : "Synchronisation partielle — certains types n'ont pas été synchronisés.";
             log.ErrorMessage = message;
             _logger.LogWarning(message);
             return new SyncResult(false, pushed, pulled, conflicts, message);
@@ -163,6 +174,22 @@ public class SyncService : ISyncService
         if (!string.IsNullOrEmpty(token))
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
         return client;
+    }
+
+    private static async Task<string> ReadErrorBodyAsync(HttpResponseMessage response, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var body = await response.Content.ReadAsStringAsync(cancellationToken);
+            if (string.IsNullOrWhiteSpace(body))
+                return "";
+            body = body.Replace(Environment.NewLine, " ").Trim();
+            return body.Length > 300 ? body[..300] + "..." : body;
+        }
+        catch
+        {
+            return "";
+        }
     }
 
     private static string? LoadTokenFromLocalStore()
