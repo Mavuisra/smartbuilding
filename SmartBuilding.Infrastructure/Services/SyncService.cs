@@ -1,5 +1,6 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.IO;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using SmartBuilding.Application.Interfaces;
@@ -157,8 +158,29 @@ public class SyncService : ISyncService
     {
         var client = _httpClientFactory.CreateClient("SmartBuildingApi");
         var token = _configuration["Api:Token"];
+        if (string.IsNullOrWhiteSpace(token))
+            token = LoadTokenFromLocalStore();
         if (!string.IsNullOrEmpty(token))
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
         return client;
+    }
+
+    private static string? LoadTokenFromLocalStore()
+    {
+        try
+        {
+            var path = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "SBMS",
+                "api-token.txt");
+            if (!File.Exists(path))
+                return null;
+            var value = File.ReadAllText(path).Trim();
+            return string.IsNullOrWhiteSpace(value) ? null : value;
+        }
+        catch
+        {
+            return null;
+        }
     }
 }
