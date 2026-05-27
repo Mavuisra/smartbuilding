@@ -1,98 +1,127 @@
 {% extends "executive/base.html" %}
 {% block title %}Tableau de bord PDG{% endblock %}
 {% block body %}
-<nav class="navbar navbar-dark navbar-sb mb-4">
-  <div class="container-fluid">
-    <span class="navbar-brand mb-0 h1">SBMS — Portail PDG</span>
-    <div class="d-flex align-items-center gap-3 text-white">
-      <span id="user-label"></span>
-      <button class="btn btn-outline-light btn-sm" id="logout-btn">Déconnexion</button>
+<div class="app-shell">
+  <aside class="sb-sidebar">
+    <div class="brand">
+      <span class="brand-badge">SB</span>
+      <div>
+        <div>SBMS</div>
+        <small class="text-info-emphasis">Smart Building Management</small>
+      </div>
     </div>
-  </div>
-</nav>
+    <div class="sb-nav-group-title">Général</div>
+    <a href="#" class="sb-nav-link active">Tableau de bord</a>
+    <a href="#" class="sb-nav-link">Personnel</a>
+    <a href="#" class="sb-nav-link">Locations</a>
+    <a href="#" class="sb-nav-link">Contrats</a>
+    <a href="#" class="sb-nav-link">Finance</a>
+    <a href="#" class="sb-nav-link">Documents</a>
+    <a href="#" class="sb-nav-link">Incidents</a>
+    <div class="sb-nav-group-title">Supervision</div>
+    <a href="#" class="sb-nav-link">Validations</a>
+    <a href="#" class="sb-nav-link">Activités & Logs</a>
+    <a href="#" class="sb-nav-link">Utilisateurs</a>
+    <a href="#" class="sb-nav-link">Paramètres</a>
+  </aside>
 
-<div class="container pb-5">
-  <div id="load-error" class="alert alert-danger d-none"></div>
+  <main class="app-main">
+    <div class="sb-topbar">
+      <div>
+        <div class="fw-bold fs-5">Bonjour, <span id="user-label"></span> 👋</div>
+        <div class="text-muted small">Tableau de bord exécutif</div>
+      </div>
+      <div class="d-flex align-items-center gap-2">
+        <input class="sb-topbar-search" placeholder="Rechercher (contrat, locataire, paiement...)" />
+        <button class="btn btn-sm btn-outline-primary" id="refresh-btn">Synchronisation</button>
+        <button class="btn btn-sm btn-outline-secondary" id="logout-btn">Déconnexion</button>
+      </div>
+    </div>
 
-  <div class="row g-3 mb-3" id="kpi-row"></div>
+    <div class="sb-page-wrap">
+      <div id="load-error" class="alert alert-danger d-none"></div>
 
-  <div class="row g-3 mb-4">
-    <div class="col-lg-8">
-      <div class="sb-card p-3 h-100">
-        <div class="sb-card-header">
-          <h2 class="sb-card-title">Santé de synchronisation (24h)</h2>
-          <span class="sb-pill" id="sync-rate-pill">--</span>
-        </div>
-        <div class="row g-3">
-          <div class="col-6 col-md-3">
-            <div class="text-muted small">Événements</div>
-            <div class="fw-bold fs-5" id="sync-total">--</div>
-          </div>
-          <div class="col-6 col-md-3">
-            <div class="text-muted small">Réussis</div>
-            <div class="fw-bold fs-5 text-success" id="sync-ok">--</div>
-          </div>
-          <div class="col-6 col-md-3">
-            <div class="text-muted small">Échoués</div>
-            <div class="fw-bold fs-5 text-danger" id="sync-fail">--</div>
-          </div>
-          <div class="col-6 col-md-3">
-            <div class="text-muted small">Enregistrements</div>
-            <div class="fw-bold fs-5" id="sync-records">--</div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="col-lg-4">
-      <div class="sb-card p-3 h-100">
-        <div class="sb-card-header">
-          <h2 class="sb-card-title">Actions rapides</h2>
-        </div>
-        <div class="d-grid gap-2">
-          <button class="btn btn-outline-primary btn-sm" id="refresh-btn">Rafraîchir les indicateurs</button>
-          <a href="/api/executive/sync-logs/" target="_blank" class="btn btn-outline-secondary btn-sm">Voir logs sync (JSON)</a>
-        </div>
-      </div>
-    </div>
-  </div>
+      <div class="row g-3 mb-3" id="kpi-row"></div>
 
-  <div class="row g-3">
-    <div class="col-lg-8">
-      <div class="sb-card p-3 mb-3">
-        <div class="sb-card-header">
-          <h2 class="sb-card-title">Alertes critiques</h2>
+      <div class="row g-3 mb-4">
+        <div class="col-lg-8">
+          <div class="sb-card p-3 h-100">
+            <div class="sb-card-header">
+              <h2 class="sb-card-title">Santé de synchronisation (24h)</h2>
+              <span class="sb-pill" id="sync-rate-pill">--</span>
+            </div>
+            <div class="row g-3">
+              <div class="col-6 col-md-3">
+                <div class="text-muted small">Événements</div>
+                <div class="fw-bold fs-5" id="sync-total">--</div>
+              </div>
+              <div class="col-6 col-md-3">
+                <div class="text-muted small">Réussis</div>
+                <div class="fw-bold fs-5 text-success" id="sync-ok">--</div>
+              </div>
+              <div class="col-6 col-md-3">
+                <div class="text-muted small">Échoués</div>
+                <div class="fw-bold fs-5 text-danger" id="sync-fail">--</div>
+              </div>
+              <div class="col-6 col-md-3">
+                <div class="text-muted small">Enregistrements</div>
+                <div class="fw-bold fs-5" id="sync-records">--</div>
+              </div>
+            </div>
+          </div>
         </div>
-        <div id="alerts"></div>
+        <div class="col-lg-4">
+          <div class="sb-card p-3 h-100">
+            <div class="sb-card-header">
+              <h2 class="sb-card-title">Actions rapides</h2>
+            </div>
+            <div class="d-grid gap-2">
+              <a href="/api/executive/sync-logs/" target="_blank" class="btn btn-outline-secondary btn-sm">Voir logs sync (JSON)</a>
+              <a href="/api/dashboard/summary/" target="_blank" class="btn btn-outline-secondary btn-sm">Voir résumé API (JSON)</a>
+            </div>
+          </div>
+        </div>
       </div>
-      <div class="sb-card p-3">
-        <div class="sb-card-header">
-          <h2 class="sb-card-title">Locataires (aperçu)</h2>
-          <span class="sb-pill" id="tenant-count-pill">--</span>
+
+      <div class="row g-3">
+        <div class="col-lg-8">
+          <div class="sb-card p-3 mb-3">
+            <div class="sb-card-header">
+              <h2 class="sb-card-title">Alertes critiques</h2>
+            </div>
+            <div id="alerts"></div>
+          </div>
+          <div class="sb-card p-3">
+            <div class="sb-card-header">
+              <h2 class="sb-card-title">Locataires (aperçu)</h2>
+              <span class="sb-pill" id="tenant-count-pill">--</span>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-sm table-hover mb-0 sb-table">
+                <thead><tr><th>Nom</th><th>Téléphone</th><th>Statut</th></tr></thead>
+                <tbody id="tenants-table"></tbody>
+              </table>
+            </div>
+          </div>
         </div>
-        <div class="table-responsive">
-          <table class="table table-sm table-hover mb-0 sb-table">
-            <thead><tr><th>Nom</th><th>Téléphone</th><th>Statut</th></tr></thead>
-            <tbody id="tenants-table"></tbody>
-          </table>
+        <div class="col-lg-4">
+          <div class="sb-card p-3 mb-3">
+            <div class="sb-card-header">
+              <h2 class="sb-card-title">Synchronisations des gérants</h2>
+            </div>
+            <ul class="list-group list-group-flush" id="sync-activity"></ul>
+          </div>
+          <div class="sb-card p-3">
+            <div class="sb-card-header">
+              <h2 class="sb-card-title">Incidents récents</h2>
+              <span class="sb-pill" id="incident-count-pill">--</span>
+            </div>
+            <ul class="list-group list-group-flush" id="incidents-list"></ul>
+          </div>
         </div>
       </div>
     </div>
-    <div class="col-lg-4">
-      <div class="sb-card p-3 mb-3">
-        <div class="sb-card-header">
-          <h2 class="sb-card-title">Synchronisations des gérants</h2>
-        </div>
-        <ul class="list-group list-group-flush" id="sync-activity"></ul>
-      </div>
-      <div class="sb-card p-3">
-        <div class="sb-card-header">
-          <h2 class="sb-card-title">Incidents récents</h2>
-          <span class="sb-pill" id="incident-count-pill">--</span>
-        </div>
-        <ul class="list-group list-group-flush" id="incidents-list"></ul>
-      </div>
-    </div>
-  </div>
+  </main>
 </div>
 {% endblock %}
 {% block scripts %}

@@ -25,7 +25,17 @@
       background: linear-gradient(180deg, #eef3ff 0%, var(--sb-bg) 30%);
       color: var(--sb-text);
       min-height: 100vh;
+      margin: 0;
       font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif;
+    }
+    .app-shell {
+      display: flex;
+      min-height: 100vh;
+      width: 100%;
+    }
+    .app-main {
+      flex: 1;
+      min-width: 0;
     }
     .navbar-sb {
       background: linear-gradient(135deg, #1e3a8a 0%, #2a5bd7 55%, #3b82f6 100%);
@@ -72,6 +82,73 @@
     .sb-table td {
       vertical-align: middle;
       border-color: #eef2f7;
+    }
+    .sb-sidebar {
+      width: 250px;
+      background: linear-gradient(180deg, #0a1f44 0%, #081730 100%);
+      color: #dbeafe;
+      padding: 18px 14px;
+      border-right: 1px solid rgba(255,255,255,.08);
+    }
+    .sb-sidebar .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      margin-bottom: 20px;
+      letter-spacing: .02em;
+    }
+    .sb-sidebar .brand-badge {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      color: #fff;
+      font-weight: 800;
+    }
+    .sb-nav-group-title {
+      font-size: .72rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: #93c5fd;
+      margin: 16px 10px 8px;
+    }
+    .sb-nav-link {
+      display: block;
+      color: #dbeafe;
+      text-decoration: none;
+      padding: 9px 12px;
+      border-radius: 10px;
+      font-size: .9rem;
+      margin-bottom: 4px;
+    }
+    .sb-nav-link:hover { background: rgba(59,130,246,.16); color: #fff; }
+    .sb-nav-link.active { background: rgba(59,130,246,.26); color: #fff; }
+    .sb-topbar {
+      background: #fff;
+      border-bottom: 1px solid var(--sb-border);
+      padding: 14px 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+    }
+    .sb-topbar-search {
+      border: 1px solid var(--sb-border);
+      border-radius: 10px;
+      padding: 7px 10px;
+      min-width: 320px;
+      color: var(--sb-muted);
+      font-size: .9rem;
+    }
+    .sb-page-wrap {
+      padding: 18px 20px 30px;
     }
   </style>
   {% block extra_head %}{% endblock %}
