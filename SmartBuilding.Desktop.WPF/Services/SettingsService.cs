@@ -49,7 +49,7 @@ public class SettingsService
         var lastSync = _syncService.LastSyncAt;
 
         var prefs = LoadNotificationPrefs();
-        var dbPath = ResolveSqlitePath(_configuration.GetConnectionString("Sqlite") ?? "Data Source=smartbuilding.db");
+        var dbPath = DesktopSqlitePaths.GetDatabaseFilePath();
         var dbSize = File.Exists(dbPath) ? new FileInfo(dbPath).Length : 0L;
 
         var env = _configuration["ASPNETCORE_ENVIRONMENT"]
@@ -356,17 +356,6 @@ public class SettingsService
         {
             return new NotificationPrefs();
         }
-    }
-
-    private static string ResolveSqlitePath(string connectionString)
-    {
-        const string prefix = "Data Source=";
-        var path = connectionString.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
-            ? connectionString[prefix.Length..].Trim()
-            : connectionString;
-        if (!Path.IsPathRooted(path))
-            path = Path.Combine(AppContext.BaseDirectory, path);
-        return path;
     }
 
     private sealed class NotificationPrefs

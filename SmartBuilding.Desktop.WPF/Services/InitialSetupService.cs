@@ -124,7 +124,7 @@ public sealed class InitialSetupService
 
         WriteSetupCompletedFlag();
 
-        var localDbPath = ResolveSqlitePath(_configuration.GetConnectionString("Sqlite") ?? "Data Source=smartbuilding.db");
+        var localDbPath = DesktopSqlitePaths.GetDatabaseFilePath();
         var localPersisted = await _db.Users.AnyAsync(
                                  u => u.DeletedAt == null
                                       && u.Username.ToLower() == request.AdminUsername.Trim().ToLower(),
@@ -205,16 +205,6 @@ public sealed class InitialSetupService
         File.WriteAllText(SetupFlagPath, DateTime.UtcNow.ToString("O"));
     }
 
-    private static string ResolveSqlitePath(string connectionString)
-    {
-        const string prefix = "Data Source=";
-        var path = connectionString.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
-            ? connectionString[prefix.Length..].Trim()
-            : connectionString;
-        if (!Path.IsPathRooted(path))
-            path = Path.Combine(AppContext.BaseDirectory, path);
-        return path;
-    }
 
     private async Task<(bool Success, string Message)> AuthenticateCloudAsync(
         string username,

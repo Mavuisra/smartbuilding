@@ -50,6 +50,7 @@ jobs:
 
           if (Test-Path (Join-Path $zipOut $zipName)) { Remove-Item (Join-Path $zipOut $zipName) -Force }
 
+          Get-ChildItem $outDir -Include *.db,*.db-wal,*.db-shm -Recurse -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
           # On zippe le dossier de publication. Le code d’application gère un éventuel dossier enveloppe.
           Compress-Archive -Path (Join-Path $outDir '*') -DestinationPath (Join-Path $zipOut $zipName) -Force
 
@@ -100,6 +101,7 @@ jobs:
           if (Test-Path (Join-Path $zipOut $zipName)) {
             Remove-Item (Join-Path $zipOut $zipName) -Force
           }
+          Get-ChildItem $outDir -Include *.db,*.db-wal,*.db-shm -Recurse -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
           Compress-Archive -Path (Join-Path $outDir '*') -DestinationPath (Join-Path $zipOut $zipName) -Force
 
       - name: Create GitHub Release

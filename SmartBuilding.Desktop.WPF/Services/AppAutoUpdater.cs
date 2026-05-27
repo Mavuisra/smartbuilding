@@ -136,10 +136,13 @@ public static class AppAutoUpdater
             var exePath = FindExeInDirectory(stagingDir, exeName);
             var stagingRoot = exePath is null ? stagingDir : Path.GetDirectoryName(exePath) ?? stagingDir;
 
-            // Copie sans supprimer ce qui n’existe pas dans le package (ex: smartbuilding.db).
+            // Copie sans supprimer ce qui n’existe pas dans le package.
+            // Ne jamais écraser une base locale (données utilisateur).
             foreach (var sourceFile in Directory.EnumerateFiles(stagingRoot, "*", SearchOption.AllDirectories))
             {
                 var relative = Path.GetRelativePath(stagingRoot, sourceFile);
+                if (IsUserDataFile(relative))
+                    continue;
                 var destFile = Path.Combine(installDir, relative);
                 Directory.CreateDirectory(Path.GetDirectoryName(destFile)!);
                 CopyFileWithRetry(sourceFile, destFile, overwrite: true, retries: 30, delayMs: 250);
@@ -466,6 +469,14 @@ public static class AppAutoUpdater
             return false;
 
         return string.Equals(Path.GetExtension(path), ".exe", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsUserDataFile(string relativePath)
+    {
+        var name = Path.GetFileName(relativePath);
+        return name.EndsWith(".db", StringComparison.OrdinalIgnoreCase)
+               || name.EndsWith(".db-wal", StringComparison.OrdinalIgnoreCase)
+               || name.EndsWith(".db-shm", StringComparison.OrdinalIgnoreCase);
     }
 
     private static string? FindExeInDirectory(string dir, string exeName)

@@ -56,7 +56,7 @@ public class DocumentsModuleService
         docs.AddRange(await LoadDeletedDocumentsAsync(cancellationToken));
 
         var active = docs.Where(d => !d.IsDeleted).ToList();
-        var dbPath = ResolveSqlitePath(_configuration.GetConnectionString("Sqlite") ?? "Data Source=smartbuilding.db");
+        var dbPath = DesktopSqlitePaths.GetDatabaseFilePath();
         var dbBytes = File.Exists(dbPath) ? new FileInfo(dbPath).Length : 0L;
         var contentBytes = active.Sum(d => d.SizeBytes);
         var usedBytes = dbBytes + contentBytes;
@@ -900,15 +900,6 @@ public class DocumentsModuleService
         deleted += await _db.CachedEmails.IgnoreQueryFilters().ExecuteDeleteAsync(cancellationToken);
 
         return deleted;
-    }
-
-    private static string ResolveSqlitePath(string connectionString)
-    {
-        const string prefix = "Data Source=";
-        if (!connectionString.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-            return connectionString;
-        var path = connectionString[prefix.Length..].Trim().Trim('"');
-        return Path.IsPathRooted(path) ? path : Path.Combine(AppContext.BaseDirectory, path);
     }
 
     private sealed class RawDocument

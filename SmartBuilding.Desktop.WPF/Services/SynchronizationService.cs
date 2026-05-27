@@ -13,10 +13,10 @@ using SmartBuilding.Domain.Entities.Inventory;
 using SmartBuilding.Domain.Entities.Location;
 using SmartBuilding.Domain.Entities.Personnel;
 using SmartBuilding.Domain.Entities.Sync;
+using SmartBuilding.Infrastructure.Persistence;
 using SmartBuilding.Domain.Entities.Technical;
 using SmartBuilding.Domain.Entities.Visitors;
 using SmartBuilding.Desktop.WPF.Models;
-using SmartBuilding.Infrastructure.Persistence;
 
 namespace SmartBuilding.Desktop.WPF.Services;
 
@@ -40,8 +40,7 @@ public class SynchronizationService
     {
         var apiUrl = _configuration["Api:BaseUrl"] ?? "https://localhost:7001/";
         var interval = _configuration.GetValue("Sync:IntervalSeconds", 60);
-        var sqliteCs = _configuration.GetConnectionString("Sqlite") ?? "Data Source=smartbuilding.db";
-        var dbPath = ResolveSqlitePath(sqliteCs);
+        var dbPath = DesktopSqlitePaths.GetDatabaseFilePath();
         var dbInfo = GetDbFileInfo(dbPath);
 
         var pingMs = 0;
@@ -363,16 +362,6 @@ public class SynchronizationService
             : $"{kbPerSec:F1} KB/s";
     }
 
-    private static string ResolveSqlitePath(string connectionString)
-    {
-        const string prefix = "Data Source=";
-        var path = connectionString.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
-            ? connectionString[prefix.Length..].Trim()
-            : connectionString;
-        if (!Path.IsPathRooted(path))
-            path = Path.Combine(AppContext.BaseDirectory, path);
-        return path;
-    }
 
     private static (long Size, DateTime? LastWrite) GetDbFileInfo(string path)
     {

@@ -15,10 +15,17 @@ public static class DependencyInjection
         IConfiguration configuration,
         bool isDesktop = false)
     {
-        var connectionString = isDesktop
-            ? configuration.GetConnectionString("Sqlite") ?? "Data Source=smartbuilding.db"
-            : configuration.GetConnectionString("PostgreSQL")
-              ?? throw new InvalidOperationException("Connection string PostgreSQL requise.");
+        string connectionString;
+        if (isDesktop)
+        {
+            DesktopSqlitePaths.EnsureInitialized();
+            connectionString = DesktopSqlitePaths.ConnectionString;
+        }
+        else
+        {
+            connectionString = configuration.GetConnectionString("PostgreSQL")
+                               ?? throw new InvalidOperationException("Connection string PostgreSQL requise.");
+        }
 
         services.AddDbContext<SmartBuildingDbContext>(options =>
         {
