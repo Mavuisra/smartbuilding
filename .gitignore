@@ -21,5 +21,13 @@ _testout/
 ## Local build artifacts
 artifacts/
 
+## Python / Django web
+smartbuilding-web/.venv/
+smartbuilding-web/**/__pycache__/
+smartbuilding-web/**/*.pyc
+smartbuilding-web/db.sqlite3
+smartbuilding-web/.env
+smartbuilding-web/staticfiles/
+
 ## Logs
 *.log

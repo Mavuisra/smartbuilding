@@ -1,0 +1,109 @@
+{% extends "executive/base.html" %}
+{% block title %}Tableau de bord PDG{% endblock %}
+{% block body %}
+<nav class="navbar navbar-dark navbar-sb mb-4">
+  <div class="container-fluid">
+    <span class="navbar-brand mb-0 h1">SBMS — Portail PDG</span>
+    <div class="d-flex align-items-center gap-3 text-white">
+      <span id="user-label"></span>
+      <button class="btn btn-outline-light btn-sm" id="logout-btn">Déconnexion</button>
+    </div>
+  </div>
+</nav>
+
+<div class="container pb-5">
+  <div id="load-error" class="alert alert-danger d-none"></div>
+
+  <div class="row g-3 mb-4" id="kpi-row"></div>
+
+  <div class="row g-3">
+    <div class="col-lg-8">
+      <div class="card card-kpi p-3 mb-3">
+        <h2 class="h6 text-muted">Alertes</h2>
+        <div id="alerts"></div>
+      </div>
+      <div class="card card-kpi p-3">
+        <h2 class="h6 text-muted">Locataires (aperçu)</h2>
+        <div class="table-responsive">
+          <table class="table table-sm table-hover mb-0">
+            <thead><tr><th>Nom</th><th>Téléphone</th><th>Statut</th></tr></thead>
+            <tbody id="tenants-table"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-4">
+      <div class="card card-kpi p-3 mb-3">
+        <h2 class="h6 text-muted">Synchronisations des gérants</h2>
+        <ul class="list-group list-group-flush" id="sync-activity"></ul>
+      </div>
+      <div class="card card-kpi p-3">
+        <h2 class="h6 text-muted">Incidents récents</h2>
+        <ul class="list-group list-group-flush" id="incidents-list"></ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const token = localStorage.getItem('sbms_token');
+if (!token) window.location.href = '/login/';
+
+const user = JSON.parse(localStorage.getItem('sbms_user') || '{}');
+document.getElementById('user-label').textContent = user.fullName || user.username || '';
+document.getElementById('logout-btn').onclick = () => {
+  localStorage.clear();
+  window.location.href = '/login/';
+};
+
+async function apiGet(path) {
+  const res = await fetch(path, { headers: { Authorization: 'Bearer ' + token } });
+  const json = await res.json();
+  if (res.status === 401) { localStorage.clear(); window.location.href = '/login/'; }
+  if (!json.success) throw new Error(json.message || 'Erreur API');
+  return json.data;
+}
+
+function kpiCard(label, value) {
+  return `<div class="col-md-4 col-lg-2"><div class="card card-kpi p-3 text-center">
+    <div class="text-muted small">${label}</div><div class="kpi-value">${value}</div></div></div>`;
+}
+
+(async () => {
+  try {
+    const s = await apiGet('/api/dashboard/summary/');
+    document.getElementById('kpi-row').innerHTML = [
+      kpiCard('Loyers (mois)', s.rentCollected?.toLocaleString('fr-FR') + ' FC'),
+      kpiCard('Dépenses', s.monthlyExpenses?.toLocaleString('fr-FR') + ' FC'),
+      kpiCard('Solde net', s.netBalance?.toLocaleString('fr-FR') + ' FC'),
+      kpiCard('Occupation', s.occupancyRate + ' %'),
+      kpiCard('Incidents', s.openIncidents),
+      kpiCard('Locataires', s.totalTenants),
+    ].join('');
+
+    document.getElementById('alerts').innerHTML = (s.alerts || []).map(a =>
+      `<div class="alert alert-${a.severity === 'Error' ? 'danger' : a.severity === 'Warning' ? 'warning' : 'success'} py-2 mb-2">
+        <strong>${a.title}</strong> — ${a.message}</div>`).join('');
+
+    document.getElementById('sync-activity').innerHTML = (s.recentSyncActivity || []).map(x =>
+      `<li class="list-group-item small">${x.text}<br><span class="text-muted">${new Date(x.timestamp).toLocaleString('fr-FR')}</span></li>`
+    ).join('') || '<li class="list-group-item text-muted">Aucune sync pour le moment</li>';
+
+    const tenants = await apiGet('/api/executive/tenants/');
+    document.getElementById('tenants-table').innerHTML = tenants.slice(0, 8).map(t =>
+      `<tr><td>${t.name}</td><td>${t.phone || '—'}</td><td>${t.status}</td></tr>`).join('');
+
+    const incidents = await apiGet('/api/executive/incidents/');
+    document.getElementById('incidents-list').innerHTML = incidents.slice(0, 6).map(i =>
+      `<li class="list-group-item small"><strong>${i.title}</strong><br>
+        <span class="badge bg-secondary">${i.severity}</span> ${i.status}</li>`
+    ).join('') || '<li class="list-group-item text-muted">Aucun incident</li>';
+  } catch (e) {
+    const el = document.getElementById('load-error');
+    el.textContent = e.message;
+    el.classList.remove('d-none');
+  }
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,48 @@
+{% extends "executive/base.html" %}
+{% block title %}Connexion — Portail PDG{% endblock %}
+{% block body %}
+<div class="container d-flex align-items-center justify-content-center" style="min-height:100vh">
+  <div class="card shadow-sm p-4" style="max-width:420px;width:100%;border-radius:16px">
+    <h1 class="h4 text-center mb-1">Smart Building</h1>
+    <p class="text-center text-muted mb-4">Portail PDG — vue consolidée</p>
+    <div id="error" class="alert alert-danger d-none"></div>
+    <form id="login-form">
+      <div class="mb-3">
+        <label class="form-label">Utilisateur</label>
+        <input type="text" class="form-control" id="username" value="pdg" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Mot de passe</label>
+        <input type="password" class="form-control" id="password" value="Pdg@2026" required>
+      </div>
+      <button type="submit" class="btn btn-primary w-100">Se connecter</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.getElementById('login-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const err = document.getElementById('error');
+  err.classList.add('d-none');
+  const res = await fetch('/api/auth/login/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      username: document.getElementById('username').value,
+      password: document.getElementById('password').value
+    })
+  });
+  const json = await res.json();
+  if (!json.success) {
+    err.textContent = json.message || 'Connexion impossible';
+    err.classList.remove('d-none');
+    return;
+  }
+  localStorage.setItem('sbms_token', json.data.token);
+  localStorage.setItem('sbms_user', JSON.stringify(json.data));
+  window.location.href = '/';
+});
+</script>
+{% endblock %}
