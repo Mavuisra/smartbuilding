@@ -17,6 +17,7 @@ from api.models import (
 from api.sync.registry import register
 from api.sync.utils import (
     map_base_fields,
+    normalize_sync_datetime,
     parse_bool,
     parse_date,
     parse_datetime,
@@ -31,9 +32,28 @@ def materialize_user(data: dict):
     uid = pick(data, "Id", "id")
     if not uid:
         return
-    user, _ = User.objects.get_or_create(id=uid, defaults={"username": "sync"})
-    map_base_fields(user, data)
-    user.username = pick(data, "Username", "username") or user.username
+
+    username = (pick(data, "Username", "username") or "").strip()
+    user = User.objects.filter(id=uid).first()
+    if user is None and username:
+        user = User.objects.filter(username__iexact=username).first()
+    if user is None:
+        user = User(id=uid, username=username or "sync")
+
+    # Ne change jamais la PK d'un compte cloud existant: "admin" peut déjà exister
+    # comme compte bootstrap avec un UUID différent de celui du desktop.
+    if str(user.id) == str(uid):
+        map_base_fields(user, data)
+    else:
+        if created := pick(data, "CreatedAt", "createdAt"):
+            user.created_at = normalize_sync_datetime(created, user.created_at) or user.created_at
+        if updated := pick(data, "UpdatedAt", "updatedAt"):
+            user.updated_at = normalize_sync_datetime(updated, user.updated_at) or user.updated_at
+        deleted = pick(data, "DeletedAt", "deletedAt")
+        user.deleted_at = normalize_sync_datetime(deleted)
+        user.is_synced = True
+
+    user.username = username or user.username
     user.email = pick(data, "Email", "email") or ""
     user.full_name = pick(data, "FullName", "fullName") or ""
     pw = pick(data, "PasswordHash", "passwordHash")
@@ -46,7 +66,8 @@ def materialize_user(data: dict):
     elif role:
         user.role = str(role)
     user.is_active = parse_bool(pick(data, "IsActive", "isActive"), True)
-    user.last_login_at = parse_datetime(pick(data, "LastLoginAt", "lastLoginAt"))
+    user.last_login_at = normalize_sync_datetime(pick(data, "LastLoginAt", "lastLoginAt"))
+    user.is_staff = user.role in (User.Role.ADMIN, User.Role.PDG)
     user.save()
 
 

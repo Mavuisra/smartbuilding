@@ -8,8 +8,8 @@ class LoginSerializer(serializers.Serializer):
 
 class SyncEntityPayloadSerializer(serializers.Serializer):
     id = serializers.UUIDField()
-    updatedAt = serializers.DateTimeField()
-    deletedAt = serializers.DateTimeField(required=False, allow_null=True)
+    updatedAt = serializers.CharField()
+    deletedAt = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     jsonData = serializers.CharField()
 
 

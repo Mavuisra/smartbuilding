@@ -125,8 +125,7 @@ public partial class InitialSetupViewModel : ObservableObject
             SetupStatus = $"Local : OK ({result.LocalDbPath}){Environment.NewLine}Cloud : {result.CloudSyncMessage}";
             if (result.CloudSyncAttempted && !result.CloudSyncSuccess)
             {
-                ErrorMessage = "La synchronisation cloud a échoué. Vérifiez la connexion/API puis cliquez à nouveau sur Terminer.";
-                return;
+                ErrorMessage = "Configuration locale terminée. La synchronisation cloud sera relancée automatiquement depuis l'application.";
             }
             CloseRequested?.Invoke(true);
         }
