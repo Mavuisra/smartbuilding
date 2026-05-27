@@ -1,0 +1,165 @@
+using System.IO;
+using System.Windows;
+using System.Windows.Threading;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using SmartBuilding.Application.Interfaces;
+using SmartBuilding.Desktop.WPF.Services;
+using SmartBuilding.Desktop.WPF.ViewModels;
+using SmartBuilding.Desktop.WPF.Views;
+using SmartBuilding.Infrastructure;
+using SmartBuilding.Infrastructure.Persistence;
+using SmartBuilding.Infrastructure.Services;
+
+namespace SmartBuilding.Desktop.WPF;
+
+public partial class App : System.Windows.Application
+{
+    private IHost? _host;
+    private const int MinSplashMs = 1800;
+
+    protected override async void OnStartup(StartupEventArgs e)
+    {
+        base.OnStartup(e);
+
+        DispatcherUnhandledException += (_, args) =>
+        {
+            MessageBox.Show(
+                DbSaveExceptionTranslator.ToDetailedMessage(args.Exception),
+                "SBMS",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+            args.Handled = true;
+        };
+
+        var splash = new SplashWindow();
+        splash.Show();
+        await PumpUiAsync();
+
+        var splashStarted = Environment.TickCount64;
+
+        try
+        {
+            splash.UpdateProgress(5, "Préparation de l'application...");
+            await PumpUiAsync();
+
+            _host = Host.CreateDefaultBuilder()
+                .ConfigureAppConfiguration(cfg =>
+                {
+                    cfg.SetBasePath(AppContext.BaseDirectory);
+                    cfg.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
+                })
+                .ConfigureServices((context, services) =>
+                {
+                    services.AddInfrastructure(context.Configuration, isDesktop: true);
+                    services.AddSingleton<SessionService>();
+                    services.AddSingleton<AppConfigurationService>();
+                    services.AddSingleton<ShellNavigationService>();
+                    services.AddSingleton<NavigationService>();
+                    services.AddTransient<LoginViewModel>();
+                    services.AddTransient<DashboardViewModel>();
+                    services.AddTransient<PersonnelViewModel>();
+                    services.AddTransient<PersonnelService>();
+                    services.AddTransient<LocationsViewModel>();
+                    services.AddTransient<LocationsListViewModel>();
+                    services.AddTransient<LocationsService>();
+                    services.AddTransient<FinancesViewModel>();
+                    services.AddTransient<FinancesService>();
+                    services.AddTransient<TechnicalViewModel>();
+                    services.AddTransient<TechnicalService>();
+                    services.AddTransient<SuppliersViewModel>();
+                    services.AddTransient<SuppliersService>();
+                    services.AddTransient<InventoryViewModel>();
+                    services.AddTransient<InventoryService>();
+                    services.AddTransient<ConsumptionsViewModel>();
+                    services.AddTransient<ConsumptionsService>();
+                    services.AddTransient<IncidentsViewModel>();
+                    services.AddTransient<IncidentsService>();
+                    services.AddTransient<VisitsViewModel>();
+                    services.AddTransient<VisitsService>();
+                    services.AddTransient<EmailsViewModel>();
+                    services.AddTransient<EmailsModuleService>();
+                    services.AddTransient<SynchronizationViewModel>();
+                    services.AddTransient<SynchronizationService>();
+                    services.AddTransient<SettingsViewModel>();
+                    services.AddTransient<SettingsService>();
+                    services.AddTransient<DocumentsViewModel>();
+                    services.AddTransient<DocumentsModuleService>();
+                    services.AddTransient<UsersViewModel>();
+                    services.AddTransient<UsersModuleService>();
+                    services.AddTransient<ActivityLogViewModel>();
+                    services.AddTransient<ActivityLogModuleService>();
+                    services.AddTransient<TenantDetailViewModel>();
+                    services.AddTransient<TenantDetailService>();
+                    services.AddTransient<LocationBuildingFormViewModel>();
+                    services.AddTransient<LocationTenantFormViewModel>();
+                    services.AddTransient<LocationContractFormViewModel>();
+                    services.AddTransient<LocationRentFormViewModel>();
+                    services.AddTransient<ModulePageViewModel>();
+                    services.AddTransient<ModuleDataService>();
+                    services.AddTransient<MainShellViewModel>();
+                    services.AddTransient<LoginView>();
+                    services.AddTransient<MainWindow>();
+                    services.AddHostedService<SyncBackgroundService>();
+                })
+                .Build();
+
+            splash.UpdateProgress(35, "Connexion aux services...");
+            await PumpUiAsync();
+            await _host.StartAsync();
+
+            splash.UpdateProgress(60, "Initialisation de la base de données...");
+            await PumpUiAsync();
+
+            using (var scope = _host.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<SmartBuildingDbContext>();
+                await DatabaseSeeder.SeedAsync(db);
+            }
+
+            splash.UpdateProgress(90, "Chargement de l'interface...");
+            await PumpUiAsync();
+
+            var mainWindow = _host.Services.GetRequiredService<MainWindow>();
+
+            splash.UpdateProgress(100, "Prêt !");
+            await PumpUiAsync();
+
+            var elapsed = Environment.TickCount64 - splashStarted;
+            if (elapsed < MinSplashMs)
+                await Task.Delay((int)(MinSplashMs - elapsed));
+
+            await splash.CloseAnimatedAsync();
+
+            var appConfig = _host.Services.GetRequiredService<AppConfigurationService>();
+            await appConfig.LoadAndApplyAsync();
+
+            mainWindow.Show();
+        }
+        catch (Exception ex)
+        {
+            splash.Close();
+            MessageBox.Show(
+                $"Impossible de démarrer l'application.\n\n{ex.Message}",
+                "SBMS",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+            Shutdown(1);
+        }
+    }
+
+    private static Task PumpUiAsync() =>
+        Current.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render).Task;
+
+    protected override async void OnExit(ExitEventArgs e)
+    {
+        if (_host is not null)
+        {
+            await _host.StopAsync();
+            _host.Dispose();
+        }
+        base.OnExit(e);
+    }
+}

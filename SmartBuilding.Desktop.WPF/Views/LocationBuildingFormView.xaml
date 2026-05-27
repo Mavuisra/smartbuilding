@@ -1,0 +1,80 @@
+<UserControl x:Class="SmartBuilding.Desktop.WPF.Views.LocationBuildingFormView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:conv="clr-namespace:SmartBuilding.Desktop.WPF.Converters"
+             Background="{StaticResource SbmsPageBackgroundBrush}">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Themes/LocationsStyles.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <conv:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
+            <conv:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <Border Grid.Row="0" Background="White" Padding="20,14" BorderBrush="#E8EFED" BorderThickness="0,0,0,1">
+            <DockPanel>
+                <Button DockPanel.Dock="Left" Command="{Binding GoBackCommand}" Style="{StaticResource LocationsToolbarButton}" Margin="0,0,16,0">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="ArrowLeft" Margin="0,0,6,0"/>
+                        <TextBlock Text="Retour aux locations"/>
+                    </StackPanel>
+                </Button>
+                <StackPanel>
+                    <TextBlock Text="{Binding Breadcrumb}" FontSize="11" Foreground="{StaticResource SbmsTextMutedBrush}"/>
+                    <TextBlock Text="{Binding PageTitle}" FontSize="22" FontWeight="Bold" Foreground="#1B3D3B"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="24,16">
+            <Border Background="White" CornerRadius="12" BorderBrush="#E8EFED" BorderThickness="1"
+                    Padding="32,28" MaxWidth="720" HorizontalAlignment="Center">
+                <StackPanel>
+                    <TextBlock Text="Informations du bâtiment" FontSize="16" FontWeight="SemiBold" Foreground="#1B3D3B" Margin="0,0,0,20"/>
+                    <Border Background="#FEF2F2" BorderBrush="#FECACA" BorderThickness="1" CornerRadius="8" Padding="12,8" Margin="0,0,0,16"
+                            Visibility="{Binding FormError, Converter={StaticResource NullToVisibilityConverter}}">
+                        <TextBlock Text="{Binding FormError}" Foreground="#DC2626" TextWrapping="Wrap"/>
+                    </Border>
+                    <TextBox Margin="0,0,0,12" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                             IsReadOnly="{Binding IsEditMode}" materialDesign:HintAssist.Hint="Code"
+                             Text="{Binding FormCode, UpdateSourceTrigger=PropertyChanged}"/>
+                    <TextBox Margin="0,0,0,12" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                             materialDesign:HintAssist.Hint="Nom du bâtiment *" Text="{Binding FormName, UpdateSourceTrigger=PropertyChanged}"/>
+                    <TextBox Margin="0,0,0,12" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                             materialDesign:HintAssist.Hint="Adresse complète" Text="{Binding FormAddress, UpdateSourceTrigger=PropertyChanged}"/>
+                    <ComboBox Margin="0,0,0,12" Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                              materialDesign:HintAssist.Hint="Type de bâtiment"
+                              ItemsSource="{Binding BuildingTypeChoices}" SelectedItem="{Binding FormType}"/>
+                    <Grid Margin="0,0,0,24">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox Grid.Column="0" Margin="0,0,8,0" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                 materialDesign:HintAssist.Hint="Nombre d'étages" Text="{Binding FormFloorsText, UpdateSourceTrigger=PropertyChanged}"/>
+                        <TextBox Grid.Column="1" Margin="8,0,0,0" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                 materialDesign:HintAssist.Hint="Nombre de locaux" Text="{Binding FormPremisesText, UpdateSourceTrigger=PropertyChanged}"/>
+                    </Grid>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Command="{Binding GoBackCommand}" Style="{StaticResource MaterialDesignOutlinedButton}" Padding="24,12" Margin="0,0,12,0" Content="Annuler"/>
+                        <Button Command="{Binding SaveCommand}" Style="{StaticResource SbmsLoginPrimaryButton}" Padding="28,12">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="ContentSaveOutline" Margin="0,0,8,0"/>
+                                <TextBlock Text="Enregistrer le bâtiment"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </ScrollViewer>
+        <ProgressBar Grid.Row="1" IsIndeterminate="True" Height="3" VerticalAlignment="Top"
+                     Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibilityConverter}}"
+                     Foreground="{StaticResource SbmsAccentGreenBrush}"/>
+    </Grid>
+</UserControl>

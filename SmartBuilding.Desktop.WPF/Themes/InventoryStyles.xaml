@@ -1,0 +1,33 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="/Themes/SuppliersStyles.xaml"/>
+    </ResourceDictionary.MergedDictionaries>
+    <Style x:Key="InventoryKpiCard" TargetType="Border" BasedOn="{StaticResource SuppliersKpiCard}"/>
+    <Style x:Key="InventoryToolbarButton" TargetType="Button" BasedOn="{StaticResource SuppliersToolbarButton}"/>
+    <Style x:Key="InventoryPrimaryButton" TargetType="Button" BasedOn="{StaticResource SuppliersPrimaryButton}"/>
+    <Style x:Key="InventoryFilterCombo" TargetType="ComboBox" BasedOn="{StaticResource SuppliersFilterCombo}"/>
+    <Style x:Key="InventoryFilterSearch" TargetType="TextBox" BasedOn="{StaticResource SuppliersFilterSearch}"/>
+    <Style x:Key="InventoryCellText" TargetType="TextBlock" BasedOn="{StaticResource LocationsCellText}">
+        <Setter Property="TextTrimming" Value="None"/>
+        <Setter Property="TextWrapping" Value="NoWrap"/>
+        <Setter Property="ToolTip" Value="{Binding RelativeSource={RelativeSource Self}, Path=Text}"/>
+    </Style>
+
+    <Style x:Key="InventoryDataGridColumnHeader" TargetType="DataGridColumnHeader" BasedOn="{StaticResource LocationsDataGridColumnHeader}">
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="Padding" Value="10,8"/>
+    </Style>
+
+    <Style x:Key="InventoryDataGrid" TargetType="DataGrid" BasedOn="{StaticResource SuppliersDataGrid}">
+        <Setter Property="RowHeight" Value="44"/>
+        <Setter Property="ColumnHeaderHeight" Value="40"/>
+        <Setter Property="ColumnHeaderStyle" Value="{StaticResource InventoryDataGridColumnHeader}"/>
+        <Setter Property="CanUserResizeColumns" Value="True"/>
+        <Setter Property="ScrollViewer.CanContentScroll" Value="True"/>
+        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Auto"/>
+        <Setter Property="MinWidth" Value="1050"/>
+    </Style>
+    <Style x:Key="InventoryAnalyticsCard" TargetType="Border" BasedOn="{StaticResource SuppliersAnalyticsCard}"/>
+    <Style x:Key="InventorySidebarCard" TargetType="Border" BasedOn="{StaticResource SuppliersSidebarCard}"/>
+</ResourceDictionary>

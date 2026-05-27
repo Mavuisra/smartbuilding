@@ -1,0 +1,28 @@
+<Window x:Class="SmartBuilding.Desktop.WPF.Views.ExchangeRateDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        Title="Taux de change USD"
+        SizeToContent="WidthAndHeight"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        Background="White">
+    <Border Padding="24" MinWidth="400">
+        <StackPanel>
+            <TextBlock Text="Taux de change obligatoire" FontSize="18" FontWeight="Bold" Foreground="#1B3D3B"/>
+            <TextBlock Text="La devise principale est le Dollar (USD). Indiquez combien de francs congolais (CDF) correspondent à 1 USD."
+                       TextWrapping="Wrap" Margin="0,10,0,16" Foreground="#64748B" FontSize="12"/>
+            <TextBlock Text="1 USD =" FontWeight="SemiBold" Margin="0,0,0,6"/>
+            <TextBox x:Name="RateBox" materialDesign:HintAssist.Hint="Ex. 2850"
+                     Style="{StaticResource MaterialDesignOutlinedTextBox}" FontSize="16"/>
+            <TextBlock Text="CDF" FontWeight="SemiBold" Margin="0,4,0,16"/>
+            <TextBlock x:Name="ErrorText" Foreground="#DC2626" TextWrapping="Wrap" Margin="0,0,0,8" Visibility="Collapsed"/>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Content="Annuler" IsCancel="True" Margin="0,0,8,0" Padding="16,8"
+                        Style="{StaticResource MaterialDesignOutlinedButton}"/>
+                <Button Content="Valider" IsDefault="True" Click="OnValidate" Padding="20,8"
+                        Style="{StaticResource SbmsButtonPrimary}"/>
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</Window>

@@ -1,0 +1,92 @@
+namespace SmartBuilding.Desktop.WPF.Models;
+
+public sealed class SettingsPageData
+{
+    public string CompanyName { get; init; } = string.Empty;
+    public string TimeZoneId { get; init; } = string.Empty;
+    public string Currency { get; init; } = string.Empty;
+    public decimal UsdExchangeRate { get; init; }
+    public string DateFormat { get; init; } = string.Empty;
+    public string Language { get; init; } = string.Empty;
+    public string TimeFormat { get; init; } = string.Empty;
+    public bool MaintenanceMode { get; init; }
+    public string? LogoPath { get; init; }
+    public int ActiveUsers { get; init; }
+    public int TotalUsers { get; init; }
+    public int DistinctRoles { get; init; }
+    public int SyncLogCount { get; init; }
+    public DateTime? LastSyncAt { get; init; }
+    public string SyncStatusLabel { get; init; } = "—";
+    public long DatabaseSizeBytes { get; init; }
+    public string AppVersion { get; init; } = "v1.0.0";
+    public string EnvironmentName { get; init; } = "Développement";
+    public bool NotifyEmail { get; init; } = true;
+    public bool NotifyPush { get; init; } = true;
+    public bool NotifyCritical { get; init; } = true;
+    public bool NotifyDailyReports { get; init; }
+    public int ActiveSessions { get; init; } = 1;
+    public int AuthorizedDevices { get; init; } = 1;
+    public bool TwoFactorEnabled { get; init; }
+    public string BuildingAddress { get; init; } = string.Empty;
+    public string BuildingCity { get; init; } = string.Empty;
+    public string BuildingCountry { get; init; } = string.Empty;
+    public string BuildingPhone { get; init; } = string.Empty;
+    public string BuildingEmail { get; init; } = string.Empty;
+    public string BuildingWebsite { get; init; } = string.Empty;
+    public string BuildingNationalId { get; init; } = string.Empty;
+    public int BuildingFloors { get; init; }
+    public int PremisesCount { get; init; }
+    public decimal BuildingAreaSqM { get; init; }
+    public int EmailsCount { get; init; }
+    public int EmailAccountsCount { get; init; }
+    public int DocumentsCount { get; init; }
+    public string ApiBaseUrl { get; init; } = string.Empty;
+    public string AccentColorHex { get; init; } = "#2D6A4F";
+    public string SidebarColorHex { get; init; } = "#1B3D3B";
+    public string SecondaryColorHex { get; init; } = "#0D9488";
+    public string ThemeMode { get; init; } = "Light";
+    public bool CompactTables { get; init; }
+    public bool ShowKpiSparklines { get; init; } = true;
+}
+
+public sealed class SettingsCategoryItem
+{
+    public string Id { get; init; } = string.Empty;
+    public string Label { get; init; } = string.Empty;
+    public string IconKind { get; init; } = "Cog";
+}
+
+public sealed class SettingsQuickAccessItem
+{
+    public string CategoryId { get; init; } = string.Empty;
+    public string Title { get; init; } = string.Empty;
+    public string Description { get; init; } = string.Empty;
+    public string IconKind { get; init; } = "Cog";
+    public string IconColor { get; init; } = "#2D6A4F";
+    public string IconBg { get; init; } = "#D1FAE5";
+}
+
+public sealed class SettingsBackupItem
+{
+    public DateTime StartedAt { get; init; }
+    public string DateDisplay { get; init; } = string.Empty;
+    public string StatusDisplay { get; init; } = string.Empty;
+    public string DetailsDisplay { get; init; } = string.Empty;
+    public bool Success { get; init; }
+}
+
+public sealed class SettingsLogPreviewItem
+{
+    public string TimeDisplay { get; init; } = string.Empty;
+    public string Level { get; init; } = string.Empty;
+    public string Source { get; init; } = string.Empty;
+    public string Message { get; init; } = string.Empty;
+}
+
+public sealed class SettingsIntegrationItem
+{
+    public string Name { get; init; } = string.Empty;
+    public string Description { get; init; } = string.Empty;
+    public string StatusLabel { get; init; } = string.Empty;
+    public bool IsConnected { get; init; }
+}

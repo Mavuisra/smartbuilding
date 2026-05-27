@@ -1,0 +1,6 @@
+@SmartBuilding.API_HostAddress = http://localhost:5170
+
+GET {{SmartBuilding.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

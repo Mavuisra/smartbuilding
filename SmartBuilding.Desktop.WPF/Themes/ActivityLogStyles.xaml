@@ -1,0 +1,13 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="/Themes/VisitsStyles.xaml"/>
+    </ResourceDictionary.MergedDictionaries>
+    <Style x:Key="ActivityLogKpiCard" TargetType="Border" BasedOn="{StaticResource VisitsKpiCard}"/>
+    <Style x:Key="ActivityLogToolbarButton" TargetType="Button" BasedOn="{StaticResource VisitsToolbarButton}"/>
+    <Style x:Key="ActivityLogPrimaryButton" TargetType="Button" BasedOn="{StaticResource VisitsPrimaryButton}">
+        <Setter Property="Background" Value="#2563EB"/>
+    </Style>
+    <Style x:Key="ActivityLogFilterCombo" TargetType="ComboBox" BasedOn="{StaticResource VisitsFilterCombo}"/>
+    <Style x:Key="ActivityLogDetailCard" TargetType="Border" BasedOn="{StaticResource VisitsSidebarCard}"/>
+</ResourceDictionary>

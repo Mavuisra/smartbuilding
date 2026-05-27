@@ -1,0 +1,589 @@
+<UserControl x:Class="SmartBuilding.Desktop.WPF.Views.DocumentsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:lvc="clr-namespace:LiveChartsCore.SkiaSharpView.WPF;assembly=LiveChartsCore.SkiaSharpView.WPF"
+             xmlns:conv="clr-namespace:SmartBuilding.Desktop.WPF.Converters"
+             xmlns:models="clr-namespace:SmartBuilding.Desktop.WPF.Models"
+             Background="{StaticResource SbmsPageBackgroundBrush}">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Themes/DocumentsStyles.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <conv:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+            <conv:InverseBoolConverter x:Key="InverseBoolConverter"/>
+            <conv:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
+            <conv:HexToBrushConverter x:Key="HexToBrushConverter"/>
+            <conv:StringToPackIconKindConverter x:Key="StringToPackIconKindConverter"/>
+            <conv:CategoryIsSelectedConverter x:Key="CategoryIsSelectedConverter"/>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- HEADER -->
+        <Border Grid.Row="0" Background="White" Padding="24,16" BorderBrush="#E0E8E6" BorderThickness="0,0,0,1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="280"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                    <TextBlock Text="Documents" FontSize="26" FontWeight="Bold" Foreground="#1B3D3B"/>
+                    <TextBlock Text="Gestion documentaire centralisée"
+                               Foreground="{StaticResource SbmsTextMutedBrush}" FontSize="13" Margin="0,2,0,0"/>
+                </StackPanel>
+                <Border Grid.Column="1" Margin="24,0" BorderBrush="#E2E8F0" BorderThickness="1"
+                        CornerRadius="8" Background="White" VerticalAlignment="Center" Height="44">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="44"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <materialDesign:PackIcon Kind="Magnify" Width="20" Height="20" Foreground="#94A3B8"
+                                                 HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <TextBox Grid.Column="1" BorderThickness="0" Background="Transparent" VerticalContentAlignment="Center"
+                                 materialDesign:HintAssist.Hint="Rechercher un document, dossier..."
+                                 materialDesign:TextFieldAssist.DecorationVisibility="Hidden"
+                                 Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"/>
+                        <Border Grid.Column="2" Background="#F1F5F9" CornerRadius="4" Padding="6,2" Margin="0,0,10,0" VerticalAlignment="Center">
+                            <TextBlock Text="Ctrl + K" FontSize="10" Foreground="#64748B"/>
+                        </Border>
+                    </Grid>
+                </Border>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Command="{Binding RefreshCommand}" Style="{StaticResource MaterialDesignIconButton}" Width="40" Height="40" Margin="0,0,4,0">
+                        <materialDesign:PackIcon Kind="Refresh"/>
+                    </Button>
+                    <Button Style="{StaticResource MaterialDesignIconButton}" Width="40" Height="40" Margin="0,0,8,0"
+                            Command="{Binding ToggleNotificationsCommand}">
+                        <materialDesign:PackIcon Kind="BellOutline"/>
+                    </Button>
+                    <Border Background="#E63946" CornerRadius="9" MinWidth="18" Height="18" Margin="-14,-8,8,0" VerticalAlignment="Top">
+                        <TextBlock Text="{Binding NotificationCount}" Foreground="White" FontSize="10" FontWeight="Bold"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <Border Width="36" Height="36" CornerRadius="18" Background="{StaticResource SbmsAccentGreenBrush}" Margin="0,0,8,0">
+                        <TextBlock Text="{Binding UserInitials}" Foreground="White" FontWeight="Bold"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel VerticalAlignment="Center" Margin="0,0,12,0">
+                        <TextBlock Text="{Binding UserName}" FontWeight="SemiBold" FontSize="12"/>
+                        <TextBlock Text="{Binding UserRole}" FontSize="10" Foreground="{StaticResource SbmsTextMutedBrush}"/>
+                    </StackPanel>
+                    <Button Style="{StaticResource DocumentsToolbarButton}" Margin="0,0,8,0"
+                            Command="{Binding CreateFolderCommand}">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="FolderPlus" Margin="0,0,6,0"/>
+                            <TextBlock Text="Nouveau dossier"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource DocumentsPrimaryButton}"
+                            Command="{Binding UploadDocumentCommand}">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="Upload" Margin="0,0,6,0"/>
+                            <TextBlock Text="Uploader"/>
+                            <materialDesign:PackIcon Kind="ChevronDown" Margin="8,0,0,0" Width="16" Height="16"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- KPI -->
+        <UniformGrid Grid.Row="1" Columns="6" Margin="12,8,12,4">
+            <Border Style="{StaticResource DocumentsKpiCard}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="32"/>
+                    </Grid.RowDefinitions>
+                    <StackPanel Orientation="Horizontal">
+                        <Border Width="30" Height="30" CornerRadius="8" Background="#DBEAFE" Margin="0,0,8,0">
+                            <materialDesign:PackIcon Kind="FileDocumentMultiple" Foreground="#2563EB" Width="16" Height="16"
+                                                     HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <TextBlock Text="Total documents" FontSize="10" Foreground="{StaticResource SbmsTextMutedBrush}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <StackPanel Grid.Row="1" Margin="0,6,0,0">
+                        <TextBlock Text="{Binding TotalCount}" FontSize="20" FontWeight="Bold" Foreground="#2563EB"/>
+                        <TextBlock Text="{Binding TotalTrend}" FontSize="9" Foreground="#2563EB"/>
+                    </StackPanel>
+                    <lvc:CartesianChart Grid.Row="2" Series="{Binding TotalSparkline}" Height="32"/>
+                </Grid>
+            </Border>
+            <Border Style="{StaticResource DocumentsKpiCard}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="32"/>
+                    </Grid.RowDefinitions>
+                    <StackPanel Orientation="Horizontal">
+                        <Border Width="30" Height="30" CornerRadius="8" Background="#DCFCE7" Margin="0,0,8,0">
+                            <materialDesign:PackIcon Kind="ClockOutline" Foreground="#2D6A4F" Width="16" Height="16"
+                                                     HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <TextBlock Text="Documents récents" FontSize="10" Foreground="{StaticResource SbmsTextMutedBrush}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <StackPanel Grid.Row="1" Margin="0,6,0,0">
+                        <TextBlock Text="{Binding RecentCount}" FontSize="20" FontWeight="Bold" Foreground="#2D6A4F"/>
+                        <TextBlock Text="{Binding RecentTrend}" FontSize="9" Foreground="#2D6A4F"/>
+                    </StackPanel>
+                    <lvc:CartesianChart Grid.Row="2" Series="{Binding RecentSparkline}" Height="32"/>
+                </Grid>
+            </Border>
+            <Border Style="{StaticResource DocumentsKpiCard}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="32"/>
+                    </Grid.RowDefinitions>
+                    <StackPanel Orientation="Horizontal">
+                        <Border Width="30" Height="30" CornerRadius="8" Background="#FFEDD5" Margin="0,0,8,0">
+                            <materialDesign:PackIcon Kind="FileSign" Foreground="#EA580C" Width="16" Height="16"
+                                                     HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <TextBlock Text="Contrats actifs" FontSize="10" Foreground="{StaticResource SbmsTextMutedBrush}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <StackPanel Grid.Row="1" Margin="0,6,0,0">
+                        <TextBlock Text="{Binding ActiveContractsCount}" FontSize="20" FontWeight="Bold" Foreground="#EA580C"/>
+                        <TextBlock Text="{Binding ContractsTrend}" FontSize="9" Foreground="#EA580C"/>
+                    </StackPanel>
+                    <lvc:CartesianChart Grid.Row="2" Series="{Binding ContractsSparkline}" Height="32"/>
+                </Grid>
+            </Border>
+            <Border Style="{StaticResource DocumentsKpiCard}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="32"/>
+                    </Grid.RowDefinitions>
+                    <StackPanel Orientation="Horizontal">
+                        <Border Width="30" Height="30" CornerRadius="8" Background="#EDE9FE" Margin="0,0,8,0">
+                            <materialDesign:PackIcon Kind="ShareVariant" Foreground="#6D28D9" Width="16" Height="16"
+                                                     HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <TextBlock Text="Documents partagés" FontSize="10" Foreground="{StaticResource SbmsTextMutedBrush}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <StackPanel Grid.Row="1" Margin="0,6,0,0">
+                        <TextBlock Text="{Binding SharedCount}" FontSize="20" FontWeight="Bold" Foreground="#6D28D9"/>
+                        <TextBlock Text="{Binding SharedTrend}" FontSize="9" Foreground="#6D28D9"/>
+                    </StackPanel>
+                    <lvc:CartesianChart Grid.Row="2" Series="{Binding SharedSparkline}" Height="32"/>
+                </Grid>
+            </Border>
+            <Border Style="{StaticResource DocumentsKpiCard}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="32"/>
+                    </Grid.RowDefinitions>
+                    <StackPanel Orientation="Horizontal">
+                        <Border Width="30" Height="30" CornerRadius="8" Background="#E0F2FE" Margin="0,0,8,0">
+                            <materialDesign:PackIcon Kind="Database" Foreground="#0EA5E9" Width="16" Height="16"
+                                                     HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <TextBlock Text="Stockage utilisé" FontSize="10" Foreground="{StaticResource SbmsTextMutedBrush}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <StackPanel Grid.Row="1" Margin="0,6,0,0">
+                        <TextBlock FontSize="20" FontWeight="Bold" Foreground="#0EA5E9">
+                            <Run Text="{Binding StoragePercent, StringFormat={}{0:0.#}}"/><Run Text="%"/>
+                        </TextBlock>
+                        <TextBlock Text="{Binding StorageDisplay}" FontSize="9" Foreground="#0EA5E9"/>
+                    </StackPanel>
+                    <lvc:CartesianChart Grid.Row="2" Series="{Binding StorageSparkline}" Height="32"/>
+                </Grid>
+            </Border>
+            <Border Style="{StaticResource DocumentsKpiCard}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="32"/>
+                    </Grid.RowDefinitions>
+                    <StackPanel Orientation="Horizontal">
+                        <Border Width="30" Height="30" CornerRadius="8" Background="#FEE2E2" Margin="0,0,8,0">
+                            <materialDesign:PackIcon Kind="Alert" Foreground="#DC2626" Width="16" Height="16"
+                                                     HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <TextBlock Text="Documents critiques" FontSize="10" Foreground="{StaticResource SbmsTextMutedBrush}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <StackPanel Grid.Row="1" Margin="0,6,0,0">
+                        <TextBlock Text="{Binding CriticalCount}" FontSize="20" FontWeight="Bold" Foreground="#DC2626"/>
+                        <TextBlock Text="{Binding CriticalTrend}" FontSize="9" Foreground="#DC2626"/>
+                    </StackPanel>
+                    <lvc:CartesianChart Grid.Row="2" Series="{Binding CriticalSparkline}" Height="32"/>
+                </Grid>
+            </Border>
+        </UniformGrid>
+
+        <!-- CORPS -->
+        <Border Grid.Row="2" Background="White" CornerRadius="10" BorderBrush="#E8EFED" BorderThickness="1" Margin="12,4,12,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="220"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="320"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- CATÉGORIES -->
+                <Border Grid.Column="0" BorderBrush="#E8EFED" BorderThickness="0,0,1,0" Background="#F8FAFC">
+                    <DockPanel Margin="8">
+                        <TextBlock DockPanel.Dock="Bottom" Text="Tags populaires" FontWeight="SemiBold" FontSize="11"
+                                   Foreground="#64748B" Margin="8,12,8,4"/>
+                        <WrapPanel DockPanel.Dock="Bottom" Margin="4,0,4,8">
+                            <ItemsControl ItemsSource="{Binding PopularTags}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type models:DocumentTagItem}">
+                                        <Button Command="{Binding DataContext.FilterByTagCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}" Margin="0,0,6,6" Padding="0" Background="Transparent" BorderThickness="0" Cursor="Hand">
+                                            <Border Background="{Binding Background, Converter={StaticResource HexToBrushConverter}}"
+                                                    CornerRadius="12" Padding="8,4">
+                                                <TextBlock Text="{Binding Label}" FontSize="10" FontWeight="SemiBold"
+                                                           Foreground="{Binding Foreground, Converter={StaticResource HexToBrushConverter}}"/>
+                                            </Border>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <Button Content="+ Plus" Style="{StaticResource DocumentsToolbarButton}" Padding="8,4" FontSize="10"
+                                    Command="{Binding DataContext.ShowMoreTagsCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
+                        </WrapPanel>
+                        <TextBlock DockPanel.Dock="Top" Text="Catégories" FontWeight="SemiBold" FontSize="12" Foreground="#1B3D3B" Margin="8,8,8,4"/>
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <ItemsControl ItemsSource="{Binding Categories}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type models:DocumentCategoryItem}">
+                                        <Button Style="{StaticResource DocumentsCategoryButton}"
+                                                Command="{Binding DataContext.SelectCategoryCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding CategoryId}">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <materialDesign:PackIcon Kind="{Binding IconKind, Converter={StaticResource StringToPackIconKindConverter}}"
+                                                                             Width="18" Height="18" Margin="0,0,8,0"
+                                                                             Foreground="{Binding IconColor, Converter={StaticResource HexToBrushConverter}}"/>
+                                                    <TextBlock Text="{Binding Label}" FontSize="12" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                                <Border Grid.Column="1" CornerRadius="10" Padding="6,2" MinWidth="28">
+                                                    <Border.Style>
+                                                        <Style TargetType="Border">
+                                                            <Setter Property="Background" Value="#E2E8F0"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                                    <Setter Property="Background" Value="#2D6A4F"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Border.Style>
+                                                    <TextBlock Text="{Binding Count}" FontSize="10" FontWeight="SemiBold">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="Foreground" Value="#475569"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                                        <Setter Property="Foreground" Value="White"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                </Border>
+                                            </Grid>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </DockPanel>
+                </Border>
+
+                <!-- EXPLORATEUR -->
+                <DockPanel Grid.Column="1" Margin="0">
+                    <Border DockPanel.Dock="Bottom" Padding="12,8" BorderBrush="#E8EFED" BorderThickness="0,1,0,0">
+                        <DockPanel>
+                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                <Button Command="{Binding PreviousPageCommand}" Style="{StaticResource DocumentsToolbarButton}" Padding="6,4">
+                                    <materialDesign:PackIcon Kind="ChevronLeft"/>
+                                </Button>
+                                <ItemsControl ItemsSource="{Binding PageNumbers}" Margin="4,0">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Button Content="{Binding}" Command="{Binding DataContext.GoToPageCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding}" Style="{StaticResource DocumentsToolbarButton}"
+                                                    MinWidth="28" Padding="4,2" Margin="2,0"/>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <Button Command="{Binding NextPageCommand}" Style="{StaticResource DocumentsToolbarButton}" Padding="6,4">
+                                    <materialDesign:PackIcon Kind="ChevronRight"/>
+                                </Button>
+                            </StackPanel>
+                            <TextBlock Text="{Binding PaginationDisplay}" FontSize="11" Foreground="#64748B" VerticalAlignment="Center"/>
+                        </DockPanel>
+                    </Border>
+                    <Border DockPanel.Dock="Top" Padding="12,8" BorderBrush="#E8EFED" BorderThickness="0,0,0,1">
+                        <DockPanel>
+                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                <ComboBox ItemsSource="{Binding SortOptions}" SelectedItem="{Binding SelectedSort}"
+                                          Style="{StaticResource DocumentsFilterCombo}" Width="140" Margin="8,0,0,0"/>
+                                <Border Background="#F1F5F9" CornerRadius="6" Margin="8,0,0,0">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Button Command="{Binding SetGridViewCommand}" Style="{StaticResource DocumentsToolbarButton}" Padding="8,4">
+                                            <TextBlock Text="Grille" FontSize="11"/>
+                                        </Button>
+                                        <Button Command="{Binding SetTableViewCommand}" Style="{StaticResource DocumentsToolbarButton}" Padding="8,4">
+                                            <TextBlock Text="Tableau" FontSize="11"/>
+                                        </Button>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                            <WrapPanel>
+                                <ComboBox ItemsSource="{Binding TypeFilters}" SelectedItem="{Binding FilterType}"
+                                          Style="{StaticResource DocumentsFilterCombo}" Width="120" Margin="0,0,4,0"/>
+                                <ComboBox ItemsSource="{Binding CategoryFilters}" SelectedItem="{Binding FilterCategory}"
+                                          Style="{StaticResource DocumentsFilterCombo}" Width="110" Margin="0,0,4,0"/>
+                                <ComboBox ItemsSource="{Binding DateFilters}" SelectedItem="{Binding FilterDate}"
+                                          Style="{StaticResource DocumentsFilterCombo}" Width="100" Margin="0,0,4,0"/>
+                                <ComboBox ItemsSource="{Binding BuildingFilters}" SelectedItem="{Binding FilterBuilding}"
+                                          Style="{StaticResource DocumentsFilterCombo}" Width="120" Margin="0,0,4,0"/>
+                                <Button Style="{StaticResource DocumentsToolbarButton}" Padding="8,4"
+                                        Command="{Binding OpenAdvancedFiltersCommand}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="FilterVariant" Margin="0,0,4,0"/>
+                                        <TextBlock Text="Filtres" FontSize="11"/>
+                                    </StackPanel>
+                                </Button>
+                            </WrapPanel>
+                        </DockPanel>
+                    </Border>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="12,8">
+                        <Grid>
+                        <!-- GRILLE -->
+                        <ListBox ItemsSource="{Binding PagedDocuments}"
+                                 Visibility="{Binding IsGridView, Converter={StaticResource BoolToVisibilityConverter}}"
+                                 Background="Transparent" BorderThickness="0"
+                                 SelectedItem="{Binding SelectedDocument}">
+                            <ListBox.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel/>
+                                </ItemsPanelTemplate>
+                            </ListBox.ItemsPanel>
+                            <ListBox.ItemContainerStyle>
+                                <Style TargetType="ListBoxItem">
+                                    <Setter Property="Padding" Value="0"/>
+                                    <Setter Property="Margin" Value="0"/>
+                                    <Setter Property="Background" Value="Transparent"/>
+                                    <Setter Property="BorderThickness" Value="0"/>
+                                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="ListBoxItem">
+                                                <ContentPresenter/>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </ListBox.ItemContainerStyle>
+                            <ListBox.ItemTemplate>
+                                <DataTemplate DataType="{x:Type models:DocumentListItem}">
+                                    <Border Style="{StaticResource DocumentsGridCard}"
+                                            MouseLeftButtonUp="DocumentCard_Click">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="*"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+                                            <DockPanel>
+                                                <Button DockPanel.Dock="Right" Style="{StaticResource MaterialDesignIconButton}" Width="24" Height="24"
+                                                        Command="{Binding DataContext.ToggleFavoriteCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        CommandParameter="{Binding}">
+                                                    <materialDesign:PackIcon Kind="Star" Foreground="#F59E0B"/>
+                                                </Button>
+                                                <materialDesign:PackIcon Kind="{Binding FileTypeIcon, Converter={StaticResource StringToPackIconKindConverter}}"
+                                                                         Width="40" Height="40" Foreground="#DC2626" HorizontalAlignment="Left"/>
+                                            </DockPanel>
+                                            <StackPanel Grid.Row="1" Margin="0,8,0,0">
+                                                <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" FontSize="11"
+                                                           TextTrimming="CharacterEllipsis" TextWrapping="Wrap"/>
+                                                <TextBlock Text="{Binding SizeDisplay}" FontSize="10" Foreground="#94A3B8" Margin="0,2,0,0"/>
+                                                <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                                    <materialDesign:PackIcon Kind="{Binding CategoryIcon, Converter={StaticResource StringToPackIconKindConverter}}"
+                                                                             Width="14" Height="14" Foreground="#64748B" Margin="0,0,4,0"/>
+                                                    <TextBlock Text="{Binding CategoryLabel}" FontSize="10" Foreground="#64748B"/>
+                                                </StackPanel>
+                                                <TextBlock Text="{Binding DateDisplay}" FontSize="10" Foreground="#94A3B8" Margin="0,2,0,0"/>
+                                            </StackPanel>
+                                            <WrapPanel Grid.Row="2" Margin="0,6,0,0">
+                                                <ItemsControl ItemsSource="{Binding Tags}">
+                                                    <ItemsControl.ItemsPanel>
+                                                        <ItemsPanelTemplate>
+                                                            <WrapPanel/>
+                                                        </ItemsPanelTemplate>
+                                                    </ItemsControl.ItemsPanel>
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate DataType="{x:Type models:DocumentTagItem}">
+                                                            <Border Background="{Binding Background, Converter={StaticResource HexToBrushConverter}}"
+                                                                    CornerRadius="4" Padding="4,2" Margin="0,0,4,4">
+                                                                <TextBlock Text="{Binding Label}" FontSize="8" FontWeight="SemiBold"
+                                                                           Foreground="{Binding Foreground, Converter={StaticResource HexToBrushConverter}}"/>
+                                                            </Border>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </WrapPanel>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+
+                        <!-- TABLEAU -->
+                        <ListView ItemsSource="{Binding PagedDocuments}"
+                                  Visibility="{Binding IsGridView, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}"
+                                  SelectedItem="{Binding SelectedDocument}" BorderThickness="0">
+                            <ListView.View>
+                                <GridView>
+                                    <GridViewColumn Header="Nom" Width="220" DisplayMemberBinding="{Binding FileName}"/>
+                                    <GridViewColumn Header="Type" Width="60" DisplayMemberBinding="{Binding FileType}"/>
+                                    <GridViewColumn Header="Taille" Width="80" DisplayMemberBinding="{Binding SizeDisplay}"/>
+                                    <GridViewColumn Header="Catégorie" Width="100" DisplayMemberBinding="{Binding CategoryLabel}"/>
+                                    <GridViewColumn Header="Bâtiment" Width="120" DisplayMemberBinding="{Binding Building}"/>
+                                    <GridViewColumn Header="Date" Width="100" DisplayMemberBinding="{Binding DateDisplay}"/>
+                                    <GridViewColumn Header="Statut" Width="80" DisplayMemberBinding="{Binding Status}"/>
+                                </GridView>
+                            </ListView.View>
+                        </ListView>
+                        </Grid>
+                    </ScrollViewer>
+                </DockPanel>
+
+                <!-- DÉTAIL -->
+                <Border Grid.Column="2" BorderBrush="#E8EFED" BorderThickness="1,0,0,0" Background="#FAFBFC"
+                        Visibility="{Binding SelectedDocument, Converter={StaticResource NullToVisibilityConverter}}">
+                    <DockPanel DataContext="{Binding SelectedDocument}" Margin="12,10">
+                        <StackPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">
+                            <Button Style="{StaticResource DocumentsPrimaryButton}" HorizontalAlignment="Stretch" Margin="0,0,0,8"
+                                    Command="{Binding DataContext.OpenDocumentCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                    CommandParameter="{Binding}">
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                    <materialDesign:PackIcon Kind="OpenInNew" Margin="0,0,6,0"/>
+                                    <TextBlock Text="Ouvrir"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Style="{StaticResource DocumentsToolbarButton}" HorizontalAlignment="Stretch" Margin="0,0,0,8"
+                                    Command="{Binding DataContext.DownloadDocumentCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                    CommandParameter="{Binding}">
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                    <materialDesign:PackIcon Kind="Download" Margin="0,0,6,0"/>
+                                    <TextBlock Text="Télécharger"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Style="{StaticResource MaterialDesignIconButton}" HorizontalAlignment="Center"
+                                    Command="{Binding DataContext.ShowDocumentActionsCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                    CommandParameter="{Binding}">
+                                <materialDesign:PackIcon Kind="DotsHorizontal"/>
+                            </Button>
+                        </StackPanel>
+                        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                            <Button DockPanel.Dock="Right" Command="{Binding DataContext.CloseDetailCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                    Style="{StaticResource MaterialDesignIconButton}">
+                                <materialDesign:PackIcon Kind="Close"/>
+                            </Button>
+                            <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" FontSize="13" TextWrapping="Wrap"/>
+                        </DockPanel>
+                        <Border DockPanel.Dock="Top" Background="White" BorderBrush="#E2E8F0" BorderThickness="1"
+                                CornerRadius="8" Padding="16" Margin="0,0,0,12" MinHeight="160">
+                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                                <materialDesign:PackIcon Kind="{Binding FileTypeIcon, Converter={StaticResource StringToPackIconKindConverter}}"
+                                                         Width="48" Height="48" Foreground="#DC2626" HorizontalAlignment="Center"/>
+                                <TextBlock Text="{Binding PreviewTitle}" FontWeight="Bold" FontSize="12" Foreground="#1B3D3B"
+                                           HorizontalAlignment="Center" Margin="0,12,0,0" TextAlignment="Center"/>
+                                <TextBlock Text="{Binding PreviewBody}" FontSize="10" Foreground="#64748B" TextWrapping="Wrap"
+                                           MaxHeight="80" TextTrimming="CharacterEllipsis" Margin="0,8,0,0"/>
+                            </StackPanel>
+                        </Border>
+                        <Border DockPanel.Dock="Top" Background="#F1F5F9" CornerRadius="6" Padding="8,4" Margin="0,0,0,12">
+                            <DockPanel>
+                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                    <Button Style="{StaticResource MaterialDesignIconButton}" Width="28" Height="28"
+                                            Command="{Binding DataContext.OpenDocumentCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding}">
+                                        <materialDesign:PackIcon Kind="Magnify"/>
+                                    </Button>
+                                    <Button Style="{StaticResource MaterialDesignIconButton}" Width="28" Height="28"
+                                            Command="{Binding DataContext.DownloadDocumentCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding}">
+                                        <materialDesign:PackIcon Kind="Download"/>
+                                    </Button>
+                                    <Button Style="{StaticResource MaterialDesignIconButton}" Width="28" Height="28"
+                                            Command="{Binding DataContext.ShowDocumentActionsCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding}">
+                                        <materialDesign:PackIcon Kind="Fullscreen"/>
+                                    </Button>
+                                </StackPanel>
+                                <TextBlock Text="1 / 1" FontSize="10" Foreground="#64748B" VerticalAlignment="Center"/>
+                            </DockPanel>
+                        </Border>
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <StackPanel>
+                                <TextBlock Text="Informations du document" FontWeight="SemiBold" FontSize="13" Foreground="#1B3D3B" Margin="0,0,0,8"/>
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/>
+                                        <RowDefinition/><RowDefinition/><RowDefinition/>
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Grid.Row="0" Text="Type" FontSize="10" Foreground="{StaticResource SbmsTextMutedBrush}"/>
+                                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding TypeLabel}" FontWeight="SemiBold" FontSize="11"/>
+                                    <TextBlock Grid.Row="1" Text="Taille" FontSize="10" Foreground="{StaticResource SbmsTextMutedBrush}"/>
+                                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SizeDisplay}" FontWeight="SemiBold" FontSize="11"/>
+                                    <TextBlock Grid.Row="2" Text="Catégorie" FontSize="10" Foreground="{StaticResource SbmsTextMutedBrush}"/>
+                                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding CategoryLabel}" FontWeight="SemiBold" FontSize="11"/>
+                                    <TextBlock Grid.Row="3" Text="Ajouté par" FontSize="10" Foreground="{StaticResource SbmsTextMutedBrush}"/>
+                                    <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding AddedBy}" FontWeight="SemiBold" FontSize="11"/>
+                                    <TextBlock Grid.Row="4" Text="Date d'ajout" FontSize="10" Foreground="{StaticResource SbmsTextMutedBrush}"/>
+                                    <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding AddedAtDisplay}" FontWeight="SemiBold" FontSize="11"/>
+                                    <TextBlock Grid.Row="5" Text="Dernière modification" FontSize="10" Foreground="{StaticResource SbmsTextMutedBrush}"/>
+                                    <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding ModifiedAtDisplay}" FontWeight="SemiBold" FontSize="11"/>
+                                    <TextBlock Grid.Row="6" Text="Bâtiment" FontSize="10" Foreground="{StaticResource SbmsTextMutedBrush}"/>
+                                    <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding Building}" FontWeight="SemiBold" FontSize="11"/>
+                                </Grid>
+                                <TextBlock Text="Statut" FontSize="10" Foreground="{StaticResource SbmsTextMutedBrush}"/>
+                                <Border Background="{Binding StatusBadgeBackground, Converter={StaticResource HexToBrushConverter}}" CornerRadius="6" Padding="8,3" HorizontalAlignment="Left" Margin="0,4,0,0">
+                                    <TextBlock Text="{Binding Status}" FontSize="10" FontWeight="SemiBold"
+                                               Foreground="{Binding StatusBadgeForeground, Converter={StaticResource HexToBrushConverter}}"/>
+                                </Border>
+                                <Button Content="Vider la base documentaire"
+                                        Style="{StaticResource DocumentsToolbarButton}"
+                                        Margin="0,14,0,0"
+                                        Command="{Binding DataContext.PurgeDocumentsDatabaseCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </DockPanel>
+                </Border>
+            </Grid>
+        </Border>
+
+        <ProgressBar Grid.Row="0" Grid.RowSpan="3" IsIndeterminate="True" Height="3" VerticalAlignment="Top"
+                     Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibilityConverter}}" Foreground="#2D6A4F"/>
+    </Grid>
+</UserControl>

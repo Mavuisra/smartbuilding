@@ -1,0 +1,583 @@
+<UserControl x:Class="SmartBuilding.Desktop.WPF.Views.UsersView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:lvc="clr-namespace:LiveChartsCore.SkiaSharpView.WPF;assembly=LiveChartsCore.SkiaSharpView.WPF"
+             xmlns:conv="clr-namespace:SmartBuilding.Desktop.WPF.Converters"
+             xmlns:models="clr-namespace:SmartBuilding.Desktop.WPF.Models"
+             Background="{StaticResource SbmsPageBackgroundBrush}">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Themes/UsersStyles.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <conv:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+            <conv:InverseBoolConverter x:Key="InverseBoolConverter"/>
+            <conv:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
+            <conv:HexToBrushConverter x:Key="HexToBrushConverter"/>
+            <conv:StringToPackIconKindConverter x:Key="StringToPackIconKindConverter"/>
+            <conv:IntEqualsToVisibilityConverter x:Key="IntEqualsToVisibilityConverter"/>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- HEADER -->
+        <Border Grid.Row="0" Background="White" Padding="24,16" BorderBrush="#E0E8E6" BorderThickness="0,0,0,1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="300"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                    <TextBlock Text="Utilisateurs" FontSize="26" FontWeight="Bold" Foreground="#1B3D3B"/>
+                    <TextBlock Text="Gestion des comptes et accès système"
+                               Foreground="{StaticResource SbmsTextMutedBrush}" FontSize="13" Margin="0,2,0,0"/>
+                </StackPanel>
+                <Border Grid.Column="1" Margin="24,0" BorderBrush="#E2E8F0" BorderThickness="1"
+                        CornerRadius="8" Background="White" VerticalAlignment="Center" Height="44">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="44"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <materialDesign:PackIcon Kind="Magnify" Width="20" Height="20" Foreground="#94A3B8"
+                                                 HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <TextBox Grid.Column="1" BorderThickness="0" Background="Transparent" VerticalContentAlignment="Center"
+                                 materialDesign:HintAssist.Hint="Rechercher un utilisateur..."
+                                 materialDesign:TextFieldAssist.DecorationVisibility="Hidden"
+                                 Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"/>
+                        <Border Grid.Column="2" Background="#F1F5F9" CornerRadius="4" Padding="6,2" Margin="0,0,10,0" VerticalAlignment="Center">
+                            <TextBlock Text="Ctrl + K" FontSize="10" Foreground="#64748B"/>
+                        </Border>
+                    </Grid>
+                </Border>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <ComboBox ItemsSource="{Binding RoleFilters}" SelectedItem="{Binding FilterRole}"
+                              Style="{StaticResource UsersFilterCombo}" Width="150" Margin="0,0,8,0"/>
+                    <Button Style="{StaticResource UsersToolbarButton}" Margin="0,0,8,0">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="FilterVariant" Margin="0,0,6,0"/>
+                            <TextBlock Text="Filtrer par rôle"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource UsersPrimaryButton}">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="AccountPlus" Margin="0,0,6,0"/>
+                            <TextBlock Text="Ajouter un utilisateur"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource MaterialDesignIconButton}" Width="40" Height="40" Margin="12,0,4,0">
+                        <materialDesign:PackIcon Kind="BellOutline"/>
+                    </Button>
+                    <Border Background="#E63946" CornerRadius="9" MinWidth="18" Height="18" Margin="-14,-8,8,0" VerticalAlignment="Top">
+                        <TextBlock Text="{Binding NotificationCount}" Foreground="White" FontSize="10" FontWeight="Bold"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <Button Style="{StaticResource MaterialDesignIconButton}" Width="40" Height="40" Margin="0,0,8,0">
+                        <materialDesign:PackIcon Kind="HelpCircleOutline"/>
+                    </Button>
+                    <Border Width="36" Height="36" CornerRadius="18" Background="{StaticResource SbmsAccentGreenBrush}">
+                        <TextBlock Text="{Binding UserInitials}" Foreground="White" FontWeight="Bold"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- KPI -->
+        <UniformGrid Grid.Row="1" Columns="6" Margin="12,8,12,4">
+            <Border Style="{StaticResource UsersKpiCard}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="32"/>
+                    </Grid.RowDefinitions>
+                    <StackPanel Orientation="Horizontal">
+                        <Border Width="30" Height="30" CornerRadius="8" Background="#DBEAFE" Margin="0,0,8,0">
+                            <materialDesign:PackIcon Kind="AccountGroup" Foreground="#2563EB" Width="16" Height="16"
+                                                     HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <TextBlock Text="Total utilisateurs" FontSize="10" Foreground="{StaticResource SbmsTextMutedBrush}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <StackPanel Grid.Row="1" Margin="0,6,0,0">
+                        <TextBlock Text="{Binding TotalCount}" FontSize="20" FontWeight="Bold" Foreground="#2563EB"/>
+                        <TextBlock Text="{Binding TotalTrend}" FontSize="9" Foreground="#2563EB"/>
+                    </StackPanel>
+                    <lvc:CartesianChart Grid.Row="2" Series="{Binding TotalSparkline}" Height="32"/>
+                </Grid>
+            </Border>
+            <Border Style="{StaticResource UsersKpiCard}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="32"/>
+                    </Grid.RowDefinitions>
+                    <StackPanel Orientation="Horizontal">
+                        <Border Width="30" Height="30" CornerRadius="8" Background="#EDE9FE" Margin="0,0,8,0">
+                            <materialDesign:PackIcon Kind="ShieldAccount" Foreground="#6D28D9" Width="16" Height="16"
+                                                     HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <TextBlock Text="Administrateurs" FontSize="10" Foreground="{StaticResource SbmsTextMutedBrush}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <StackPanel Grid.Row="1" Margin="0,6,0,0">
+                        <TextBlock Text="{Binding AdministratorsCount}" FontSize="20" FontWeight="Bold" Foreground="#6D28D9"/>
+                        <TextBlock Text="{Binding AdministratorsTrend}" FontSize="9" Foreground="#6D28D9"/>
+                    </StackPanel>
+                    <lvc:CartesianChart Grid.Row="2" Series="{Binding AdministratorsSparkline}" Height="32"/>
+                </Grid>
+            </Border>
+            <Border Style="{StaticResource UsersKpiCard}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="32"/>
+                    </Grid.RowDefinitions>
+                    <StackPanel Orientation="Horizontal">
+                        <Border Width="30" Height="30" CornerRadius="8" Background="#DCFCE7" Margin="0,0,8,0">
+                            <materialDesign:PackIcon Kind="AccountCheck" Foreground="#2D6A4F" Width="16" Height="16"
+                                                     HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <TextBlock Text="Utilisateurs actifs" FontSize="10" Foreground="{StaticResource SbmsTextMutedBrush}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <StackPanel Grid.Row="1" Margin="0,6,0,0">
+                        <TextBlock Text="{Binding ActiveCount}" FontSize="20" FontWeight="Bold" Foreground="#2D6A4F"/>
+                        <TextBlock Text="{Binding ActiveTrend}" FontSize="9" Foreground="#2D6A4F"/>
+                    </StackPanel>
+                    <lvc:CartesianChart Grid.Row="2" Series="{Binding ActiveSparkline}" Height="32"/>
+                </Grid>
+            </Border>
+            <Border Style="{StaticResource UsersKpiCard}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="32"/>
+                    </Grid.RowDefinitions>
+                    <StackPanel Orientation="Horizontal">
+                        <Border Width="30" Height="30" CornerRadius="8" Background="#FFEDD5" Margin="0,0,8,0">
+                            <materialDesign:PackIcon Kind="AccountCancel" Foreground="#EA580C" Width="16" Height="16"
+                                                     HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <TextBlock Text="Comptes suspendus" FontSize="10" Foreground="{StaticResource SbmsTextMutedBrush}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <StackPanel Grid.Row="1" Margin="0,6,0,0">
+                        <TextBlock Text="{Binding SuspendedCount}" FontSize="20" FontWeight="Bold" Foreground="#EA580C"/>
+                        <TextBlock Text="{Binding SuspendedTrend}" FontSize="9" Foreground="#EA580C"/>
+                    </StackPanel>
+                    <lvc:CartesianChart Grid.Row="2" Series="{Binding SuspendedSparkline}" Height="32"/>
+                </Grid>
+            </Border>
+            <Border Style="{StaticResource UsersKpiCard}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="32"/>
+                    </Grid.RowDefinitions>
+                    <StackPanel Orientation="Horizontal">
+                        <Border Width="30" Height="30" CornerRadius="8" Background="#DBEAFE" Margin="0,0,8,0">
+                            <materialDesign:PackIcon Kind="Login" Foreground="#2563EB" Width="16" Height="16"
+                                                     HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <TextBlock Text="Connexions aujourd'hui" FontSize="10" Foreground="{StaticResource SbmsTextMutedBrush}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <StackPanel Grid.Row="1" Margin="0,6,0,0">
+                        <TextBlock Text="{Binding LoginsTodayCount}" FontSize="20" FontWeight="Bold" Foreground="#2563EB"/>
+                        <TextBlock Text="{Binding LoginsTodayTrend}" FontSize="9" Foreground="#2563EB"/>
+                    </StackPanel>
+                    <lvc:CartesianChart Grid.Row="2" Series="{Binding LoginsSparkline}" Height="32"/>
+                </Grid>
+            </Border>
+            <Border Style="{StaticResource UsersKpiCard}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="32"/>
+                    </Grid.RowDefinitions>
+                    <StackPanel Orientation="Horizontal">
+                        <Border Width="30" Height="30" CornerRadius="8" Background="#FEE2E2" Margin="0,0,8,0">
+                            <materialDesign:PackIcon Kind="LanConnect" Foreground="#DC2626" Width="16" Height="16"
+                                                     HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <TextBlock Text="Sessions actives" FontSize="10" Foreground="{StaticResource SbmsTextMutedBrush}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <StackPanel Grid.Row="1" Margin="0,6,0,0">
+                        <TextBlock Text="{Binding ActiveSessionsCount}" FontSize="20" FontWeight="Bold" Foreground="#DC2626"/>
+                        <TextBlock Text="{Binding ActiveSessionsTrend}" FontSize="9" Foreground="#DC2626"/>
+                    </StackPanel>
+                    <lvc:CartesianChart Grid.Row="2" Series="{Binding SessionsSparkline}" Height="32"/>
+                </Grid>
+            </Border>
+        </UniformGrid>
+
+        <!-- LISTE + DÉTAIL -->
+        <Grid Grid.Row="2" Margin="12,4,12,4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="380"/>
+            </Grid.ColumnDefinitions>
+
+            <Border Background="White" CornerRadius="10" BorderBrush="#E8EFED" BorderThickness="1" Margin="0,0,8,0">
+                <DockPanel>
+                    <Border DockPanel.Dock="Bottom" Padding="12,8" BorderBrush="#E8EFED" BorderThickness="0,1,0,0">
+                        <DockPanel>
+                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                <ComboBox ItemsSource="{Binding PageSizeOptions}" SelectedItem="{Binding PageSize}"
+                                          Style="{StaticResource UsersFilterCombo}" Width="70" Margin="0,0,8,0"/>
+                                <TextBlock Text="/ page" VerticalAlignment="Center" FontSize="11" Foreground="#64748B" Margin="0,0,8,0"/>
+                                <Button Command="{Binding PreviousPageCommand}" Style="{StaticResource UsersToolbarButton}" Padding="6,4">
+                                    <materialDesign:PackIcon Kind="ChevronLeft"/>
+                                </Button>
+                                <ItemsControl ItemsSource="{Binding PageNumbers}" Margin="4,0">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Button Content="{Binding}" Command="{Binding DataContext.GoToPageCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding}" Style="{StaticResource UsersToolbarButton}" MinWidth="28" Margin="2,0"/>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <Button Command="{Binding NextPageCommand}" Style="{StaticResource UsersToolbarButton}" Padding="6,4">
+                                    <materialDesign:PackIcon Kind="ChevronRight"/>
+                                </Button>
+                            </StackPanel>
+                            <TextBlock Text="{Binding PaginationDisplay}" FontSize="11" Foreground="#64748B" VerticalAlignment="Center"/>
+                        </DockPanel>
+                    </Border>
+                    <Border DockPanel.Dock="Top" Padding="16,12" BorderBrush="#E8EFED" BorderThickness="0,0,0,1">
+                        <DockPanel>
+                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                <Button Style="{StaticResource UsersToolbarButton}" Padding="8,4" Margin="0,0,4,0">
+                                    <materialDesign:PackIcon Kind="ViewList"/>
+                                </Button>
+                                <Button Style="{StaticResource UsersToolbarButton}" Padding="8,4" Margin="0,0,8,0">
+                                    <materialDesign:PackIcon Kind="ViewGrid"/>
+                                </Button>
+                                <Button Style="{StaticResource UsersToolbarButton}" Padding="8,4">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="Export" Margin="0,0,4,0"/>
+                                        <TextBlock Text="Exporter" FontSize="11"/>
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                            <TextBlock Text="Liste des utilisateurs" FontWeight="SemiBold" FontSize="15" Foreground="#1B3D3B" VerticalAlignment="Center"/>
+                        </DockPanel>
+                    </Border>
+                    <DataGrid ItemsSource="{Binding PagedUsers}" SelectedItem="{Binding SelectedUser}"
+                              Style="{StaticResource SbmsDataGrid}" IsReadOnly="True" BorderThickness="0">
+                        <DataGrid.Columns>
+                            <DataGridTemplateColumn Header="Utilisateur" Width="200">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate DataType="{x:Type models:UserListItem}">
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <Border Width="36" Height="36" CornerRadius="18"
+                                                    Background="{Binding AvatarBackground, Converter={StaticResource HexToBrushConverter}}" Margin="0,0,10,0">
+                                                <TextBlock Text="{Binding Initials}" FontWeight="Bold" FontSize="11"
+                                                           Foreground="{Binding AvatarForeground, Converter={StaticResource HexToBrushConverter}}"
+                                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+                                            <StackPanel VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding FullName}" FontWeight="SemiBold" FontSize="12"/>
+                                                <TextBlock Text="{Binding JobTitle}" FontSize="10" Foreground="#64748B"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="Email" Binding="{Binding Email}" Width="180"/>
+                            <DataGridTemplateColumn Header="Rôle" Width="120">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate DataType="{x:Type models:UserListItem}">
+                                        <Border Background="{Binding RoleBadgeBackground, Converter={StaticResource HexToBrushConverter}}"
+                                                CornerRadius="6" Padding="8,3" HorizontalAlignment="Left">
+                                            <TextBlock Text="{Binding RoleLabel}" FontSize="10" FontWeight="SemiBold"
+                                                       Foreground="{Binding RoleBadgeForeground, Converter={StaticResource HexToBrushConverter}}"/>
+                                        </Border>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="Département" Binding="{Binding Department}" Width="100"/>
+                            <DataGridTemplateColumn Header="Statut" Width="100">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate DataType="{x:Type models:UserListItem}">
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <Ellipse Width="8" Height="8" Fill="{Binding StatusDotColor, Converter={StaticResource HexToBrushConverter}}" Margin="0,0,6,0"/>
+                                            <TextBlock Text="{Binding StatusLabel}" FontSize="11"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="Dernière connexion" Binding="{Binding LastLoginDisplay}" Width="130"/>
+                            <DataGridTemplateColumn Header="Actions" Width="80">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate DataType="{x:Type models:UserListItem}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <Button Command="{Binding DataContext.SelectUserCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding}" Style="{StaticResource MaterialDesignIconButton}" Width="32" Height="32">
+                                                <materialDesign:PackIcon Kind="Eye"/>
+                                            </Button>
+                                            <Button Style="{StaticResource MaterialDesignIconButton}" Width="32" Height="32">
+                                                <materialDesign:PackIcon Kind="DotsVertical"/>
+                                            </Button>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </Border>
+
+            <!-- PANNEAU DÉTAIL -->
+            <Border Grid.Column="1" Style="{StaticResource UsersDetailCard}"
+                    Visibility="{Binding SelectedUser, Converter={StaticResource NullToVisibilityConverter}}">
+                <DockPanel DataContext="{Binding SelectedUser}">
+                    <StackPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">
+                        <Button Style="{StaticResource UsersPrimaryButton}" HorizontalAlignment="Stretch" Margin="0,0,0,8">
+                            <TextBlock Text="Modifier" HorizontalAlignment="Center"/>
+                        </Button>
+                        <Button Style="{StaticResource UsersToolbarButton}" HorizontalAlignment="Stretch" Margin="0,0,0,8">
+                            <TextBlock Text="Réinitialiser mot de passe" HorizontalAlignment="Center"/>
+                        </Button>
+                        <Button HorizontalAlignment="Stretch" Style="{StaticResource UsersToolbarButton}">
+                            <TextBlock Text="Suspendre" Foreground="#DC2626" HorizontalAlignment="Center"/>
+                        </Button>
+                    </StackPanel>
+                    <StackPanel DockPanel.Dock="Top" HorizontalAlignment="Center" Margin="0,8,0,12">
+                        <Border Width="72" Height="72" CornerRadius="36"
+                                Background="{Binding AvatarBackground, Converter={StaticResource HexToBrushConverter}}">
+                            <TextBlock Text="{Binding Initials}" FontSize="22" FontWeight="Bold"
+                                       Foreground="{Binding AvatarForeground, Converter={StaticResource HexToBrushConverter}}"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <TextBlock Text="{Binding FullName}" FontWeight="Bold" FontSize="16" HorizontalAlignment="Center" Margin="0,8,0,0"/>
+                        <TextBlock Text="{Binding JobTitle}" FontSize="12" Foreground="#64748B" HorizontalAlignment="Center"/>
+                        <Border Background="{Binding RoleBadgeBackground, Converter={StaticResource HexToBrushConverter}}"
+                                CornerRadius="6" Padding="8,3" Margin="0,6,0,0" HorizontalAlignment="Center">
+                            <TextBlock Text="{Binding RoleLabel}" FontSize="10" FontWeight="SemiBold"
+                                       Foreground="{Binding RoleBadgeForeground, Converter={StaticResource HexToBrushConverter}}"/>
+                        </Border>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,8,0,0">
+                            <Ellipse Width="8" Height="8" Fill="{Binding OnlineStatusColor, Converter={StaticResource HexToBrushConverter}}" Margin="0,0,6,0"/>
+                            <TextBlock Text="{Binding OnlineStatusLabel}" FontSize="11" Foreground="{Binding OnlineStatusColor, Converter={StaticResource HexToBrushConverter}}"/>
+                        </StackPanel>
+                    </StackPanel>
+                    <Border DockPanel.Dock="Top" BorderBrush="#E8EFED" BorderThickness="0,0,0,1" Margin="0,0,0,8">
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                            <Button Content="Informations" Command="{Binding DataContext.SetDetailTabCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="0"
+                                    Style="{StaticResource UsersToolbarButton}" Padding="10,8"/>
+                            <Button Content="Permissions" Command="{Binding DataContext.SetDetailTabCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="1"
+                                    Style="{StaticResource UsersToolbarButton}" Padding="10,8"/>
+                            <Button Content="Activités" Command="{Binding DataContext.SetDetailTabCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="2"
+                                    Style="{StaticResource UsersToolbarButton}" Padding="10,8"/>
+                            <Button Content="Sécurité" Command="{Binding DataContext.SetDetailTabCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="3"
+                                    Style="{StaticResource UsersToolbarButton}" Padding="10,8"/>
+                        </StackPanel>
+                    </Border>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel DataContext="{Binding DataContext, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                            <!-- Informations -->
+                            <StackPanel Visibility="{Binding SelectedDetailTab, Converter={StaticResource IntEqualsToVisibilityConverter}, ConverterParameter=0}" Margin="4">
+                                <TextBlock Text="Informations générales" FontWeight="SemiBold" FontSize="13" Foreground="#1B3D3B" Margin="0,0,0,8"/>
+                                <Grid DataContext="{Binding SelectedUser}" Margin="0,0,0,12">
+                                    <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/>
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Grid.Row="0" Text="Email" FontSize="10" Foreground="{StaticResource SbmsTextMutedBrush}"/>
+                                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Email}" FontSize="11" FontWeight="SemiBold"/>
+                                    <TextBlock Grid.Row="1" Text="Téléphone" FontSize="10" Foreground="{StaticResource SbmsTextMutedBrush}"/>
+                                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Phone}" FontSize="11" FontWeight="SemiBold"/>
+                                    <TextBlock Grid.Row="2" Text="Rôle" FontSize="10" Foreground="{StaticResource SbmsTextMutedBrush}"/>
+                                    <Border Grid.Row="2" Grid.Column="1" Background="{Binding RoleBadgeBackground, Converter={StaticResource HexToBrushConverter}}"
+                                            CornerRadius="6" Padding="6,2" HorizontalAlignment="Left">
+                                        <TextBlock Text="{Binding RoleLabel}" FontSize="10" FontWeight="SemiBold"
+                                                   Foreground="{Binding RoleBadgeForeground, Converter={StaticResource HexToBrushConverter}}"/>
+                                    </Border>
+                                    <TextBlock Grid.Row="3" Text="Département" FontSize="10" Foreground="{StaticResource SbmsTextMutedBrush}"/>
+                                    <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding Department}" FontSize="11" FontWeight="SemiBold"/>
+                                    <TextBlock Grid.Row="4" Text="Date de création" FontSize="10" Foreground="{StaticResource SbmsTextMutedBrush}"/>
+                                    <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding CreatedAtDisplay}" FontSize="11" FontWeight="SemiBold"/>
+                                    <TextBlock Grid.Row="5" Text="Statut du compte" FontSize="10" Foreground="{StaticResource SbmsTextMutedBrush}"/>
+                                    <ComboBox Grid.Row="5" Grid.Column="1" SelectedItem="{Binding StatusLabel}" IsEnabled="False"
+                                              Style="{StaticResource UsersFilterCombo}" HorizontalAlignment="Left" MinWidth="120"/>
+                                </Grid>
+                                <TextBlock Text="Activités récentes" FontWeight="SemiBold" FontSize="13" Foreground="#1B3D3B" Margin="0,0,0,8"/>
+                                <ItemsControl ItemsSource="{Binding UserActivities}" Margin="0,0,0,12">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="{x:Type models:UserActivityItem}">
+                                            <Grid Margin="0,0,0,8">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <materialDesign:PackIcon Kind="{Binding IconKind, Converter={StaticResource StringToPackIconKindConverter}}"
+                                                                         Foreground="{Binding IconColor, Converter={StaticResource HexToBrushConverter}}"
+                                                                         Width="18" Height="18" Margin="0,2,8,0"/>
+                                                <StackPanel Grid.Column="1">
+                                                    <DockPanel>
+                                                        <TextBlock Text="{Binding TimeDisplay}" DockPanel.Dock="Right" FontSize="9" Foreground="#94A3B8"/>
+                                                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="11"/>
+                                                    </DockPanel>
+                                                    <TextBlock Text="{Binding Description}" FontSize="10" Foreground="#64748B"/>
+                                                </StackPanel>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <TextBlock FontWeight="SemiBold" FontSize="13" Foreground="#1B3D3B" Margin="0,0,0,8">
+                                    <Run Text="Sessions actives ("/><Run Text="{Binding UserSessions.Count, Mode=OneWay}"/><Run Text=")"/>
+                                </TextBlock>
+                                <ItemsControl ItemsSource="{Binding UserSessions}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="{x:Type models:UserSessionItem}">
+                                            <Border Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="8" Padding="10" Margin="0,0,0,6">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <materialDesign:PackIcon Kind="{Binding IconKind, Converter={StaticResource StringToPackIconKindConverter}}"
+                                                                             Width="24" Height="24" Foreground="#2563EB" Margin="0,0,8,0"/>
+                                                    <StackPanel Grid.Column="1">
+                                                        <TextBlock Text="{Binding DeviceLabel}" FontWeight="SemiBold" FontSize="11"/>
+                                                        <TextBlock Text="{Binding ClientInfo}" FontSize="10" Foreground="#64748B"/>
+                                                        <TextBlock Text="{Binding Location}" FontSize="10" Foreground="#94A3B8"/>
+                                                    </StackPanel>
+                                                    <Border Grid.Column="2" Background="#DCFCE7" CornerRadius="4" Padding="6,2" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding StatusLabel}" FontSize="9" Foreground="#166534" FontWeight="SemiBold"/>
+                                                    </Border>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                            <!-- Permissions -->
+                            <StackPanel Visibility="{Binding SelectedDetailTab, Converter={StaticResource IntEqualsToVisibilityConverter}, ConverterParameter=1}" Margin="4">
+                                <TextBlock Text="Permissions" FontWeight="SemiBold" FontSize="13" Foreground="#1B3D3B" Margin="0,0,0,8"/>
+                                <ItemsControl ItemsSource="{Binding UserPermissions}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="{x:Type models:UserPermissionItem}">
+                                            <Border Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="6" Padding="10,8" Margin="0,0,0,6">
+                                                <DockPanel>
+                                                    <TextBlock Text="{Binding Module}" DockPanel.Dock="Right" FontSize="10" Foreground="#94A3B8"/>
+                                                    <StackPanel>
+                                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="11"/>
+                                                        <TextBlock Text="{Binding Code}" FontSize="9" Foreground="#64748B"/>
+                                                    </StackPanel>
+                                                </DockPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                            <!-- Activités -->
+                            <StackPanel Visibility="{Binding SelectedDetailTab, Converter={StaticResource IntEqualsToVisibilityConverter}, ConverterParameter=2}" Margin="4">
+                                <TextBlock Text="Historique d'activités" FontWeight="SemiBold" FontSize="13" Foreground="#1B3D3B" Margin="0,0,0,8"/>
+                                <ItemsControl ItemsSource="{Binding UserActivities}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="{x:Type models:UserActivityItem}">
+                                            <Border BorderBrush="#E8EFED" BorderThickness="0,0,0,1" Padding="0,8">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <materialDesign:PackIcon Kind="{Binding IconKind, Converter={StaticResource StringToPackIconKindConverter}}"
+                                                                             Foreground="{Binding IconColor, Converter={StaticResource HexToBrushConverter}}"
+                                                                             Margin="0,0,8,0"/>
+                                                    <StackPanel Grid.Column="1">
+                                                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="11"/>
+                                                        <TextBlock Text="{Binding Description}" FontSize="10" Foreground="#64748B"/>
+                                                        <TextBlock Text="{Binding TimeDisplay}" FontSize="9" Foreground="#94A3B8" Margin="0,2,0,0"/>
+                                                    </StackPanel>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                            <!-- Sécurité -->
+                            <StackPanel Visibility="{Binding SelectedDetailTab, Converter={StaticResource IntEqualsToVisibilityConverter}, ConverterParameter=3}" Margin="4">
+                                <TextBlock Text="Sécurité du compte" FontWeight="SemiBold" FontSize="13" Foreground="#1B3D3B" Margin="0,0,0,8"/>
+                                <TextBlock Text="Sessions actives" FontSize="11" Foreground="#64748B" Margin="0,0,0,8"/>
+                                <ItemsControl ItemsSource="{Binding UserSessions}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="{x:Type models:UserSessionItem}">
+                                            <TextBlock Margin="0,0,0,4" FontSize="11">
+                                                <Run Text="{Binding DeviceLabel}" FontWeight="SemiBold"/>
+                                                <Run Text=" — "/>
+                                                <Run Text="{Binding StatusLabel}"/>
+                                            </TextBlock>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
+        </Grid>
+
+        <!-- ANALYTICS -->
+        <Grid Grid.Row="3" Margin="12,0,12,12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="240"/>
+            </Grid.ColumnDefinitions>
+            <Border Grid.Column="0" Style="{StaticResource UsersAnalyticsCard}" Margin="0,0,4,0">
+                <StackPanel>
+                    <TextBlock Text="Connexions par jour (7 derniers jours)" FontWeight="SemiBold" FontSize="12" Foreground="#1B3D3B" Margin="0,0,0,8"/>
+                    <lvc:CartesianChart Series="{Binding LoginTrendSeries}" Height="140"/>
+                </StackPanel>
+            </Border>
+            <Border Grid.Column="1" Style="{StaticResource UsersAnalyticsCard}" Margin="4,0">
+                <StackPanel>
+                    <TextBlock Text="Utilisateurs par rôle" FontWeight="SemiBold" FontSize="12" Foreground="#1B3D3B" Margin="0,0,0,8"/>
+                    <lvc:PieChart Series="{Binding RolePieSeries}" Height="140"/>
+                </StackPanel>
+            </Border>
+            <Border Grid.Column="2" Style="{StaticResource UsersAnalyticsCard}" Margin="4,0">
+                <StackPanel>
+                    <TextBlock Text="Répartition par statut" FontWeight="SemiBold" FontSize="12" Foreground="#1B3D3B" Margin="0,0,0,8"/>
+                    <lvc:PieChart Series="{Binding StatusPieSeries}" Height="140"/>
+                </StackPanel>
+            </Border>
+            <Border Grid.Column="3" Style="{StaticResource UsersAnalyticsCard}" Margin="4,0,0,0">
+                <StackPanel>
+                    <TextBlock Text="Dernières inscriptions" FontWeight="SemiBold" FontSize="12" Foreground="#1B3D3B" Margin="0,0,0,8"/>
+                    <ItemsControl ItemsSource="{Binding RecentSignups}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type models:UserRecentSignupItem}">
+                                <DockPanel Margin="0,0,0,8">
+                                    <Border Width="32" Height="32" CornerRadius="16" DockPanel.Dock="Left" Margin="0,0,8,0"
+                                            Background="{Binding AvatarBackground, Converter={StaticResource HexToBrushConverter}}">
+                                        <TextBlock Text="{Binding Initials}" FontSize="10" FontWeight="Bold"
+                                                   Foreground="{Binding AvatarForeground, Converter={StaticResource HexToBrushConverter}}"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding FullName}" FontWeight="SemiBold" FontSize="11"/>
+                                        <TextBlock FontSize="10" Foreground="#64748B">
+                                            <Run Text="{Binding RoleLabel}"/><Run Text=" — "/><Run Text="{Binding DateDisplay}"/>
+                                        </TextBlock>
+                                    </StackPanel>
+                                </DockPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <ProgressBar Grid.Row="0" Grid.RowSpan="4" IsIndeterminate="True" Height="3" VerticalAlignment="Top"
+                     Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibilityConverter}}" Foreground="#2563EB"/>
+    </Grid>
+</UserControl>

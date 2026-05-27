@@ -1,0 +1,201 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+                    xmlns:helpers="clr-namespace:SmartBuilding.Desktop.WPF.Helpers">
+
+    <!-- Tokens SBMS -->
+    <SolidColorBrush x:Key="SbmsSidebarBrush" Color="#1B3D3B"/>
+    <SolidColorBrush x:Key="SbmsSidebarDarkBrush" Color="#152E2C"/>
+    <SolidColorBrush x:Key="SbmsSidebarActiveBrush" Color="#2D6A4F"/>
+    <SolidColorBrush x:Key="SbmsPageBackgroundBrush" Color="#F0F4F3"/>
+    <SolidColorBrush x:Key="SbmsCardBrush" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="SbmsAccentGreenBrush" Color="#2D6A4F"/>
+    <SolidColorBrush x:Key="SbmsAccentGreenLightBrush" Color="#40916C"/>
+    <SolidColorBrush x:Key="SbmsTextMutedBrush" Color="#6B7B7A"/>
+    <SolidColorBrush x:Key="SbmsBorderBrush" Color="#E0E8E6"/>
+    <SolidColorBrush x:Key="SbmsSurfaceBrush" Color="#F8FAFC"/>
+    <SolidColorBrush x:Key="SbmsColorInfoBrush" Color="#2563EB"/>
+    <SolidColorBrush x:Key="SbmsColorDangerBrush" Color="#DC2626"/>
+    <SolidColorBrush x:Key="SbmsColorWarningBrush" Color="#F59E0B"/>
+    <SolidColorBrush x:Key="SbmsLoginTextOnDarkBrush" Color="#D8E8E4"/>
+
+    <!-- Paramètres / panneaux — mis à jour dynamiquement par AppConfigurationService -->
+    <LinearGradientBrush x:Key="SbmsSettingsHeroGradient" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="#1B3D3B" Offset="0"/>
+        <GradientStop Color="#2D6A4F" Offset="0.55"/>
+        <GradientStop Color="#0D9488" Offset="1"/>
+    </LinearGradientBrush>
+    <SolidColorBrush x:Key="SbmsSettingsTitleBrush" Color="#1B3D3B"/>
+    <SolidColorBrush x:Key="SbmsSettingsPreviewBgBrush" Color="#E8F5EE"/>
+    <SolidColorBrush x:Key="SbmsSettingsPreviewBorderBrush" Color="#9AD7B4"/>
+    <SolidColorBrush x:Key="SbmsSettingsSuccessBadgeBgBrush" Color="#DCFCE7"/>
+    <SolidColorBrush x:Key="SbmsSettingsSuccessBadgeFgBrush" Color="#166534"/>
+    <SolidColorBrush x:Key="SbmsSettingsStat1BgBrush" Color="#E8F5EE"/>
+    <SolidColorBrush x:Key="SbmsSettingsStat1FgBrush" Color="#1B3D3B"/>
+    <SolidColorBrush x:Key="SbmsSettingsStat2BgBrush" Color="#CCFBF1"/>
+    <SolidColorBrush x:Key="SbmsSettingsStat2FgBrush" Color="#0F766E"/>
+
+    <CornerRadius x:Key="SbmsRadiusSm">8</CornerRadius>
+    <CornerRadius x:Key="SbmsRadiusMd">12</CornerRadius>
+    <sys:Double xmlns:sys="clr-namespace:System;assembly=mscorlib" x:Key="SbmsFontPageTitle">26</sys:Double>
+    <sys:Double xmlns:sys="clr-namespace:System;assembly=mscorlib" x:Key="SbmsFontSection">15</sys:Double>
+    <sys:Double xmlns:sys="clr-namespace:System;assembly=mscorlib" x:Key="SbmsDataGridRowHeight">40</sys:Double>
+
+    <Style x:Key="SbmsTextStylePageTitle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="{StaticResource SbmsFontPageTitle}"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="#1B3D3B"/>
+    </Style>
+
+    <Style x:Key="SbmsSectionLabel" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="10"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="#8FA9A6"/>
+        <Setter Property="Margin" Value="16,12,16,4"/>
+    </Style>
+
+    <Style x:Key="SbmsSidebarButton" TargetType="Button" BasedOn="{StaticResource MaterialDesignFlatButton}">
+        <Setter Property="Foreground" Value="White"/>
+        <Setter Property="HorizontalContentAlignment" Value="Left"/>
+        <Setter Property="Padding" Value="12,8"/>
+        <Setter Property="Margin" Value="8,2"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="8"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="border" Property="Background" Value="#244742"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="SbmsSidebarButtonActive" TargetType="Button" BasedOn="{StaticResource SbmsSidebarButton}">
+        <Setter Property="Background" Value="{DynamicResource SbmsSidebarActiveBrush}"/>
+    </Style>
+
+    <Style x:Key="SbmsButtonPrimary" TargetType="Button">
+        <Setter Property="Background" Value="{DynamicResource SbmsAccentGreenBrush}"/>
+        <Setter Property="Foreground" Value="White"/>
+        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Padding" Value="16,10"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="8"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="border" Property="Background" Value="{DynamicResource SbmsAccentGreenLightBrush}"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="border" Property="Opacity" Value="0.55"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="SbmsButtonSecondary" TargetType="Button" BasedOn="{StaticResource SbmsButtonPrimary}">
+        <Setter Property="Background" Value="White"/>
+        <Setter Property="Foreground" Value="#1B3D3B"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource SbmsBorderBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+
+    <Style x:Key="SbmsDataGrid" TargetType="DataGrid">
+        <Setter Property="helpers:DataGridScrollHelper.IsEnabled" Value="True"/>
+        <Setter Property="Background" Value="White"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource SbmsBorderBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="RowHeight" Value="{StaticResource SbmsDataGridRowHeight}"/>
+        <Setter Property="MinColumnWidth" Value="64"/>
+        <Setter Property="CanUserResizeColumns" Value="True"/>
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Auto"/>
+        <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto"/>
+        <Setter Property="ScrollViewer.CanContentScroll" Value="True"/>
+        <Setter Property="GridLinesVisibility" Value="Horizontal"/>
+        <Setter Property="HorizontalGridLinesBrush" Value="{DynamicResource SbmsBorderBrush}"/>
+        <Setter Property="HeadersVisibility" Value="Column"/>
+        <Setter Property="AutoGenerateColumns" Value="False"/>
+        <Setter Property="CanUserAddRows" Value="False"/>
+        <Setter Property="SelectionMode" Value="Single"/>
+        <Setter Property="ColumnHeaderStyle">
+            <Setter.Value>
+                <Style TargetType="DataGridColumnHeader">
+                    <Setter Property="Background" Value="{DynamicResource SbmsSurfaceBrush}"/>
+                    <Setter Property="Foreground" Value="#475569"/>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                    <Setter Property="Padding" Value="12,10"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource SbmsBorderBrush}"/>
+                    <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                </Style>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="SbmsKpiCard" TargetType="Border">
+        <Setter Property="Background" Value="{DynamicResource SbmsCardBrush}"/>
+        <Setter Property="CornerRadius" Value="{StaticResource SbmsRadiusMd}"/>
+        <Setter Property="Padding" Value="14,12"/>
+        <Setter Property="Margin" Value="6"/>
+        <Setter Property="Effect">
+            <Setter.Value>
+                <DropShadowEffect BlurRadius="8" ShadowDepth="1" Opacity="0.08" Color="#000000"/>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="SbmsPanelCard" TargetType="Border">
+        <Setter Property="Background" Value="{DynamicResource SbmsCardBrush}"/>
+        <Setter Property="CornerRadius" Value="{StaticResource SbmsRadiusMd}"/>
+        <Setter Property="Padding" Value="16"/>
+        <Setter Property="Margin" Value="6"/>
+        <Setter Property="Effect">
+            <Setter.Value>
+                <DropShadowEffect BlurRadius="10" ShadowDepth="1" Opacity="0.06" Color="#000000"/>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="SbmsButtonDanger" TargetType="Button" BasedOn="{StaticResource SbmsButtonPrimary}">
+        <Setter Property="Background" Value="{StaticResource SbmsColorDangerBrush}"/>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="#EF4444"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="SbmsLoginPrimaryButton" TargetType="Button" BasedOn="{StaticResource SbmsButtonPrimary}">
+        <Setter Property="Padding" Value="16,12"/>
+    </Style>
+
+    <Style x:Key="SbmsLoginCard" TargetType="Border">
+        <Setter Property="Background" Value="White"/>
+        <Setter Property="CornerRadius" Value="16"/>
+        <Setter Property="Padding" Value="40,36"/>
+        <Setter Property="MaxWidth" Value="420"/>
+        <Setter Property="Effect">
+            <Setter.Value>
+                <DropShadowEffect BlurRadius="24" ShadowDepth="4" Opacity="0.12" Color="#1B3D3B"/>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+</ResourceDictionary>

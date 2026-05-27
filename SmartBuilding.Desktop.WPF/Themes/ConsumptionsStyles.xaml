@@ -1,0 +1,14 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="/Themes/FinancesStyles.xaml"/>
+    </ResourceDictionary.MergedDictionaries>
+    <Style x:Key="ConsumptionsKpiCard" TargetType="Border" BasedOn="{StaticResource FinancesKpiCard}"/>
+    <Style x:Key="ConsumptionsToolbarButton" TargetType="Button" BasedOn="{StaticResource FinancesToolbarButton}"/>
+    <Style x:Key="ConsumptionsPrimaryButton" TargetType="Button" BasedOn="{StaticResource SbmsButtonPrimary}"/>
+    <Style x:Key="ConsumptionsFilterCombo" TargetType="ComboBox" BasedOn="{StaticResource FinancesFilterCombo}"/>
+    <Style x:Key="ConsumptionsFilterSearch" TargetType="TextBox" BasedOn="{StaticResource FinancesFilterSearch}"/>
+    <Style x:Key="ConsumptionsDataGrid" TargetType="DataGrid" BasedOn="{StaticResource FinancesDataGrid}"/>
+    <Style x:Key="ConsumptionsAnalyticsCard" TargetType="Border" BasedOn="{StaticResource FinancesAnalyticsCard}"/>
+    <Style x:Key="ConsumptionsSidebarCard" TargetType="Border" BasedOn="{StaticResource FinancesSidebarCard}"/>
+</ResourceDictionary>

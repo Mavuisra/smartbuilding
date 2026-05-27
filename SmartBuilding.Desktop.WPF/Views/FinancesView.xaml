@@ -1,0 +1,472 @@
+<UserControl x:Class="SmartBuilding.Desktop.WPF.Views.FinancesView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:lvc="clr-namespace:LiveChartsCore.SkiaSharpView.WPF;assembly=LiveChartsCore.SkiaSharpView.WPF"
+             xmlns:conv="clr-namespace:SmartBuilding.Desktop.WPF.Converters"
+             Background="{StaticResource SbmsPageBackgroundBrush}">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Themes/FinancesStyles.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <conv:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+            <conv:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
+            <conv:IntEqualsToVisibilityConverter x:Key="IntEqualsToVisibilityConverter"/>
+            <conv:TabIndexActiveConverter x:Key="TabIndexActiveConverter"/>
+            <conv:HexToBrushConverter x:Key="HexToBrushConverter"/>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- En-tête -->
+        <Border Grid.Row="0" Background="White" Padding="24,16" BorderBrush="#E8EFED" BorderThickness="0,0,0,1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="300"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                    <TextBlock Text="Finances" FontSize="26" FontWeight="Bold" Foreground="#1B3D3B"/>
+                    <TextBlock Text="Gestion financière et trésorerie" FontSize="13"
+                               Foreground="{StaticResource SbmsTextMutedBrush}" Margin="0,2,0,0"/>
+                </StackPanel>
+                <Border Grid.Column="1" Margin="24,0" BorderBrush="#E2E8F0" BorderThickness="1"
+                        CornerRadius="8" Background="White" VerticalAlignment="Center" Height="44">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="44"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <materialDesign:PackIcon Kind="Magnify" Width="20" Height="20"
+                                                 Foreground="#94A3B8" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <TextBox Grid.Column="1" BorderThickness="0" Background="Transparent"
+                                 VerticalContentAlignment="Center"
+                                 materialDesign:HintAssist.Hint="Rechercher (référence, description, catégorie...)"
+                                 materialDesign:TextFieldAssist.DecorationVisibility="Hidden"
+                                 Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"/>
+                    </Grid>
+                </Border>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Style="{StaticResource MaterialDesignIconButton}" Width="40" Height="40">
+                        <materialDesign:PackIcon Kind="BellOutline"/>
+                    </Button>
+                    <Border Background="#E63946" CornerRadius="9" MinWidth="18" Height="18"
+                            Margin="-14,-8,12,0" VerticalAlignment="Top">
+                        <TextBlock Text="{Binding NotificationCount}" Foreground="White" FontSize="10"
+                                   FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <Border Width="40" Height="40" CornerRadius="20" Background="{StaticResource SbmsAccentGreenBrush}" Margin="0,0,10,0">
+                        <TextBlock Text="{Binding UserInitials}" Foreground="White" FontWeight="Bold"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel VerticalAlignment="Center" Margin="0,0,8,0">
+                        <TextBlock Text="{Binding UserName}" FontWeight="SemiBold" FontSize="13"/>
+                        <TextBlock Text="{Binding UserRole}" FontSize="11" Foreground="{StaticResource SbmsTextMutedBrush}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="12,8">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- 8 KPI -->
+                <UniformGrid Grid.Row="0" Columns="4" Margin="0,0,0,8">
+                    <Border Style="{StaticResource FinancesKpiCard}">
+                        <StackPanel>
+                            <TextBlock Text="Loyers du mois (seule entrée)" FontSize="10" Foreground="#94A3B8"/>
+                            <TextBlock Text="{Binding MonthlyRevenueDisplay}" FontSize="15" FontWeight="Bold" Foreground="#166534"/>
+                            <TextBlock Text="{Binding RevenueTrend}" FontSize="10" Foreground="#22C55E"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource FinancesKpiCard}">
+                        <StackPanel>
+                            <TextBlock Text="Dépenses du mois" FontSize="10" Foreground="#94A3B8"/>
+                            <TextBlock Text="{Binding MonthlyExpensesDisplay}" FontSize="15" FontWeight="Bold" Foreground="#DC2626"/>
+                            <TextBlock Text="{Binding ExpenseTrend}" FontSize="10" Foreground="#F97316"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource FinancesKpiCard}">
+                        <StackPanel>
+                            <TextBlock Text="Bénéfice net" FontSize="10" Foreground="#94A3B8"/>
+                            <TextBlock Text="{Binding NetProfitDisplay}" FontSize="15" FontWeight="Bold" Foreground="#1B3D3B"/>
+                            <TextBlock Text="{Binding ProfitTrend}" FontSize="10" Foreground="#2563EB"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource FinancesKpiCard}">
+                        <StackPanel>
+                            <TextBlock Text="Loyers collectés" FontSize="10" Foreground="#94A3B8"/>
+                            <TextBlock Text="{Binding RentCollectedDisplay}" FontSize="14" FontWeight="Bold" Foreground="#2D6A4F"/>
+                            <TextBlock Text="{Binding RentCollectedPercent}" FontSize="10" Foreground="#64748B"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource FinancesKpiCard}">
+                        <StackPanel>
+                            <TextBlock Text="Loyers en retard" FontSize="10" Foreground="#94A3B8"/>
+                            <TextBlock Text="{Binding RentLateDisplay}" FontSize="14" FontWeight="Bold" Foreground="#DC2626"/>
+                            <TextBlock Text="{Binding RentLatePercent}" FontSize="10" Foreground="#64748B"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource FinancesKpiCard}">
+                        <StackPanel>
+                            <TextBlock Text="Disponible pour dépenser" FontSize="10" Foreground="#94A3B8"/>
+                            <TextBlock Text="{Binding TreasuryDisplay}" FontSize="14" FontWeight="Bold" Foreground="#1B3D3B"/>
+                            <TextBlock Text="{Binding RentCollectedTotalDisplay, StringFormat=Loyers encaissés : {0}}" FontSize="10" Foreground="#64748B"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource FinancesKpiCard}">
+                        <StackPanel>
+                            <TextBlock Text="Factures en attente" FontSize="10" Foreground="#94A3B8"/>
+                            <TextBlock Text="{Binding PendingInvoicesDisplay}" FontSize="18" FontWeight="Bold" Foreground="#EA580C"/>
+                            <TextBlock Text="{Binding PendingAmountDisplay}" FontSize="10" Foreground="#64748B"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource FinancesKpiCard}">
+                        <StackPanel>
+                            <TextBlock Text="Coût maintenance" FontSize="10" Foreground="#94A3B8"/>
+                            <TextBlock Text="{Binding MaintenanceDisplay}" FontSize="14" FontWeight="Bold" Foreground="#1B3D3B"/>
+                            <TextBlock Text="Ce mois" FontSize="10" Foreground="#64748B"/>
+                        </StackPanel>
+                    </Border>
+                </UniformGrid>
+
+                <!-- Barre d'actions -->
+                <Border Grid.Row="1" Background="White" CornerRadius="8" BorderBrush="#E8EFED" BorderThickness="1"
+                        Padding="10,8" Margin="0,0,0,8">
+                    <WrapPanel>
+                        <Button Command="{Binding OpenAddExpenseCommand}" Style="{StaticResource FinancesExpenseButton}">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="Minus" Margin="0,0,6,0"/>
+                                <TextBlock Text="Ajouter dépense"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Command="{Binding CollectRentCommand}" Style="{StaticResource FinancesRentButton}">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="CashRegister" Margin="0,0,6,0"/>
+                                <TextBlock Text="Encaisser loyer"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Command="{Binding ExportCsvCommand}" Style="{StaticResource FinancesToolbarButton}">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="MicrosoftExcel" Margin="0,0,6,0"/>
+                                <TextBlock Text="Export Excel"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource FinancesToolbarButton}">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="FilePdfBox" Margin="0,0,6,0"/>
+                                <TextBlock Text="Export PDF"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource FinancesToolbarButton}">
+                            <materialDesign:PackIcon Kind="Printer"/>
+                        </Button>
+                        <Button Command="{Binding SyncCommand}" Style="{StaticResource FinancesToolbarButton}">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="Sync" Margin="0,0,6,0"/>
+                                <TextBlock Text="Synchroniser"/>
+                            </StackPanel>
+                        </Button>
+                    </WrapPanel>
+                </Border>
+
+                <!-- Graphiques -->
+                <UniformGrid Grid.Row="2" Columns="3" Margin="0,0,0,8">
+                    <Border Style="{StaticResource FinancesAnalyticsCard}" Margin="0,0,4,0">
+                        <StackPanel>
+                            <TextBlock Text="Loyers vs Dépenses (12 mois)" FontWeight="SemiBold" FontSize="11" Foreground="#1B3D3B" Margin="0,0,0,4"/>
+                            <lvc:CartesianChart Series="{Binding RevenueExpenseSeries}" Height="130"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource FinancesAnalyticsCard}" Margin="4,0">
+                        <StackPanel>
+                            <TextBlock Text="Répartition des dépenses" FontWeight="SemiBold" FontSize="11" Foreground="#1B3D3B" Margin="0,0,0,4"/>
+                            <lvc:PieChart Series="{Binding ExpensePieSeries}" Height="130"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource FinancesAnalyticsCard}" Margin="4,0,0,0">
+                        <StackPanel>
+                            <TextBlock Text="Loyers (ce mois)" FontWeight="SemiBold" FontSize="11" Foreground="#1B3D3B" Margin="0,0,0,4"/>
+                            <lvc:CartesianChart Series="{Binding RentBarSeries}" Height="130"/>
+                        </StackPanel>
+                    </Border>
+                </UniformGrid>
+
+                <!-- Tableau + panneau droit -->
+                <Grid Grid.Row="3" MinHeight="360">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="280"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Border Grid.Column="0" Background="White" CornerRadius="10" BorderBrush="#E8EFED" BorderThickness="1"
+                            Margin="0,0,8,0" Padding="10,8">
+                        <DockPanel>
+                            <ScrollViewer DockPanel.Dock="Top" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Margin="0,0,0,6">
+                                <StackPanel Orientation="Horizontal">
+                                    <ComboBox ItemsSource="{Binding PeriodFilters}" SelectedItem="{Binding FilterPeriod}" Style="{StaticResource FinancesFilterCombo}"/>
+                                    <ComboBox ItemsSource="{Binding TypeFilters}" SelectedItem="{Binding FilterType}" Style="{StaticResource FinancesFilterCombo}"/>
+                                    <ComboBox ItemsSource="{Binding CategoryFilters}" SelectedItem="{Binding FilterCategory}" Style="{StaticResource FinancesFilterCombo}" MinWidth="130"/>
+                                    <ComboBox ItemsSource="{Binding SourceFilters}" SelectedItem="{Binding FilterSource}" Style="{StaticResource FinancesFilterCombo}"/>
+                                    <ComboBox ItemsSource="{Binding StatusFilters}" SelectedItem="{Binding FilterStatus}" Style="{StaticResource FinancesFilterCombo}"/>
+                                    <TextBox Style="{StaticResource FinancesFilterSearch}"
+                                             materialDesign:HintAssist.Hint="Rechercher..."
+                                             Text="{Binding TableSearchQuery, UpdateSourceTrigger=PropertyChanged}"/>
+                                </StackPanel>
+                            </ScrollViewer>
+
+                            <Border DockPanel.Dock="Top" Margin="0,0,0,6" BorderBrush="#E8EFED" BorderThickness="0,0,0,1">
+                                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                                    <ItemsControl ItemsSource="{Binding MainTabs}" AlternationCount="99" MinWidth="560">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <UniformGrid Rows="1" Columns="6"/>
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Button Command="{Binding DataContext.SetMainTabCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        CommandParameter="{Binding (ItemsControl.AlternationIndex), RelativeSource={RelativeSource AncestorType=ContentPresenter}}"
+                                                        Content="{Binding}">
+                                                    <Button.Style>
+                                                        <Style TargetType="Button" BasedOn="{StaticResource FinancesMainTabButton}">
+                                                            <Style.Triggers>
+                                                                <DataTrigger Value="True">
+                                                                    <DataTrigger.Binding>
+                                                                        <MultiBinding Converter="{StaticResource TabIndexActiveConverter}">
+                                                                            <Binding Path="DataContext.SelectedMainTab" RelativeSource="{RelativeSource AncestorType=UserControl}"/>
+                                                                            <Binding Path="(ItemsControl.AlternationIndex)" RelativeSource="{RelativeSource AncestorType=ContentPresenter}"/>
+                                                                        </MultiBinding>
+                                                                    </DataTrigger.Binding>
+                                                                    <Setter Property="Foreground" Value="#2D6A4F"/>
+                                                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                                                    <Setter Property="BorderBrush" Value="#2D6A4F"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Button.Style>
+                                                </Button>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                            </Border>
+
+                            <DataGrid ItemsSource="{Binding Transactions}" Style="{StaticResource FinancesDataGrid}"
+                                      materialDesign:DataGridAssist.CellPadding="8,4" MinHeight="200">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="RÉFÉRENCE" Binding="{Binding Reference}" Width="100"/>
+                                    <DataGridTextColumn Header="DATE" Binding="{Binding DateDisplay}" Width="90"/>
+                                    <DataGridTemplateColumn Header="TYPE" Width="90">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <Border CornerRadius="8" Padding="6,2" Background="{Binding TypeBadgeBackground}">
+                                                    <TextBlock Text="{Binding TypeLabel}" Foreground="{Binding TypeBadgeForeground}" FontSize="10" FontWeight="SemiBold"/>
+                                                </Border>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTextColumn Header="CATÉGORIE" Binding="{Binding Category}" Width="100"/>
+                                    <DataGridTextColumn Header="DESCRIPTION" Binding="{Binding Description}" Width="*"/>
+                                    <DataGridTextColumn Header="SOURCE" Binding="{Binding Source}" Width="90"/>
+                                    <DataGridTextColumn Header="MODE" Binding="{Binding PaymentMethod}" Width="90"/>
+                                    <DataGridTemplateColumn Header="MONTANT" Width="120">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding AmountDisplay}" Foreground="{Binding AmountColor}" FontWeight="SemiBold"/>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTemplateColumn Header="STATUT" Width="90">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <Border CornerRadius="8" Padding="6,2" Background="{Binding StatusBadgeBackground}">
+                                                    <TextBlock Text="{Binding StatusLabel}" Foreground="{Binding StatusBadgeForeground}" FontSize="10" FontWeight="SemiBold"/>
+                                                </Border>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTextColumn Header="UTILISATEUR" Binding="{Binding RecordedBy}" Width="110"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+
+                            <DockPanel DockPanel.Dock="Bottom" Margin="0,6,0,0">
+                                <TextBlock Text="{Binding PaginationText}" DockPanel.Dock="Left" VerticalAlignment="Center"
+                                           Foreground="{StaticResource SbmsTextMutedBrush}" FontSize="11"/>
+                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                    <TextBlock Text="Par page :" VerticalAlignment="Center" Foreground="#94A3B8" FontSize="12" Margin="0,0,8,0"/>
+                                    <ComboBox Width="70" ItemsSource="{Binding PageSizeOptions}" SelectedItem="{Binding PageSize}" Margin="0,0,16,0"/>
+                                    <Button Command="{Binding PreviousPageCommand}" Style="{StaticResource MaterialDesignIconButton}">
+                                        <materialDesign:PackIcon Kind="ChevronLeft"/>
+                                    </Button>
+                                    <TextBlock Text="{Binding CurrentPage}" VerticalAlignment="Center" Margin="8,0" FontWeight="SemiBold"/>
+                                    <TextBlock Text="/" VerticalAlignment="Center" Foreground="#94A3B8"/>
+                                    <TextBlock Text="{Binding TotalPages}" VerticalAlignment="Center" Margin="8,0" Foreground="#94A3B8"/>
+                                    <Button Command="{Binding NextPageCommand}" Style="{StaticResource MaterialDesignIconButton}">
+                                        <materialDesign:PackIcon Kind="ChevronRight"/>
+                                    </Button>
+                                </StackPanel>
+                            </DockPanel>
+                        </DockPanel>
+                    </Border>
+
+                    <!-- Panneau droit -->
+                    <StackPanel Grid.Column="1">
+                        <Border Style="{StaticResource FinancesSidebarCard}">
+                            <StackPanel>
+                                <TextBlock Text="Alertes financières" FontWeight="SemiBold" Foreground="#1B3D3B" Margin="0,0,0,10"/>
+                                <ItemsControl ItemsSource="{Binding Alerts}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Background="{Binding Background}" CornerRadius="8" Padding="10" Margin="0,0,0,8">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <materialDesign:PackIcon Kind="AlertCircleOutline" Width="20" Height="20"
+                                                                             Foreground="{Binding AccentColor, Converter={StaticResource HexToBrushConverter}}"
+                                                                             VerticalAlignment="Top" Margin="0,0,10,0"/>
+                                                    <StackPanel Grid.Column="1">
+                                                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="12" Foreground="#1B3D3B"/>
+                                                        <TextBlock Text="{Binding Message}" FontSize="11" Foreground="#64748B" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                                    </StackPanel>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource FinancesSidebarCard}">
+                            <StackPanel>
+                                <TextBlock Text="Résumé trésorerie" FontWeight="SemiBold" Foreground="#1B3D3B" Margin="0,0,0,10"/>
+                                <ItemsControl ItemsSource="{Binding TreasuryLines}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="0,0,0,8">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="{Binding Label}" FontSize="11" Foreground="#64748B"/>
+                                                <TextBlock Grid.Column="1" Text="{Binding AmountDisplay}"
+                                                           Foreground="{Binding Color, Converter={StaticResource HexToBrushConverter}}">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="FontWeight" Value="Normal"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsBold}" Value="True">
+                                                                    <Setter Property="FontWeight" Value="Bold"/>
+                                                                    <Setter Property="FontSize" Value="13"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource FinancesSidebarCard}">
+                            <StackPanel>
+                                <TextBlock Text="Loyers en retard" FontWeight="SemiBold" Foreground="#1B3D3B" Margin="0,0,0,10"/>
+                                <ItemsControl ItemsSource="{Binding LateRents}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="0,0,0,8">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel>
+                                                    <TextBlock Text="{Binding PremiseLabel}" FontSize="12" FontWeight="SemiBold" Foreground="#1B3D3B"/>
+                                                    <TextBlock Text="{Binding TenantName}" FontSize="10" Foreground="#94A3B8"/>
+                                                </StackPanel>
+                                                <TextBlock Grid.Column="1" Text="{Binding AmountDisplay}" FontSize="11" FontWeight="SemiBold" Foreground="#DC2626"/>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <Border BorderBrush="#FECACA" BorderThickness="0,1,0,0" Padding="0,8,0,0" Margin="0,4,0,0">
+                                    <DockPanel>
+                                        <TextBlock Text="Total" FontWeight="SemiBold" Foreground="#DC2626"/>
+                                        <TextBlock DockPanel.Dock="Right" Text="{Binding LateRentTotalDisplay}" FontWeight="Bold" Foreground="#DC2626"/>
+                                    </DockPanel>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Grid>
+            </Grid>
+        </ScrollViewer>
+
+        <!-- Modal transaction -->
+        <Border Grid.RowSpan="2" Background="#80000000"
+                Visibility="{Binding IsTransactionFormOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Border Background="White" CornerRadius="12" Padding="24" MaxWidth="440" VerticalAlignment="Center" HorizontalAlignment="Center">
+                <StackPanel>
+                    <TextBlock FontSize="18" FontWeight="Bold" Foreground="#1B3D3B" Margin="0,0,0,16">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Text" Value="Nouvelle dépense"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsRevenueForm}" Value="True">
+                                        <Setter Property="Text" Value="Nouveau revenu"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <ComboBox ItemsSource="{Binding RevenueCategories}" SelectedItem="{Binding FormCategory}"
+                              Style="{StaticResource FinancesFilterCombo}" Margin="0,0,0,8"
+                              Visibility="{Binding IsRevenueForm, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                    <ComboBox ItemsSource="{Binding ExpenseCategories}" SelectedItem="{Binding FormCategory}" Margin="0,0,0,8">
+                        <ComboBox.Style>
+                            <Style TargetType="ComboBox" BasedOn="{StaticResource FinancesFilterCombo}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsRevenueForm}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </ComboBox.Style>
+                    </ComboBox>
+                    <TextBox materialDesign:HintAssist.Hint="Description *" Text="{Binding FormDescription, UpdateSourceTrigger=PropertyChanged}"
+                             Margin="0,0,0,8"/>
+                    <TextBox materialDesign:HintAssist.Hint="Montant (FC) *" Text="{Binding FormAmountText, UpdateSourceTrigger=PropertyChanged}"
+                             Margin="0,0,0,8"/>
+                    <ComboBox ItemsSource="{Binding PaymentMethods}" SelectedItem="{Binding FormPaymentMethod}"
+                              Style="{StaticResource FinancesFilterCombo}" Margin="0,0,0,8"/>
+                    <TextBlock Text="{Binding FormError}" Foreground="#DC2626" FontSize="12" Margin="0,0,0,8"
+                               Visibility="{Binding FormError, Converter={StaticResource NullToVisibilityConverter}}"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Content="Annuler" Command="{Binding CloseTransactionFormCommand}" Style="{StaticResource FinancesToolbarButton}" Margin="0,0,8,0"/>
+                        <Button Content="Enregistrer" Command="{Binding SaveTransactionCommand}" Style="{StaticResource FinancesPrimaryButton}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Border>
+
+        <ProgressBar Grid.Row="1" IsIndeterminate="True" Height="3" VerticalAlignment="Top"
+                     Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibilityConverter}}"
+                     Foreground="{StaticResource SbmsAccentGreenBrush}"/>
+    </Grid>
+</UserControl>

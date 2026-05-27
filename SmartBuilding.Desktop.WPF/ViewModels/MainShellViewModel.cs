@@ -1,0 +1,489 @@
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Diagnostics;
+using System.IO;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using SmartBuilding.Application.Interfaces;
+using SmartBuilding.Desktop.WPF.Models;
+using SmartBuilding.Desktop.WPF.Services;
+using SmartBuilding.Infrastructure.Services;
+
+namespace SmartBuilding.Desktop.WPF.ViewModels;
+
+public partial class MainShellViewModel : BaseViewModel
+{
+    private readonly IServiceProvider _services;
+    private readonly SessionService _session;
+    private readonly DashboardViewModel _dashboardViewModel;
+    private readonly PersonnelViewModel _personnelViewModel;
+    private readonly LocationsViewModel _locationsViewModel;
+    private readonly LocationsListViewModel _locationsListViewModel;
+    private readonly FinancesViewModel _financesViewModel;
+    private readonly TechnicalViewModel _technicalViewModel;
+    private readonly SuppliersViewModel _suppliersViewModel;
+    private readonly InventoryViewModel _inventoryViewModel;
+    private readonly ConsumptionsViewModel _consumptionsViewModel;
+    private readonly VisitsViewModel _visitsViewModel;
+    private readonly EmailsViewModel _emailsViewModel;
+    private readonly DocumentsViewModel _documentsViewModel;
+    private readonly UsersViewModel _usersViewModel;
+    private readonly ActivityLogViewModel _activityLogViewModel;
+    private readonly SynchronizationViewModel _synchronizationViewModel;
+    private readonly SettingsViewModel _settingsViewModel;
+    private readonly ShellNavigationService _shellNavigation;
+    private readonly ISyncService _syncService;
+    private readonly INetworkService _network;
+    private readonly IConfiguration _configuration;
+    private readonly FinanceLedgerService _financeLedger;
+    private readonly AppConfigurationService _appConfiguration;
+    private readonly Action _onLogout;
+    private BaseViewModel? _trackedViewModel;
+
+    [ObservableProperty]
+    private object? _currentViewModel;
+
+    [ObservableProperty]
+    private string _selectedModuleId = "dashboard";
+
+    [ObservableProperty]
+    private string _lastSyncDisplay = "Dernière sync : —";
+
+    [ObservableProperty]
+    private string _syncStatusLabel = "Hors ligne";
+
+    [ObservableProperty] private string _shellUserName = "Admin SBMS";
+    [ObservableProperty] private string _shellUserRole = "Administrateur";
+    [ObservableProperty] private string _shellUserInitials = "AD";
+    [ObservableProperty] private string _internetStatusLabel = "Déconnecté";
+    [ObservableProperty] private string _cloudStatusLabel = "Hors ligne";
+    [ObservableProperty] private string _localDbStatusLabel = "OK";
+    [ObservableProperty] private string _pingDisplay = "—";
+    [ObservableProperty] private bool _isInternetConnected;
+    [ObservableProperty] private bool _isCloudConnected;
+    [ObservableProperty] private bool _isCurrentViewBusy;
+    [ObservableProperty] private string _treasuryAvailableDisplay = "0 FC";
+    [ObservableProperty] private string _treasuryDetailDisplay = "Loyers encaissés : 0 FC";
+    [ObservableProperty] private bool _isTreasuryDepleted;
+    [ObservableProperty] private string _shellBrandName = "SBMS";
+    [ObservableProperty] private string _shellBrandSubtitle = "Smart Building Management";
+    [ObservableProperty] private string? _shellLogoPath;
+    [ObservableProperty] private bool _hasShellLogo;
+    [ObservableProperty] private string _windowTitle = "SBMS — Smart Building Management";
+
+    public ObservableCollection<ShellNavEntry> NavigationItems { get; } = [];
+
+    public MainShellViewModel(
+        IServiceProvider services,
+        SessionService session,
+        DashboardViewModel dashboardViewModel,
+        PersonnelViewModel personnelViewModel,
+        LocationsViewModel locationsViewModel,
+        LocationsListViewModel locationsListViewModel,
+        FinancesViewModel financesViewModel,
+        TechnicalViewModel technicalViewModel,
+        SuppliersViewModel suppliersViewModel,
+        InventoryViewModel inventoryViewModel,
+        ConsumptionsViewModel consumptionsViewModel,
+        VisitsViewModel visitsViewModel,
+        EmailsViewModel emailsViewModel,
+        DocumentsViewModel documentsViewModel,
+        UsersViewModel usersViewModel,
+        ActivityLogViewModel activityLogViewModel,
+        SynchronizationViewModel synchronizationViewModel,
+        SettingsViewModel settingsViewModel,
+        ShellNavigationService shellNavigation,
+        ISyncService syncService,
+        INetworkService network,
+        IConfiguration configuration,
+        FinanceLedgerService financeLedger,
+        AppConfigurationService appConfiguration,
+        Action onLogout)
+    {
+        _financeLedger = financeLedger;
+        _appConfiguration = appConfiguration;
+        _appConfiguration.ConfigurationChanged += async (_, _) =>
+        {
+            ApplyBrandingFromConfiguration();
+            await RefreshTreasuryAsync();
+        };
+        ApplyBrandingFromConfiguration();
+        _session = session;
+        ShellUserName = session.CurrentUser?.FullName ?? "Admin SBMS";
+        ShellUserRole = session.CurrentUser?.Role ?? "Administrateur";
+        ShellUserInitials = GetInitials(ShellUserName);
+        _services = services;
+        _dashboardViewModel = dashboardViewModel;
+        _personnelViewModel = personnelViewModel;
+        _locationsViewModel = locationsViewModel;
+        _locationsListViewModel = locationsListViewModel;
+        _financesViewModel = financesViewModel;
+        _technicalViewModel = technicalViewModel;
+        _suppliersViewModel = suppliersViewModel;
+        _inventoryViewModel = inventoryViewModel;
+        _consumptionsViewModel = consumptionsViewModel;
+        _visitsViewModel = visitsViewModel;
+        _emailsViewModel = emailsViewModel;
+        _documentsViewModel = documentsViewModel;
+        _usersViewModel = usersViewModel;
+        _activityLogViewModel = activityLogViewModel;
+        _synchronizationViewModel = synchronizationViewModel;
+        _settingsViewModel = settingsViewModel;
+        _settingsViewModel.NavigateToModuleRequested += id => _ = NavigateAsync(id);
+        _shellNavigation = shellNavigation;
+        _syncService = syncService;
+        _network = network;
+        _configuration = configuration;
+        _onLogout = onLogout;
+        _shellNavigation.Register(
+            OpenTenantDetailAsync,
+            BackToLocationsFromTenantAsync,
+            OpenBuildingFormAsync,
+            OpenTenantFormAsync,
+            OpenContractFormAsync,
+            OpenRentFormAsync,
+            OpenLocationCreateAsync,
+            OpenLocationListAsync);
+        RebuildNavigation();
+        CurrentViewModel = _dashboardViewModel;
+        _ = InitializeShellAsync();
+    }
+
+    private async Task InitializeShellAsync()
+    {
+        await _appConfiguration.LoadAndApplyAsync();
+        ApplyBrandingFromConfiguration();
+        await _syncService.EnsureMetadataLoadedAsync();
+        await RefreshShellStatusAsync();
+    }
+
+    private void ApplyBrandingFromConfiguration()
+    {
+        var c = _appConfiguration.Current;
+        ShellBrandName = c.AppTitle;
+        ShellBrandSubtitle = c.AppSubtitle;
+        ShellLogoPath = c.LogoPath;
+        HasShellLogo = !string.IsNullOrWhiteSpace(c.LogoPath) && File.Exists(c.LogoPath);
+        WindowTitle = $"{c.CompanyName} — Smart Building Management";
+    }
+
+    private void RebuildNavigation()
+    {
+        NavigationItems.Clear();
+        foreach (var entry in ModuleRegistry.BuildNavigation(_session))
+            NavigationItems.Add(entry);
+    }
+
+    partial void OnCurrentViewModelChanged(object? value)
+    {
+        if (_trackedViewModel is not null)
+            _trackedViewModel.PropertyChanged -= OnTrackedViewModelPropertyChanged;
+
+        _trackedViewModel = value as BaseViewModel;
+        if (_trackedViewModel is not null)
+            _trackedViewModel.PropertyChanged += OnTrackedViewModelPropertyChanged;
+
+        IsCurrentViewBusy = _trackedViewModel?.IsBusy ?? false;
+    }
+
+    private void OnTrackedViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(BaseViewModel.IsBusy) && sender is BaseViewModel vm)
+            IsCurrentViewBusy = vm.IsBusy;
+    }
+
+    public async Task OpenTenantDetailAsync(Guid tenantId)
+    {
+        var vm = ActivatorUtilities.CreateInstance<TenantDetailViewModel>(_services);
+        vm.Initialize(tenantId);
+        CurrentViewModel = vm;
+        SelectedModuleId = "locations-list";
+        await vm.LoadCommand.ExecuteAsync(null);
+        await RefreshShellStatusAsync();
+    }
+
+    private async Task BackToLocationsFromTenantAsync() => await OpenLocationListAsync();
+
+    private async Task OpenLocationCreateAsync()
+    {
+        CurrentViewModel = _locationsViewModel;
+        SelectedModuleId = "locations-create";
+        await _locationsViewModel.LoadCommand.ExecuteAsync(null);
+        await RefreshShellStatusAsync();
+    }
+
+    private async Task OpenLocationListAsync()
+    {
+        CurrentViewModel = _locationsListViewModel;
+        SelectedModuleId = "locations-list";
+        await _locationsListViewModel.LoadCommand.ExecuteAsync(null);
+        await RefreshShellStatusAsync();
+    }
+
+    private async Task OpenBuildingFormAsync(Guid? buildingId)
+    {
+        var vm = ActivatorUtilities.CreateInstance<LocationBuildingFormViewModel>(_services);
+        vm.Initialize(buildingId);
+        CurrentViewModel = vm;
+        SelectedModuleId = "locations";
+        await vm.LoadCommand.ExecuteAsync(null);
+        await RefreshShellStatusAsync();
+    }
+
+    private async Task OpenTenantFormAsync(Guid? tenantId)
+    {
+        var vm = ActivatorUtilities.CreateInstance<LocationTenantFormViewModel>(_services);
+        vm.Initialize(tenantId);
+        CurrentViewModel = vm;
+        SelectedModuleId = "locations";
+        await vm.LoadCommand.ExecuteAsync(null);
+        await RefreshShellStatusAsync();
+    }
+
+    private async Task OpenContractFormAsync()
+    {
+        var vm = ActivatorUtilities.CreateInstance<LocationContractFormViewModel>(_services);
+        CurrentViewModel = vm;
+        SelectedModuleId = "locations-create";
+        await vm.LoadCommand.ExecuteAsync(null);
+        await RefreshShellStatusAsync();
+    }
+
+    private async Task OpenRentFormAsync()
+    {
+        var vm = ActivatorUtilities.CreateInstance<LocationRentFormViewModel>(_services);
+        CurrentViewModel = vm;
+        SelectedModuleId = "locations-rent-pay";
+        await vm.LoadCommand.ExecuteAsync(null);
+        await RefreshShellStatusAsync();
+    }
+
+    [RelayCommand]
+    private async Task NavigateAsync(string? moduleId)
+    {
+        if (string.IsNullOrWhiteSpace(moduleId))
+            return;
+
+        var permissionModuleId = moduleId == "incidents" ? "technique" : moduleId;
+        var module = ModuleRegistry.Get(permissionModuleId);
+        if (!ModuleRegistry.CanAccess(_session, module))
+        {
+            ErrorMessage = "Accès refusé à ce module.";
+            return;
+        }
+
+        ErrorMessage = null;
+        SelectedModuleId = moduleId;
+
+        if (moduleId == "dashboard")
+        {
+            await ShowDashboardAsync();
+            return;
+        }
+
+        if (moduleId == "personnel")
+        {
+            CurrentViewModel = _personnelViewModel;
+            await _personnelViewModel.LoadCommand.ExecuteAsync(null);
+            await RefreshShellStatusAsync();
+            return;
+        }
+
+        if (moduleId == "locations" || moduleId == "locations-list")
+        {
+            await OpenLocationListAsync();
+            return;
+        }
+
+        if (moduleId == "locations-create")
+        {
+            await OpenContractFormAsync();
+            return;
+        }
+
+        if (moduleId == "locations-rent-pay")
+        {
+            await OpenRentFormAsync();
+            return;
+        }
+
+        if (moduleId == "finances")
+        {
+            CurrentViewModel = _financesViewModel;
+            await _financesViewModel.LoadCommand.ExecuteAsync(null);
+            await RefreshShellStatusAsync();
+            return;
+        }
+
+        if (moduleId is "technique" or "incidents")
+        {
+            SelectedModuleId = "technique";
+            CurrentViewModel = _technicalViewModel;
+            _technicalViewModel.NavigateToSection(moduleId == "incidents" ? 1 : 0);
+            await _technicalViewModel.LoadCommand.ExecuteAsync(null);
+            await RefreshShellStatusAsync();
+            return;
+        }
+
+        if (moduleId == "fournisseurs")
+        {
+            CurrentViewModel = _suppliersViewModel;
+            await _suppliersViewModel.LoadCommand.ExecuteAsync(null);
+            await RefreshShellStatusAsync();
+            return;
+        }
+
+        if (moduleId == "inventaire")
+        {
+            CurrentViewModel = _inventoryViewModel;
+            await _inventoryViewModel.LoadCommand.ExecuteAsync(null);
+            await RefreshShellStatusAsync();
+            return;
+        }
+
+        if (moduleId == "consommations")
+        {
+            CurrentViewModel = _consumptionsViewModel;
+            await _consumptionsViewModel.LoadCommand.ExecuteAsync(null);
+            await RefreshShellStatusAsync();
+            return;
+        }
+
+        if (moduleId == "visites")
+        {
+            CurrentViewModel = _visitsViewModel;
+            await _visitsViewModel.LoadCommand.ExecuteAsync(null);
+            await RefreshShellStatusAsync();
+            return;
+        }
+
+        if (moduleId == "emails")
+        {
+            CurrentViewModel = _emailsViewModel;
+            await _emailsViewModel.LoadCommand.ExecuteAsync(null);
+            await RefreshShellStatusAsync();
+            return;
+        }
+
+        if (moduleId == "documents")
+        {
+            CurrentViewModel = _documentsViewModel;
+            await _documentsViewModel.LoadCommand.ExecuteAsync(null);
+            await RefreshShellStatusAsync();
+            return;
+        }
+
+        if (moduleId == "utilisateurs")
+        {
+            CurrentViewModel = _usersViewModel;
+            await _usersViewModel.LoadCommand.ExecuteAsync(null);
+            await RefreshShellStatusAsync();
+            return;
+        }
+
+        if (moduleId == "synchronisation")
+        {
+            CurrentViewModel = _synchronizationViewModel;
+            await _synchronizationViewModel.LoadCommand.ExecuteAsync(null);
+            await RefreshShellStatusAsync();
+            return;
+        }
+
+        if (moduleId == "parametres")
+        {
+            CurrentViewModel = _settingsViewModel;
+            await _settingsViewModel.LoadCommand.ExecuteAsync(null);
+            await RefreshShellStatusAsync();
+            return;
+        }
+
+        if (moduleId == "journal")
+        {
+            CurrentViewModel = _activityLogViewModel;
+            await _activityLogViewModel.LoadCommand.ExecuteAsync(null);
+            await RefreshShellStatusAsync();
+            return;
+        }
+
+        StatusMessage = $"Module inconnu : {moduleId}";
+    }
+
+    [RelayCommand]
+    private async Task ShowDashboardAsync()
+    {
+        SelectedModuleId = "dashboard";
+        CurrentViewModel = _dashboardViewModel;
+        await _dashboardViewModel.LoadCommand.ExecuteAsync(null);
+        await RefreshShellStatusAsync();
+    }
+
+    [RelayCommand]
+    private void Logout() => _onLogout();
+
+    private async Task UpdateConnectionStatusAsync()
+    {
+        IsInternetConnected = _network.IsConnected();
+        InternetStatusLabel = IsInternetConnected ? "Connecté" : "Déconnecté";
+
+        if (IsInternetConnected)
+        {
+            var apiUrl = _configuration["Api:BaseUrl"] ?? "https://localhost:7001/";
+            var sw = Stopwatch.StartNew();
+            IsCloudConnected = await _network.CanReachApiAsync(apiUrl);
+            sw.Stop();
+            PingDisplay = IsCloudConnected ? $"{sw.ElapsedMilliseconds} ms" : "—";
+            CloudStatusLabel = IsCloudConnected ? "Connecté" : "Hors ligne";
+        }
+        else
+        {
+            IsCloudConnected = false;
+            CloudStatusLabel = "Hors ligne";
+            PingDisplay = "—";
+        }
+
+        LocalDbStatusLabel = "OK";
+    }
+
+    private static string GetInitials(string name)
+    {
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 0) return "AD";
+        if (parts.Length == 1) return parts[0][..Math.Min(2, parts[0].Length)].ToUpperInvariant();
+        return $"{parts[0][0]}{parts[^1][0]}".ToUpperInvariant();
+    }
+
+    private async Task RefreshShellStatusAsync()
+    {
+        await _syncService.EnsureMetadataLoadedAsync();
+        UpdateSyncStatus();
+        await UpdateConnectionStatusAsync();
+        await RefreshTreasuryAsync();
+    }
+
+    private async Task RefreshTreasuryAsync()
+    {
+        var cash = await TreasuryLoader.LoadAsync(_financeLedger);
+        TreasuryAvailableDisplay = FormatFc(cash.AvailableThisMonth);
+        TreasuryDetailDisplay =
+            $"Loyers ce mois {FormatFc(cash.RentCollectedThisMonth)} · Dépenses ce mois {FormatFc(cash.TotalExpensesThisMonth)} · Total encaissé {FormatFc(cash.RentCollectedTotal)}";
+        IsTreasuryDepleted = cash.AvailableThisMonth <= 0 && cash.RentCollectedThisMonth > 0;
+    }
+
+    private static string FormatFc(decimal amount) => MoneyFormatter.Format(amount);
+
+    private void UpdateSyncStatus()
+    {
+        if (_syncService.LastSyncAt.HasValue)
+        {
+            LastSyncDisplay = $"Dernière sync : {_syncService.LastSyncAt.Value:dd/MM/yyyy HH:mm}";
+            SyncStatusLabel = "À jour";
+        }
+        else
+        {
+            LastSyncDisplay = "Dernière sync : jamais";
+            SyncStatusLabel = "Hors ligne";
+        }
+    }
+}

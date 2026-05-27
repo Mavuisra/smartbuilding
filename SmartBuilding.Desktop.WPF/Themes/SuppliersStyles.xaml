@@ -1,0 +1,21 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="/Themes/TechnicalStyles.xaml"/>
+    </ResourceDictionary.MergedDictionaries>
+    <Style x:Key="SuppliersKpiCard" TargetType="Border" BasedOn="{StaticResource TechnicalKpiCard}"/>
+    <Style x:Key="SuppliersToolbarButton" TargetType="Button" BasedOn="{StaticResource TechnicalToolbarButton}"/>
+    <Style x:Key="SuppliersPrimaryButton" TargetType="Button" BasedOn="{StaticResource TechnicalPrimaryButton}"/>
+    <Style x:Key="SuppliersFilterCombo" TargetType="ComboBox" BasedOn="{StaticResource TechnicalFilterCombo}"/>
+    <Style x:Key="SuppliersFilterSearch" TargetType="TextBox" BasedOn="{StaticResource TechnicalFilterSearch}"/>
+    <Style x:Key="SuppliersDataGrid" TargetType="DataGrid" BasedOn="{StaticResource TechnicalDataGrid}"/>
+    <Style x:Key="SuppliersAnalyticsCard" TargetType="Border" BasedOn="{StaticResource TechnicalAnalyticsCard}"/>
+    <Style x:Key="SuppliersSidebarCard" TargetType="Border">
+        <Setter Property="Background" Value="White"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="Padding" Value="12"/>
+        <Setter Property="Margin" Value="0,0,0,8"/>
+        <Setter Property="BorderBrush" Value="#E8EFED"/>
+        <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+</ResourceDictionary>

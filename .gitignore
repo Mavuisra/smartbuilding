@@ -1,0 +1,22 @@
+## Build outputs
+bin/
+obj/
+
+## User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+## IDE folders
+.vs/
+.vscode/
+
+## Test and runtime artifacts
+_testout/
+*.db
+*.db-shm
+*.db-wal
+
+## Logs
+*.log

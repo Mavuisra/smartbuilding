@@ -1,0 +1,698 @@
+<UserControl x:Class="SmartBuilding.Desktop.WPF.Views.EmailsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:lvc="clr-namespace:LiveChartsCore.SkiaSharpView.WPF;assembly=LiveChartsCore.SkiaSharpView.WPF"
+             xmlns:conv="clr-namespace:SmartBuilding.Desktop.WPF.Converters"
+             xmlns:models="clr-namespace:SmartBuilding.Desktop.WPF.Models"
+             Background="{StaticResource SbmsPageBackgroundBrush}">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Themes/EmailsStyles.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <conv:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+            <conv:InverseBoolConverter x:Key="InverseBoolConverter"/>
+            <conv:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
+            <conv:HexToBrushConverter x:Key="HexToBrushConverter"/>
+            <conv:StringToPackIconKindConverter x:Key="StringToPackIconKindConverter"/>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- HEADER -->
+        <Border Grid.Row="0" Background="White" Padding="24,16" BorderBrush="#E0E8E6" BorderThickness="0,0,0,1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="300"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                    <TextBlock Text="Emails &amp; Communication" FontSize="26" FontWeight="Bold" Foreground="#1B3D3B"/>
+                    <TextBlock Text="Centre de communication et gestion des emails"
+                               Foreground="{StaticResource SbmsTextMutedBrush}" FontSize="13" Margin="0,2,0,0"/>
+                </StackPanel>
+                <Border Grid.Column="1" Margin="24,0" BorderBrush="#E2E8F0" BorderThickness="1"
+                        CornerRadius="8" Background="White" VerticalAlignment="Center" Height="44">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="44"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <materialDesign:PackIcon Kind="Magnify" Width="20" Height="20" Foreground="#94A3B8"
+                                                 HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <TextBox Grid.Column="1" BorderThickness="0" Background="Transparent" VerticalContentAlignment="Center"
+                                 materialDesign:HintAssist.Hint="Rechercher un email, expéditeur, sujet..."
+                                 materialDesign:TextFieldAssist.DecorationVisibility="Hidden"
+                                 Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"/>
+                        <Border Grid.Column="2" Background="#F1F5F9" CornerRadius="4" Padding="6,2" Margin="0,0,10,0" VerticalAlignment="Center">
+                            <TextBlock Text="Ctrl + K" FontSize="10" Foreground="#64748B"/>
+                        </Border>
+                    </Grid>
+                </Border>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border Background="#D1FAE5" BorderBrush="#A7F3D0" BorderThickness="1" CornerRadius="8" Padding="10,6" Margin="0,0,10,0">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="CheckCircle" Width="16" Height="16" Foreground="#2D6A4F" Margin="0,0,6,0"/>
+                            <StackPanel>
+                                <TextBlock Text="{Binding SyncStatusLabel}" FontSize="11" FontWeight="SemiBold" Foreground="#2D6A4F"/>
+                                <TextBlock FontSize="10" Foreground="#64748B">
+                                    <Run Text="Dernière sync : "/><Run Text="{Binding LastSyncShortDisplay}"/>
+                                </TextBlock>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                    <Button Style="{StaticResource MaterialDesignIconButton}" Width="40" Height="40">
+                        <materialDesign:PackIcon Kind="BellOutline"/>
+                    </Button>
+                    <Border Background="#E63946" CornerRadius="9" MinWidth="18" Height="18" Margin="-14,-8,8,0" VerticalAlignment="Top">
+                        <TextBlock Text="{Binding NotificationCount}" Foreground="White" FontSize="10" FontWeight="Bold"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <Button Style="{StaticResource MaterialDesignIconButton}" Width="40" Height="40" Margin="0,0,8,0">
+                        <materialDesign:PackIcon Kind="HelpCircleOutline"/>
+                    </Button>
+                    <Border Width="36" Height="36" CornerRadius="18" Background="{StaticResource SbmsAccentGreenBrush}" Margin="0,0,8,0">
+                        <TextBlock Text="{Binding UserInitials}" Foreground="White" FontWeight="Bold"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel VerticalAlignment="Center" Margin="0,0,12,0">
+                        <TextBlock Text="{Binding UserName}" FontWeight="SemiBold" FontSize="12"/>
+                        <TextBlock Text="{Binding UserRole}" FontSize="10" Foreground="{StaticResource SbmsTextMutedBrush}"/>
+                    </StackPanel>
+                    <Button Command="{Binding OpenComposeCommand}" Style="{StaticResource EmailsPrimaryButton}">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="EmailPlus" Margin="0,0,6,0"/>
+                            <TextBlock Text="Nouveau message"/>
+                            <materialDesign:PackIcon Kind="ChevronDown" Margin="8,0,0,0" Width="16" Height="16"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- KPI -->
+        <UniformGrid Grid.Row="1" Columns="6" Margin="12,8,12,4">
+                    <Border Style="{StaticResource EmailsKpiCard}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="32"/>
+                            </Grid.RowDefinitions>
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="30" Height="30" CornerRadius="8" Background="#DBEAFE" Margin="0,0,8,0">
+                                    <materialDesign:PackIcon Kind="EmailReceive" Foreground="#2563EB" Width="16" Height="16"
+                                                             HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="Emails aujourd'hui" FontSize="10" Foreground="{StaticResource SbmsTextMutedBrush}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <StackPanel Grid.Row="1" Margin="0,6,0,0">
+                                <TextBlock Text="{Binding ReceivedToday}" FontSize="20" FontWeight="Bold" Foreground="#2563EB"/>
+                                <TextBlock Text="{Binding ReceivedTodayTrend}" FontSize="9" Foreground="#2563EB"/>
+                            </StackPanel>
+                            <lvc:CartesianChart Grid.Row="2" Series="{Binding ReceivedSparkline}" Height="32"/>
+                        </Grid>
+                    </Border>
+                    <Border Style="{StaticResource EmailsKpiCard}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="32"/>
+                            </Grid.RowDefinitions>
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="30" Height="30" CornerRadius="8" Background="#FFEDD5" Margin="0,0,8,0">
+                                    <materialDesign:PackIcon Kind="EmailMarkAsUnread" Foreground="#EA580C" Width="16" Height="16"
+                                                             HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="Non lus" FontSize="10" Foreground="{StaticResource SbmsTextMutedBrush}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <StackPanel Grid.Row="1" Margin="0,6,0,0">
+                                <TextBlock Text="{Binding UnreadCount}" FontSize="20" FontWeight="Bold" Foreground="#EA580C"/>
+                                <TextBlock Text="{Binding UnreadTrend}" FontSize="9" Foreground="#EA580C"/>
+                            </StackPanel>
+                            <lvc:CartesianChart Grid.Row="2" Series="{Binding UnreadSparkline}" Height="32"/>
+                        </Grid>
+                    </Border>
+                    <Border Style="{StaticResource EmailsKpiCard}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="32"/>
+                            </Grid.RowDefinitions>
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="30" Height="30" CornerRadius="8" Background="#FEE2E2" Margin="0,0,8,0">
+                                    <materialDesign:PackIcon Kind="Alert" Foreground="#DC2626" Width="16" Height="16"
+                                                             HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="Emails urgents" FontSize="10" Foreground="{StaticResource SbmsTextMutedBrush}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <StackPanel Grid.Row="1" Margin="0,6,0,0">
+                                <TextBlock Text="{Binding UrgentCount}" FontSize="20" FontWeight="Bold" Foreground="#DC2626"/>
+                                <TextBlock Text="{Binding UrgentTrend}" FontSize="9" Foreground="#DC2626"/>
+                            </StackPanel>
+                            <lvc:CartesianChart Grid.Row="2" Series="{Binding UrgentSparkline}" Height="32"/>
+                        </Grid>
+                    </Border>
+                    <Border Style="{StaticResource EmailsKpiCard}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="32"/>
+                            </Grid.RowDefinitions>
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="30" Height="30" CornerRadius="8" Background="#EDE9FE" Margin="0,0,8,0">
+                                    <materialDesign:PackIcon Kind="Reply" Foreground="#6D28D9" Width="16" Height="16"
+                                                             HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="Réponses en attente" FontSize="10" Foreground="{StaticResource SbmsTextMutedBrush}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <StackPanel Grid.Row="1" Margin="0,6,0,0">
+                                <TextBlock Text="{Binding AwaitingReplyCount}" FontSize="20" FontWeight="Bold" Foreground="#6D28D9"/>
+                                <TextBlock Text="{Binding AwaitingTrend}" FontSize="9" Foreground="#6D28D9"/>
+                            </StackPanel>
+                            <lvc:CartesianChart Grid.Row="2" Series="{Binding AwaitingSparkline}" Height="32"/>
+                        </Grid>
+                    </Border>
+                    <Border Style="{StaticResource EmailsKpiCard}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="32"/>
+                            </Grid.RowDefinitions>
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="30" Height="30" CornerRadius="8" Background="#E0F2FE" Margin="0,0,8,0">
+                                    <materialDesign:PackIcon Kind="Paperclip" Foreground="#0369A1" Width="16" Height="16"
+                                                             HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="Pièces jointes" FontSize="10" Foreground="{StaticResource SbmsTextMutedBrush}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <StackPanel Grid.Row="1" Margin="0,6,0,0">
+                                <TextBlock Text="{Binding AttachmentsCount}" FontSize="20" FontWeight="Bold" Foreground="#0369A1"/>
+                                <TextBlock Text="{Binding AttachmentsTrend}" FontSize="9" Foreground="#0369A1"/>
+                            </StackPanel>
+                            <lvc:CartesianChart Grid.Row="2" Series="{Binding AttachmentsSparkline}" Height="32"/>
+                        </Grid>
+                    </Border>
+                    <Border Style="{StaticResource EmailsKpiCard}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="32"/>
+                            </Grid.RowDefinitions>
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="30" Height="30" CornerRadius="8" Background="#DCFCE7" Margin="0,0,8,0">
+                                    <materialDesign:PackIcon Kind="CloudCheck" Foreground="#166534" Width="16" Height="16"
+                                                             HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="Emails synchronisés" FontSize="10" Foreground="{StaticResource SbmsTextMutedBrush}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <StackPanel Grid.Row="1" Margin="0,6,0,0">
+                                <TextBlock Text="{Binding SyncedCount}" FontSize="20" FontWeight="Bold" Foreground="#166534"/>
+                                <TextBlock Text="{Binding SyncedTrend}" FontSize="9" Foreground="#166534"/>
+                            </StackPanel>
+                            <lvc:CartesianChart Grid.Row="2" Series="{Binding SyncedSparkline}" Height="32"/>
+                        </Grid>
+                    </Border>
+        </UniformGrid>
+
+        <!-- CLIENT EMAIL 3+1 PANNEAUX -->
+        <Border Grid.Row="2" Background="White" CornerRadius="10" BorderBrush="#E8EFED" BorderThickness="1" Margin="12,4,12,4">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="220"/>
+                            <ColumnDefinition Width="360"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="280"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- DOSSIERS -->
+                        <Border Grid.Column="0" BorderBrush="#E8EFED" BorderThickness="0,0,1,0" Background="#F8FAFC">
+                            <DockPanel Margin="8">
+                                <Button DockPanel.Dock="Bottom" Content="Gérer les dossiers" Style="{StaticResource EmailsToolbarButton}"
+                                        HorizontalAlignment="Stretch" Margin="4,8,4,4"/>
+                                <Border DockPanel.Dock="Top" Background="White" BorderBrush="#E2E8F0" BorderThickness="1"
+                                        CornerRadius="8" Padding="10,8" Margin="4,8,4,8">
+                                    <DockPanel>
+                                        <materialDesign:PackIcon Kind="ChevronDown" DockPanel.Dock="Right" VerticalAlignment="Center" Foreground="#64748B"/>
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding AccountEmail}" FontWeight="SemiBold" FontSize="12" Foreground="#2563EB"/>
+                                            <TextBlock Text="{Binding AccountProvider}" FontSize="10" Foreground="{StaticResource SbmsTextMutedBrush}"/>
+                                        </StackPanel>
+                                    </DockPanel>
+                                </Border>
+                                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                    <StackPanel>
+                                        <TextBlock Text="Dossiers" FontWeight="SemiBold" FontSize="11" Foreground="#64748B" Margin="8,4,8,4"/>
+                                        <ItemsControl ItemsSource="{Binding MainFolders}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate DataType="{x:Type models:EmailFolderItem}">
+                                                    <Button Style="{StaticResource EmailsFolderButton}"
+                                                            Command="{Binding DataContext.SelectFolderCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                            CommandParameter="{Binding FolderId}">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*"/>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                            </Grid.ColumnDefinitions>
+                                                            <StackPanel Orientation="Horizontal">
+                                                                <materialDesign:PackIcon Kind="{Binding IconKind, Converter={StaticResource StringToPackIconKindConverter}}"
+                                                                                         Width="18" Height="18" Foreground="#64748B" Margin="0,0,8,0"/>
+                                                                <TextBlock Text="{Binding Label}" FontSize="12" VerticalAlignment="Center"/>
+                                                            </StackPanel>
+                                                            <Border Grid.Column="1" CornerRadius="10" Padding="6,2" MinWidth="22">
+                                                                <Border.Style>
+                                                                    <Style TargetType="Border">
+                                                                        <Setter Property="Background" Value="#E2E8F0"/>
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding IsInbox}" Value="True">
+                                                                                <Setter Property="Background" Value="#2563EB"/>
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </Border.Style>
+                                                                <TextBlock Text="{Binding Count}" FontSize="10" FontWeight="SemiBold">
+                                                                    <TextBlock.Style>
+                                                                        <Style TargetType="TextBlock">
+                                                                            <Setter Property="Foreground" Value="#475569"/>
+                                                                            <Style.Triggers>
+                                                                                <DataTrigger Binding="{Binding IsInbox}" Value="True">
+                                                                                    <Setter Property="Foreground" Value="White"/>
+                                                                                </DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </TextBlock.Style>
+                                                                </TextBlock>
+                                                            </Border>
+                                                        </Grid>
+                                                    </Button>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                        <TextBlock Text="Catégories" FontWeight="SemiBold" FontSize="11" Foreground="#64748B" Margin="8,12,8,4"/>
+                                        <ItemsControl ItemsSource="{Binding CategoryFolders}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate DataType="{x:Type models:EmailFolderItem}">
+                                                    <Button Style="{StaticResource EmailsFolderButton}"
+                                                            Command="{Binding DataContext.SelectFolderCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                            CommandParameter="{Binding FolderId}">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*"/>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                            </Grid.ColumnDefinitions>
+                                                            <StackPanel Orientation="Horizontal">
+                                                                <materialDesign:PackIcon Kind="{Binding IconKind, Converter={StaticResource StringToPackIconKindConverter}}"
+                                                                                         Width="18" Height="18" Margin="0,0,8,0"
+                                                                                         Foreground="{Binding IconColor, Converter={StaticResource HexToBrushConverter}}"/>
+                                                                <TextBlock Text="{Binding Label}" FontSize="12" VerticalAlignment="Center"/>
+                                                            </StackPanel>
+                                                            <Border Grid.Column="1" Background="#E2E8F0" CornerRadius="10" Padding="6,2" MinWidth="22">
+                                                                <TextBlock Text="{Binding Count}" FontSize="10" FontWeight="SemiBold" Foreground="#475569"/>
+                                                            </Border>
+                                                        </Grid>
+                                                    </Button>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                        <TextBlock Text="Dossiers système" FontWeight="SemiBold" FontSize="11" Foreground="#64748B" Margin="8,12,8,4"/>
+                                        <ItemsControl ItemsSource="{Binding SystemFolders}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate DataType="{x:Type models:EmailFolderItem}">
+                                                    <Button Style="{StaticResource EmailsFolderButton}"
+                                                            Command="{Binding DataContext.SelectFolderCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                            CommandParameter="{Binding FolderId}">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*"/>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                            </Grid.ColumnDefinitions>
+                                                            <StackPanel Orientation="Horizontal">
+                                                                <materialDesign:PackIcon Kind="{Binding IconKind, Converter={StaticResource StringToPackIconKindConverter}}"
+                                                                                         Width="18" Height="18" Foreground="#64748B" Margin="0,0,8,0"/>
+                                                                <TextBlock Text="{Binding Label}" FontSize="12" VerticalAlignment="Center"/>
+                                                            </StackPanel>
+                                                            <Border Grid.Column="1" Background="#E2E8F0" CornerRadius="10" Padding="6,2" MinWidth="22">
+                                                                <TextBlock Text="{Binding Count}" FontSize="10" FontWeight="SemiBold" Foreground="#475569"/>
+                                                            </Border>
+                                                        </Grid>
+                                                    </Button>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </ScrollViewer>
+                            </DockPanel>
+                        </Border>
+
+                        <!-- LISTE -->
+                        <Border Grid.Column="1" BorderBrush="#E8EFED" BorderThickness="0,0,1,0">
+                            <DockPanel>
+                                <Border DockPanel.Dock="Top" Padding="10,8" BorderBrush="#E8EFED" BorderThickness="0,0,0,1">
+                                    <DockPanel>
+                                        <ComboBox DockPanel.Dock="Right" ItemsSource="{Binding SortOptions}" SelectedItem="{Binding SelectedSort}"
+                                                  Style="{StaticResource EmailsFilterCombo}" Width="120" Margin="4,0,0,0"/>
+                                        <WrapPanel>
+                                            <Button Command="{Binding RefreshCommand}" Style="{StaticResource EmailsToolbarButton}" Padding="8,4">
+                                                <materialDesign:PackIcon Kind="Refresh"/>
+                                            </Button>
+                                            <ComboBox ItemsSource="{Binding CategoryFilters}" SelectedItem="{Binding FilterCategory}"
+                                                      Style="{StaticResource EmailsFilterCombo}" Width="100" Margin="4,0"/>
+                                            <ComboBox ItemsSource="{Binding PriorityFilters}" SelectedItem="{Binding FilterPriority}"
+                                                      Style="{StaticResource EmailsFilterCombo}" Width="90" Margin="4,0"/>
+                                            <CheckBox Content="Non lus" IsChecked="{Binding FilterUnreadOnly}" VerticalAlignment="Center" Margin="4,0"/>
+                                            <CheckBox Content="PJ" IsChecked="{Binding FilterAttachmentsOnly}" VerticalAlignment="Center" Margin="4,0"/>
+                                        </WrapPanel>
+                                    </DockPanel>
+                                </Border>
+                                <ListBox ItemsSource="{Binding FilteredEmails}" SelectedItem="{Binding SelectedEmail}"
+                                         BorderThickness="0" Background="Transparent">
+                                    <ListBox.ItemContainerStyle>
+                                        <Style TargetType="ListBoxItem">
+                                            <Setter Property="Padding" Value="0"/>
+                                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                            <Setter Property="Template">
+                                                <Setter.Value>
+                                                    <ControlTemplate TargetType="ListBoxItem">
+                                                        <Border x:Name="Bd" Background="Transparent">
+                                                            <ContentPresenter/>
+                                                        </Border>
+                                                        <ControlTemplate.Triggers>
+                                                            <Trigger Property="IsSelected" Value="True">
+                                                                <Setter TargetName="Bd" Property="Background" Value="#EFF6FF"/>
+                                                                <Setter TargetName="Bd" Property="BorderBrush" Value="#2563EB"/>
+                                                                <Setter TargetName="Bd" Property="BorderThickness" Value="3,0,0,0"/>
+                                                            </Trigger>
+                                                        </ControlTemplate.Triggers>
+                                                    </ControlTemplate>
+                                                </Setter.Value>
+                                            </Setter>
+                                        </Style>
+                                    </ListBox.ItemContainerStyle>
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate DataType="{x:Type models:EmailListItem}">
+                                            <Border Padding="12,10" BorderBrush="#F1F5F9" BorderThickness="0,0,0,1">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="40"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <Border Width="36" Height="36" CornerRadius="18"
+                                                            Background="{Binding AvatarBackground, Converter={StaticResource HexToBrushConverter}}">
+                                                        <TextBlock Text="{Binding Initials}" FontWeight="Bold" FontSize="11"
+                                                                   Foreground="{Binding AvatarForeground, Converter={StaticResource HexToBrushConverter}}"
+                                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                    </Border>
+                                                    <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                                                        <DockPanel>
+                                                            <materialDesign:PackIcon Kind="Star" Width="14" Height="14" Foreground="#F59E0B"
+                                                                                     DockPanel.Dock="Right" Margin="4,0,0,0"
+                                                                                     Visibility="{Binding IsImportant, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                                            <TextBlock Text="{Binding FromName}" FontWeight="SemiBold" FontSize="12"/>
+                                                        </DockPanel>
+                                                        <TextBlock Text="{Binding Subject}" FontSize="11" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                                        <TextBlock Text="{Binding Preview}" FontSize="10" Foreground="#64748B" TextTrimming="CharacterEllipsis" MaxHeight="28"/>
+                                                        <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                                            <Border CornerRadius="6" Padding="5,2" Margin="0,0,4,0"
+                                                                    Background="{Binding PriorityBadgeBackground}">
+                                                                <TextBlock Text="{Binding Priority}" FontSize="9" FontWeight="SemiBold"
+                                                                           Foreground="{Binding PriorityBadgeForeground}"/>
+                                                            </Border>
+                                                            <Border Background="#F1F5F9" CornerRadius="6" Padding="5,2">
+                                                                <TextBlock Text="{Binding Category}" FontSize="9" Foreground="#64748B"/>
+                                                            </Border>
+                                                        </StackPanel>
+                                                    </StackPanel>
+                                                    <TextBlock Grid.Column="2" Text="{Binding TimeDisplay}" FontSize="10" Foreground="#94A3B8" VerticalAlignment="Top"/>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </DockPanel>
+                        </Border>
+
+                        <!-- LECTURE -->
+                        <Border Grid.Column="2" BorderBrush="#E8EFED" BorderThickness="0,0,1,0">
+                            <Grid>
+                                <TextBlock Text="Sélectionnez un email" Foreground="#94A3B8" FontSize="14"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                                           Visibility="{Binding SelectedEmail, Converter={StaticResource NullToVisibilityConverter}, ConverterParameter=Inverse}"/>
+                                <DockPanel Visibility="{Binding SelectedEmail, Converter={StaticResource NullToVisibilityConverter}}">
+                                    <Border DockPanel.Dock="Top" Padding="12,8" BorderBrush="#E8EFED" BorderThickness="0,0,0,1" Background="#FAFBFC">
+                                        <WrapPanel>
+                                            <Button Command="{Binding SendReplyCommand}" Style="{StaticResource EmailsToolbarButton}">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <materialDesign:PackIcon Kind="Reply" Margin="0,0,4,0"/><TextBlock Text="Répondre"/>
+                                                </StackPanel>
+                                            </Button>
+                                            <Button Style="{StaticResource EmailsToolbarButton}">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <materialDesign:PackIcon Kind="ReplyAll" Margin="0,0,4,0"/><TextBlock Text="Répondre à tous"/>
+                                                </StackPanel>
+                                            </Button>
+                                            <Button Style="{StaticResource EmailsToolbarButton}">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <materialDesign:PackIcon Kind="Share" Margin="0,0,4,0"/><TextBlock Text="Transférer"/>
+                                                </StackPanel>
+                                            </Button>
+                                            <Button Command="{Binding ArchiveSelectedCommand}" Style="{StaticResource EmailsToolbarButton}">
+                                                <materialDesign:PackIcon Kind="Archive"/>
+                                            </Button>
+                                            <Button Style="{StaticResource EmailsToolbarButton}">
+                                                <materialDesign:PackIcon Kind="Delete"/>
+                                            </Button>
+                                        </WrapPanel>
+                                    </Border>
+                                    <DockPanel DataContext="{Binding SelectedEmail}">
+                                        <Border DockPanel.Dock="Top" Padding="16,12" BorderBrush="#E8EFED" BorderThickness="0,0,0,1">
+                                            <StackPanel>
+                                                <DockPanel>
+                                                    <Border DockPanel.Dock="Right" Background="#FEE2E2" CornerRadius="6" Padding="8,3"
+                                                            Visibility="{Binding Priority, Converter={StaticResource NullToVisibilityConverter}}">
+                                                        <TextBlock Text="{Binding Priority}" FontSize="10" FontWeight="SemiBold" Foreground="#DC2626"/>
+                                                    </Border>
+                                                    <TextBlock Text="{Binding Subject}" FontSize="17" FontWeight="Bold" TextWrapping="Wrap"/>
+                                                </DockPanel>
+                                                <TextBlock Margin="0,8,0,0">
+                                                    <Run Text="{Binding FromName}" FontWeight="SemiBold"/>
+                                                    <Run Text=" — " Foreground="#94A3B8"/>
+                                                    <Run Text="{Binding FromAddress}" Foreground="#64748B"/>
+                                                </TextBlock>
+                                                <TextBlock Text="{Binding DateDisplay}" FontSize="11" Foreground="#94A3B8" Margin="0,4,0,0"/>
+                                            </StackPanel>
+                                        </Border>
+                                        <ScrollViewer DockPanel.Dock="Top" VerticalScrollBarVisibility="Auto" Padding="16,12" MaxHeight="200">
+                                            <TextBlock Text="{Binding BodyText}" FontSize="13" Foreground="#334155" TextWrapping="Wrap" LineHeight="22"/>
+                                        </ScrollViewer>
+                                        <Border DockPanel.Dock="Top" Padding="16,8" Background="#F8FAFC"
+                                                Visibility="{Binding HasAttachments, Converter={StaticResource BoolToVisibilityConverter}}">
+                                            <StackPanel>
+                                                <TextBlock Text="Pièces jointes" FontWeight="SemiBold" FontSize="11" Margin="0,0,0,6"/>
+                                                <ItemsControl ItemsSource="{Binding Attachments}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate DataType="{x:Type models:EmailAttachmentItem}">
+                                                            <Border Background="White" CornerRadius="8" BorderBrush="#E2E8F0" BorderThickness="1"
+                                                                    Padding="10,8" Margin="0,0,8,6">
+                                                                <StackPanel Orientation="Horizontal">
+                                                                    <materialDesign:PackIcon Kind="{Binding IconKind, Converter={StaticResource StringToPackIconKindConverter}}"
+                                                                                             Width="24" Height="24" Foreground="#DC2626" Margin="0,0,8,0"/>
+                                                                    <StackPanel>
+                                                                        <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" FontSize="11"/>
+                                                                        <TextBlock Text="{Binding FileType}" FontSize="10" Foreground="#94A3B8"/>
+                                                                    </StackPanel>
+                                                                    <Button Style="{StaticResource MaterialDesignIconButton}" Margin="8,0,0,0">
+                                                                        <materialDesign:PackIcon Kind="Download"/>
+                                                                    </Button>
+                                                                </StackPanel>
+                                                            </Border>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </StackPanel>
+                                        </Border>
+                                        <Border DockPanel.Dock="Bottom" Padding="16,12" BorderBrush="#E8EFED" BorderThickness="0,1,0,0" Background="#FAFBFC">
+                                            <StackPanel>
+                                                <TextBox Text="{Binding DataContext.ReplyBody, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                         AcceptsReturn="True" Height="64" TextWrapping="Wrap"
+                                                         materialDesign:HintAssist.Hint="Répondre à tous..."/>
+                                                <DockPanel Margin="0,8,0,0">
+                                                    <Button Command="{Binding DataContext.SendReplyCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                            Style="{StaticResource EmailsPrimaryButton}" DockPanel.Dock="Right">
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <materialDesign:PackIcon Kind="Send" Margin="0,0,6,0"/><TextBlock Text="Envoyer"/>
+                                                        </StackPanel>
+                                                    </Button>
+                                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                        <Button Style="{StaticResource MaterialDesignIconButton}"><materialDesign:PackIcon Kind="FormatBold"/></Button>
+                                                        <Button Style="{StaticResource MaterialDesignIconButton}"><materialDesign:PackIcon Kind="Paperclip"/></Button>
+                                                    </StackPanel>
+                                                </DockPanel>
+                                            </StackPanel>
+                                        </Border>
+                                    </DockPanel>
+                                </DockPanel>
+                            </Grid>
+                        </Border>
+
+                        <!-- MÉTADONNÉES -->
+                        <Border Grid.Column="3" Background="#FAFBFC">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="12,10">
+                                <StackPanel Visibility="{Binding SelectedEmail, Converter={StaticResource NullToVisibilityConverter}}">
+                                    <TextBlock Text="Détails de l'email" FontWeight="SemiBold" FontSize="14" Foreground="#1B3D3B" Margin="0,0,0,12"/>
+                                    <Grid DataContext="{Binding SelectedEmail}" Margin="0,0,0,12">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/>
+                                        </Grid.RowDefinitions>
+                                        <TextBlock Grid.Row="0" Text="Catégorie" FontSize="10" Foreground="{StaticResource SbmsTextMutedBrush}"/>
+                                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Category}" FontWeight="SemiBold" FontSize="11"/>
+                                        <TextBlock Grid.Row="1" Text="Priorité" FontSize="10" Foreground="{StaticResource SbmsTextMutedBrush}"/>
+                                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Priority}" FontWeight="SemiBold" FontSize="11"/>
+                                        <TextBlock Grid.Row="2" Text="Assigné à" FontSize="10" Foreground="{StaticResource SbmsTextMutedBrush}"/>
+                                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding AssignedTo}" FontWeight="SemiBold" FontSize="11"/>
+                                        <TextBlock Grid.Row="3" Text="Statut" FontSize="10" Foreground="{StaticResource SbmsTextMutedBrush}"/>
+                                        <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding Status}" FontWeight="SemiBold" FontSize="11"/>
+                                        <TextBlock Grid.Row="4" Text="Référence" FontSize="10" Foreground="{StaticResource SbmsTextMutedBrush}"/>
+                                        <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Reference}" FontWeight="SemiBold" FontSize="11"/>
+                                        <TextBlock Grid.Row="5" Text="Élément lié" FontSize="10" Foreground="{StaticResource SbmsTextMutedBrush}"/>
+                                        <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding LinkedItem}" FontWeight="SemiBold" FontSize="11"/>
+                                    </Grid>
+
+                                    <TextBlock Text="Activité" FontWeight="SemiBold" FontSize="13" Foreground="#1B3D3B" Margin="0,0,0,8"/>
+                                    <ItemsControl ItemsSource="{Binding EmailActivities}" Margin="0,0,0,12">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="{x:Type models:EmailActivityItem}">
+                                                <Grid Margin="0,0,0,8">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <Ellipse Width="8" Height="8" Fill="{Binding IconColor, Converter={StaticResource HexToBrushConverter}}" VerticalAlignment="Top" Margin="0,4,8,0"/>
+                                                    <StackPanel Grid.Column="1">
+                                                        <DockPanel>
+                                                            <TextBlock Text="{Binding TimeDisplay}" DockPanel.Dock="Right" FontSize="9" Foreground="#94A3B8"/>
+                                                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="11"/>
+                                                        </DockPanel>
+                                                        <TextBlock Text="{Binding Description}" FontSize="10" Foreground="#64748B"/>
+                                                    </StackPanel>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+
+                                    <TextBlock Text="Mots-clés" FontWeight="SemiBold" FontSize="13" Foreground="#1B3D3B" Margin="0,0,0,8"/>
+                                    <WrapPanel Margin="0,0,0,12">
+                                        <ItemsControl ItemsSource="{Binding EmailKeywords}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <WrapPanel/>
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate DataType="{x:Type models:EmailKeywordItem}">
+                                                    <Border Background="{Binding Background, Converter={StaticResource HexToBrushConverter}}"
+                                                            CornerRadius="12" Padding="8,4" Margin="0,0,6,6">
+                                                        <TextBlock Text="{Binding Label}" FontSize="10"
+                                                                   Foreground="{Binding Foreground, Converter={StaticResource HexToBrushConverter}}"/>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </WrapPanel>
+
+                                    <TextBlock Text="Historique" FontWeight="SemiBold" FontSize="13" Foreground="#1B3D3B" Margin="0,0,0,8"/>
+                                    <ItemsControl ItemsSource="{Binding EmailHistory}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="{x:Type models:EmailHistoryItem}">
+                                                <DockPanel Margin="0,0,0,4">
+                                                    <TextBlock Text="{Binding TimeDisplay}" DockPanel.Dock="Right" FontSize="9" Foreground="#94A3B8"/>
+                                                    <TextBlock Text="{Binding Action}" FontSize="10"/>
+                                                </DockPanel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </ScrollViewer>
+                        </Border>
+                    </Grid>
+                </Border>
+
+        <!-- ANALYTICS BAS -->
+        <Grid Grid.Row="3" Margin="12,4,12,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="220"/>
+                        <ColumnDefinition Width="280"/>
+                    </Grid.ColumnDefinitions>
+                    <Border Grid.Column="0" Style="{StaticResource EmailsAnalyticsCard}" Margin="0,0,4,0">
+                        <StackPanel>
+                            <TextBlock Text="Aperçu des communications" FontWeight="SemiBold" FontSize="12" Foreground="#1B3D3B" Margin="0,0,0,8"/>
+                            <lvc:CartesianChart Series="{Binding VolumeSeries}" Height="140"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Grid.Column="1" Style="{StaticResource EmailsAnalyticsCard}" Margin="4,0">
+                        <StackPanel>
+                            <TextBlock Text="Répartition par catégorie" FontWeight="SemiBold" FontSize="12" Foreground="#1B3D3B" Margin="0,0,0,8"/>
+                            <lvc:PieChart Series="{Binding CategoryPieSeries}" Height="140"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Grid.Column="2" Style="{StaticResource EmailsAnalyticsCard}" Margin="4,0">
+                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                            <materialDesign:PackIcon Kind="ClockOutline" Width="32" Height="32" Foreground="#6D28D9" HorizontalAlignment="Center"/>
+                            <TextBlock Text="Temps de réponse moyen" FontSize="11" Foreground="{StaticResource SbmsTextMutedBrush}"
+                                       HorizontalAlignment="Center" Margin="0,8,0,4"/>
+                            <TextBlock Text="{Binding AverageResponseTime}" FontSize="22" FontWeight="Bold" Foreground="#1B3D3B" HorizontalAlignment="Center"/>
+                            <TextBlock Text="{Binding AverageResponseTrend}" FontSize="10" Foreground="#6D28D9" HorizontalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Grid.Column="3" Style="{StaticResource EmailsSidebarCard}" Margin="4,0,0,0">
+                        <StackPanel>
+                            <TextBlock Text="Synchronisation" FontWeight="SemiBold" FontSize="12" Foreground="#1B3D3B"/>
+                            <TextBlock Text="{Binding AccountEmail}" FontWeight="SemiBold" FontSize="11" Foreground="#2563EB" Margin="0,8,0,0"/>
+                            <TextBlock Text="{Binding ProtocolLabel}" FontSize="10" Foreground="#64748B" Margin="0,4,0,0"/>
+                            <TextBlock Text="{Binding LastSyncDisplay}" FontSize="10" Foreground="#94A3B8" Margin="0,4,0,0"/>
+                            <TextBlock Margin="0,4,0,12" FontSize="10" Foreground="#64748B">
+                                <Run Text="{Binding CachedEmailCount}"/><Run Text=" emails en cache"/>
+                            </TextBlock>
+                            <Button Command="{Binding SyncEmailsCommand}" Style="{StaticResource EmailsPrimaryButton}"
+                                    Background="#2D6A4F" HorizontalAlignment="Stretch">
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                    <materialDesign:PackIcon Kind="Sync" Margin="0,0,8,0"/>
+                                    <TextBlock Text="Synchroniser maintenant"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </Border>
+        </Grid>
+
+        <!-- COMPOSE MODAL -->
+        <Border Grid.RowSpan="4" Background="#80000000" Visibility="{Binding IsComposeOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Border Background="White" CornerRadius="12" Padding="24" MaxWidth="520" VerticalAlignment="Center" HorizontalAlignment="Center">
+                <StackPanel>
+                    <TextBlock Text="Nouveau message" FontSize="18" FontWeight="Bold" Foreground="#1B3D3B" Margin="0,0,0,16"/>
+                    <TextBox materialDesign:HintAssist.Hint="Destinataire" Text="{Binding ComposeTo, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
+                    <TextBox materialDesign:HintAssist.Hint="Objet" Text="{Binding ComposeSubject, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
+                    <TextBox materialDesign:HintAssist.Hint="Message" Text="{Binding ComposeBody, UpdateSourceTrigger=PropertyChanged}"
+                             AcceptsReturn="True" Height="120" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                    <TextBlock Text="{Binding ComposeError}" Foreground="#DC2626" FontSize="12"
+                               Visibility="{Binding ComposeError, Converter={StaticResource NullToVisibilityConverter}}"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+                        <Button Content="Annuler" Command="{Binding CloseComposeCommand}" Style="{StaticResource EmailsToolbarButton}" Margin="0,0,8,0"/>
+                        <Button Content="Envoyer" Command="{Binding SendReplyCommand}" Style="{StaticResource EmailsPrimaryButton}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Border>
+
+        <ProgressBar Grid.Row="0" Grid.RowSpan="4" IsIndeterminate="True" Height="3" VerticalAlignment="Top"
+                     Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibilityConverter}}" Foreground="#2563EB"/>
+    </Grid>
+</UserControl>

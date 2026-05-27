@@ -1,0 +1,564 @@
+<UserControl x:Class="SmartBuilding.Desktop.WPF.Views.IncidentsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:lvc="clr-namespace:LiveChartsCore.SkiaSharpView.WPF;assembly=LiveChartsCore.SkiaSharpView.WPF"
+             xmlns:conv="clr-namespace:SmartBuilding.Desktop.WPF.Converters"
+             Background="{StaticResource SbmsPageBackgroundBrush}">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Themes/IncidentsStyles.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <conv:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+            <conv:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
+            <conv:IntEqualsToVisibilityConverter x:Key="IntEqualsToVisibilityConverter"/>
+            <conv:HexToBrushConverter x:Key="HexToBrushConverter"/>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Background="White" Padding="24,16" BorderBrush="#E8EFED" BorderThickness="0,0,0,1"
+                Visibility="{Binding IsEmbedded, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="340"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                    <TextBlock Text="Accueil › Incidents &amp; Sécurité" FontSize="11" Foreground="{StaticResource SbmsTextMutedBrush}"/>
+                    <TextBlock Text="Incidents &amp; Sécurité" FontSize="26" FontWeight="Bold" Foreground="#1B3D3B"/>
+                    <TextBlock Text="Surveillance, alertes et suivi des interventions" FontSize="13"
+                               Foreground="{StaticResource SbmsTextMutedBrush}" Margin="0,2,0,0"/>
+                </StackPanel>
+                <Border Grid.Column="1" Margin="24,0" BorderBrush="#E2E8F0" BorderThickness="1"
+                        CornerRadius="8" Background="White" VerticalAlignment="Center" Height="44">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="44"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <materialDesign:PackIcon Kind="Magnify" Width="20" Height="20" Foreground="#94A3B8"
+                                                 HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <TextBox Grid.Column="1" BorderThickness="0" Background="Transparent"
+                                 VerticalContentAlignment="Center"
+                                 materialDesign:HintAssist.Hint="Rechercher incident, emplacement, ID..."
+                                 materialDesign:TextFieldAssist.DecorationVisibility="Hidden"
+                                 Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"/>
+                    </Grid>
+                </Border>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border CornerRadius="8" Padding="10,6" Margin="0,0,10,0"
+                            Background="{Binding SecurityStatusColor, Converter={StaticResource HexToBrushConverter}}">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="ShieldCheck" Width="16" Height="16" Foreground="White" Margin="0,0,6,0"/>
+                            <TextBlock Text="{Binding SecurityStatusLabel}" FontSize="11" FontWeight="SemiBold" Foreground="White"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Background="#E8F5EE" CornerRadius="8" Padding="10,6" Margin="0,0,12,0">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="Sync" Width="16" Height="16" Foreground="#2D6A4F" Margin="0,0,6,0"/>
+                            <StackPanel>
+                                <TextBlock Text="{Binding SyncStatusLabel}" FontSize="11" FontWeight="SemiBold" Foreground="#166534"/>
+                                <TextBlock Text="{Binding LastSyncDisplay}" FontSize="9" Foreground="#64748B"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                    <Button Style="{StaticResource MaterialDesignIconButton}" Width="40" Height="40">
+                        <materialDesign:PackIcon Kind="BellOutline"/>
+                    </Button>
+                    <Border Background="#E63946" CornerRadius="9" MinWidth="18" Height="18" Margin="-14,-8,12,0" VerticalAlignment="Top">
+                        <TextBlock Text="{Binding NotificationCount}" Foreground="White" FontSize="10" FontWeight="Bold"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <Border Width="40" Height="40" CornerRadius="20" Background="{StaticResource SbmsAccentGreenBrush}" Margin="0,0,10,0">
+                        <TextBlock Text="{Binding UserInitials}" Foreground="White" FontWeight="Bold"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="{Binding UserName}" FontWeight="SemiBold" FontSize="13"/>
+                        <TextBlock Text="{Binding UserRole}" FontSize="11" Foreground="{StaticResource SbmsTextMutedBrush}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="12,8">
+            <ScrollViewer.Style>
+                <Style TargetType="ScrollViewer">
+                    <Setter Property="Padding" Value="12,8"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsEmbedded}" Value="True">
+                            <Setter Property="Padding" Value="0,4,0,8"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </ScrollViewer.Style>
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <UniformGrid Grid.Row="0" Columns="3" Margin="0,0,0,8">
+                    <Border Style="{StaticResource IncidentsKpiCard}">
+                        <StackPanel Orientation="Horizontal">
+                            <Border Width="32" Height="32" CornerRadius="8" Background="#FEE2E2" Margin="0,0,8,0">
+                                <materialDesign:PackIcon Kind="AlertOctagon" Foreground="#DC2626" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <StackPanel>
+                                <TextBlock Text="Total incidents" FontSize="10" Foreground="#94A3B8"/>
+                                <TextBlock Text="{Binding TotalIncidents}" FontSize="18" FontWeight="Bold" Foreground="#1B3D3B"/>
+                                <TextBlock Text="Historique complet" FontSize="10" Foreground="#64748B"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource IncidentsKpiCard}">
+                        <StackPanel Orientation="Horizontal">
+                            <Border Width="32" Height="32" CornerRadius="8" Background="#7F1D1D" Margin="0,0,8,0">
+                                <materialDesign:PackIcon Kind="Alert" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <StackPanel>
+                                <TextBlock Text="Incidents critiques" FontSize="10" Foreground="#94A3B8"/>
+                                <TextBlock Text="{Binding CriticalCount}" FontSize="18" FontWeight="Bold" Foreground="#7F1D1D"/>
+                                <TextBlock Text="Priorité maximale" FontSize="10" Foreground="#64748B"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource IncidentsKpiCard}">
+                        <StackPanel Orientation="Horizontal">
+                            <Border Width="32" Height="32" CornerRadius="8" Background="#DCFCE7" Margin="0,0,8,0">
+                                <materialDesign:PackIcon Kind="CheckCircle" Foreground="#166534" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <StackPanel>
+                                <TextBlock Text="Incidents résolus" FontSize="10" Foreground="#94A3B8"/>
+                                <TextBlock Text="{Binding ResolvedCount}" FontSize="18" FontWeight="Bold" Foreground="#166534"/>
+                                <TextBlock Text="Clôturés" FontSize="10" Foreground="#64748B"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource IncidentsKpiCard}">
+                        <StackPanel Orientation="Horizontal">
+                            <Border Width="32" Height="32" CornerRadius="8" Background="#FFEDD5" Margin="0,0,8,0">
+                                <materialDesign:PackIcon Kind="ShieldAlert" Foreground="#EA580C" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <StackPanel>
+                                <TextBlock Text="Alertes sécurité actives" FontSize="10" Foreground="#94A3B8"/>
+                                <TextBlock Text="{Binding ActiveSecurityAlerts}" FontSize="18" FontWeight="Bold" Foreground="#EA580C"/>
+                                <TextBlock Text="À traiter" FontSize="10" Foreground="#64748B"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource IncidentsKpiCard}">
+                        <StackPanel Orientation="Horizontal">
+                            <Border Width="32" Height="32" CornerRadius="8" Background="#EDE9FE" Margin="0,0,8,0">
+                                <materialDesign:PackIcon Kind="Cash" Foreground="#6D28D9" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <StackPanel>
+                                <TextBlock Text="Coût incidents" FontSize="10" Foreground="#94A3B8"/>
+                                <TextBlock Text="{Binding TotalCostDisplay}" FontSize="14" FontWeight="Bold" Foreground="#1B3D3B"/>
+                                <TextBlock Text="Débité du disponible loyers" FontSize="10" Foreground="#64748B"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource IncidentsKpiCard}">
+                        <StackPanel Orientation="Horizontal">
+                            <Border Width="32" Height="32" CornerRadius="8" Background="#DCFCE7" Margin="0,0,8,0">
+                                <materialDesign:PackIcon Kind="WalletOutline" Foreground="#166534" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <StackPanel>
+                                <TextBlock Text="Disponible" FontSize="10" Foreground="#94A3B8"/>
+                                <TextBlock Text="{Binding AvailableBalanceDisplay}" FontSize="14" FontWeight="Bold" Foreground="#166534"/>
+                                <TextBlock Text="Loyers − dépenses" FontSize="10" Foreground="#64748B"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource IncidentsKpiCard}">
+                        <StackPanel Orientation="Horizontal">
+                            <Border Width="32" Height="32" CornerRadius="8" Background="#DBEAFE" Margin="0,0,8,0">
+                                <materialDesign:PackIcon Kind="HammerWrench" Foreground="#2563EB" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <StackPanel>
+                                <TextBlock Text="Interventions aujourd'hui" FontSize="10" Foreground="#94A3B8"/>
+                                <TextBlock Text="{Binding InterventionsToday}" FontSize="18" FontWeight="Bold" Foreground="#2563EB"/>
+                                <TextBlock Text="Techniciens mobilisés" FontSize="10" Foreground="#64748B"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </UniformGrid>
+
+                <Border Grid.Row="1" Background="White" CornerRadius="8" BorderBrush="#E8EFED" BorderThickness="1"
+                        Padding="10,8" Margin="0,0,0,8">
+                    <WrapPanel>
+                        <Button Command="{Binding OpenAddFormCommand}" Style="{StaticResource IncidentsPrimaryButton}">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="AlertPlus" Margin="0,0,6,0"/>
+                                <TextBlock Text="Signaler incident"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource IncidentsToolbarButton}">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="Wrench" Margin="0,0,6,0"/>
+                                <TextBlock Text="Nouvelle intervention"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource IncidentsToolbarButton}">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="BellRing" Margin="0,0,6,0"/>
+                                <TextBlock Text="Alerte sécurité"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource IncidentsToolbarButton}">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="History" Margin="0,0,6,0"/>
+                                <TextBlock Text="Historique incidents"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource IncidentsToolbarButton}">
+                            <materialDesign:PackIcon Kind="FilePdfBox"/>
+                        </Button>
+                        <Button Command="{Binding ExportCsvCommand}" Style="{StaticResource IncidentsToolbarButton}">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="MicrosoftExcel" Margin="0,0,6,0"/>
+                                <TextBlock Text="Export Excel"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Command="{Binding SyncCommand}" Style="{StaticResource IncidentsToolbarButton}">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="Sync" Margin="0,0,6,0"/>
+                                <TextBlock Text="Synchroniser"/>
+                            </StackPanel>
+                        </Button>
+                    </WrapPanel>
+                </Border>
+
+                <UniformGrid Grid.Row="2" Columns="4" Margin="0,0,0,8">
+                    <Border Style="{StaticResource IncidentsAnalyticsCard}" Margin="0,0,4,0">
+                        <StackPanel>
+                            <TextBlock Text="Incidents mensuels" FontWeight="SemiBold" FontSize="11" Foreground="#1B3D3B" Margin="0,0,0,4"/>
+                            <lvc:CartesianChart Series="{Binding MonthlyTrendSeries}" Height="115"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource IncidentsAnalyticsCard}" Margin="4,0">
+                        <StackPanel>
+                            <TextBlock Text="Types d'incidents" FontWeight="SemiBold" FontSize="11" Foreground="#1B3D3B" Margin="0,0,0,4"/>
+                            <lvc:PieChart Series="{Binding TypePieSeries}" Height="115"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource IncidentsAnalyticsCard}" Margin="4,0">
+                        <StackPanel>
+                            <TextBlock Text="Niveaux de gravité" FontWeight="SemiBold" FontSize="11" Foreground="#1B3D3B" Margin="0,0,0,4"/>
+                            <lvc:CartesianChart Series="{Binding SeverityBarSeries}" Height="115"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource IncidentsAnalyticsCard}" Margin="4,0,0,0">
+                        <StackPanel>
+                            <TextBlock Text="Temps moyen résolution (h)" FontWeight="SemiBold" FontSize="11" Foreground="#1B3D3B" Margin="0,0,0,4"/>
+                            <lvc:CartesianChart Series="{Binding ResolutionSeries}" Height="115"/>
+                        </StackPanel>
+                    </Border>
+                </UniformGrid>
+
+                <Grid Grid.Row="3" MinHeight="420">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="300"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                        <Border Background="White" CornerRadius="10" BorderBrush="#E8EFED" BorderThickness="1" Padding="10,8">
+                            <DockPanel>
+                                <ScrollViewer DockPanel.Dock="Top" HorizontalScrollBarVisibility="Auto" Margin="0,0,0,6">
+                                    <StackPanel Orientation="Horizontal">
+                                        <ComboBox ItemsSource="{Binding TypeFilters}" SelectedItem="{Binding FilterType}" Style="{StaticResource IncidentsFilterCombo}"/>
+                                        <ComboBox ItemsSource="{Binding SeverityFilters}" SelectedItem="{Binding FilterSeverity}" Style="{StaticResource IncidentsFilterCombo}"/>
+                                        <ComboBox ItemsSource="{Binding StatusFilters}" SelectedItem="{Binding FilterStatus}" Style="{StaticResource IncidentsFilterCombo}"/>
+                                        <ComboBox ItemsSource="{Binding BuildingFilters}" SelectedItem="{Binding FilterBuilding}" Style="{StaticResource IncidentsFilterCombo}"/>
+                                        <ComboBox ItemsSource="{Binding PeriodFilters}" SelectedItem="{Binding FilterPeriod}" Style="{StaticResource IncidentsFilterCombo}"/>
+                                        <TextBox Style="{StaticResource IncidentsFilterSearch}" materialDesign:HintAssist.Hint="Rechercher..."
+                                                 Text="{Binding TableSearchQuery, UpdateSourceTrigger=PropertyChanged}"/>
+                                    </StackPanel>
+                                </ScrollViewer>
+
+                                <DataGrid ItemsSource="{Binding Incidents}" SelectedItem="{Binding SelectedIncident}"
+                                          Style="{StaticResource IncidentsDataGrid}" materialDesign:DataGridAssist.CellPadding="8,4" MinHeight="200">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="ID" Binding="{Binding Code}" Width="90"/>
+                                        <DataGridTextColumn Header="DATE" Binding="{Binding DateDisplay}" Width="110"/>
+                                        <DataGridTextColumn Header="TYPE" Binding="{Binding TypeLabel}" Width="110"/>
+                                        <DataGridTextColumn Header="EMPLACEMENT" Binding="{Binding Location}" Width="*"/>
+                                        <DataGridTemplateColumn Header="GRAVITÉ" Width="85">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <Border CornerRadius="8" Padding="6,2" Background="{Binding SeverityBadgeBackground}">
+                                                        <TextBlock Text="{Binding SeverityLabel}" Foreground="{Binding SeverityBadgeForeground}" FontSize="10" FontWeight="SemiBold"/>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                        <DataGridTextColumn Header="RESPONSABLE" Binding="{Binding Responsible}" Width="95"/>
+                                        <DataGridTemplateColumn Header="STATUT" Width="100">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <Border CornerRadius="8" Padding="6,2" Background="{Binding StatusBadgeBackground}">
+                                                        <TextBlock Text="{Binding StatusLabel}" Foreground="{Binding StatusBadgeForeground}" FontSize="10" FontWeight="SemiBold"/>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                        <DataGridTextColumn Header="COÛT" Binding="{Binding CostDisplay}" Width="85"/>
+                                        <DataGridTextColumn Header="INTERVENTION" Binding="{Binding InterventionSummary}" Width="95"/>
+                                        <DataGridTemplateColumn Header="" Width="80">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <Button Style="{StaticResource MaterialDesignIconButton}">
+                                                            <materialDesign:PackIcon Kind="EyeOutline"/>
+                                                        </Button>
+                                                        <Button Style="{StaticResource MaterialDesignIconButton}">
+                                                            <materialDesign:PackIcon Kind="DotsVertical"/>
+                                                        </Button>
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+
+                                <DockPanel DockPanel.Dock="Bottom" Margin="0,6,0,0">
+                                    <TextBlock Text="{Binding PaginationText}" DockPanel.Dock="Left" VerticalAlignment="Center"
+                                               Foreground="{StaticResource SbmsTextMutedBrush}" FontSize="11"/>
+                                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                        <ComboBox Width="70" ItemsSource="{Binding PageSizeOptions}" SelectedItem="{Binding PageSize}" Margin="0,0,16,0"/>
+                                        <Button Command="{Binding PreviousPageCommand}" Style="{StaticResource MaterialDesignIconButton}">
+                                            <materialDesign:PackIcon Kind="ChevronLeft"/>
+                                        </Button>
+                                        <TextBlock Text="{Binding CurrentPage}" VerticalAlignment="Center" Margin="8,0" FontWeight="SemiBold"/>
+                                        <TextBlock Text="/" VerticalAlignment="Center" Foreground="#94A3B8"/>
+                                        <TextBlock Text="{Binding TotalPages}" VerticalAlignment="Center" Margin="8,0" Foreground="#94A3B8"/>
+                                        <Button Command="{Binding NextPageCommand}" Style="{StaticResource MaterialDesignIconButton}">
+                                            <materialDesign:PackIcon Kind="ChevronRight"/>
+                                        </Button>
+                                    </StackPanel>
+                                </DockPanel>
+                            </DockPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource IncidentsSubTableCard}">
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Top" Text="Interventions en cours" FontWeight="SemiBold" Foreground="#1B3D3B" Margin="0,0,0,8"/>
+                                <DataGrid ItemsSource="{Binding Interventions}" Style="{StaticResource IncidentsDataGrid}"
+                                          materialDesign:DataGridAssist.CellPadding="6,3" MaxHeight="160" HeadersVisibility="Column">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="INCIDENT" Binding="{Binding IncidentCode}" Width="80"/>
+                                        <DataGridTextColumn Header="TECHNICIEN" Binding="{Binding Technician}" Width="100"/>
+                                        <DataGridTextColumn Header="TYPE" Binding="{Binding InterventionType}" Width="*"/>
+                                        <DataGridTextColumn Header="DÉBUT" Binding="{Binding StartDisplay}" Width="75"/>
+                                        <DataGridTextColumn Header="FIN" Binding="{Binding EndDisplay}" Width="75"/>
+                                        <DataGridTextColumn Header="COÛT" Binding="{Binding CostDisplay}" Width="80"/>
+                                        <DataGridTextColumn Header="STATUT" Binding="{Binding StatusLabel}" Width="75"/>
+                                        <DataGridTextColumn Header="RÉSULTAT" Binding="{Binding Result}" Width="*"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </DockPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1">
+                        <Border Style="{StaticResource IncidentsSidebarCard}">
+                            <StackPanel>
+                                <TextBlock Text="Alertes sécurité" FontWeight="SemiBold" Foreground="#1B3D3B" Margin="0,0,0,10"/>
+                                <ItemsControl ItemsSource="{Binding Alerts}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Background="{Binding Background}" CornerRadius="8" Padding="10" Margin="0,0,0,8">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <materialDesign:PackIcon Kind="ShieldAlert" Width="20" Height="20"
+                                                                             Foreground="{Binding AccentColor, Converter={StaticResource HexToBrushConverter}}"
+                                                                             VerticalAlignment="Top" Margin="0,0,10,0"/>
+                                                    <StackPanel Grid.Column="1">
+                                                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="12" Foreground="#1B3D3B"/>
+                                                        <TextBlock Text="{Binding Message}" FontSize="11" Foreground="#64748B" TextWrapping="Wrap"/>
+                                                    </StackPanel>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource IncidentsSidebarCard}">
+                            <StackPanel>
+                                <TextBlock Text="Surveillance temps réel" FontWeight="SemiBold" Foreground="#1B3D3B" Margin="0,0,0,10"/>
+                                <ItemsControl ItemsSource="{Binding Monitoring}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Background="#F8FAFC" CornerRadius="8" Padding="10" Margin="0,0,0,6" BorderBrush="#E8EFED" BorderThickness="1">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <StackPanel>
+                                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="12"/>
+                                                        <TextBlock Text="{Binding Category}" FontSize="10" Foreground="#94A3B8"/>
+                                                        <TextBlock Text="{Binding Detail}" FontSize="10" Foreground="#64748B" Margin="0,2,0,0"/>
+                                                    </StackPanel>
+                                                    <Border Grid.Column="1" CornerRadius="8" Padding="6,2" VerticalAlignment="Top"
+                                                            Background="{Binding StatusColor, Converter={StaticResource HexToBrushConverter}}">
+                                                        <TextBlock Text="{Binding StatusLabel}" FontSize="10" Foreground="White" FontWeight="SemiBold"/>
+                                                    </Border>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource IncidentsSidebarCard}">
+                            <StackPanel>
+                                <TextBlock Text="Analyse des risques" FontWeight="SemiBold" Foreground="#1B3D3B" Margin="0,0,0,10"/>
+                                <ItemsControl ItemsSource="{Binding Insights}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="0,0,0,8">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="{Binding Label}" FontSize="10" Foreground="#94A3B8"/>
+                                                <TextBlock Grid.Column="1" Text="{Binding Value}" FontSize="11" FontWeight="SemiBold"
+                                                           Foreground="{Binding Accent}" TextWrapping="Wrap" MaxWidth="150" TextAlignment="Right"/>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Background="White" CornerRadius="12" BorderBrush="#E8EFED" BorderThickness="1"
+                                Visibility="{Binding IsDetailPanelOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <Grid MaxHeight="380">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <DockPanel Grid.Row="0" Margin="14,12,14,8">
+                                    <Button DockPanel.Dock="Right" Command="{Binding CloseDetailPanelCommand}" Style="{StaticResource MaterialDesignIconButton}">
+                                        <materialDesign:PackIcon Kind="Close"/>
+                                    </Button>
+                                    <TextBlock Text="Détail incident" FontSize="14" FontWeight="Bold" Foreground="#1B3D3B"/>
+                                </DockPanel>
+                                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="14,0,14,10">
+                                    <StackPanel DataContext="{Binding SelectedIncident}">
+                                        <Border CornerRadius="10" Padding="12" Background="#FEE2E2" Margin="0,0,0,8">
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding TypeLabel}" FontSize="15" FontWeight="Bold" Foreground="#7F1D1D"/>
+                                                <TextBlock Text="{Binding Code}" FontSize="11" Foreground="#64748B"/>
+                                                <WrapPanel Margin="0,8,0,0">
+                                                    <Border Background="{Binding SeverityBadgeBackground}" CornerRadius="8" Padding="8,4" Margin="0,0,6,0">
+                                                        <TextBlock Text="{Binding SeverityLabel}" Foreground="{Binding SeverityBadgeForeground}" FontWeight="SemiBold" FontSize="10"/>
+                                                    </Border>
+                                                    <Border Background="{Binding StatusBadgeBackground}" CornerRadius="8" Padding="8,4">
+                                                        <TextBlock Text="{Binding StatusLabel}" Foreground="{Binding StatusBadgeForeground}" FontWeight="SemiBold" FontSize="10"/>
+                                                    </Border>
+                                                </WrapPanel>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <WrapPanel Margin="0,0,0,8">
+                                            <Button Content="Résumé" Command="{Binding DataContext.SetDetailTabCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="0" Style="{StaticResource PersonnelDetailTabButton}"/>
+                                            <Button Content="Interventions" Command="{Binding DataContext.SetDetailTabCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="1" Style="{StaticResource PersonnelDetailTabButton}"/>
+                                        </WrapPanel>
+
+                                        <StackPanel Visibility="{Binding DataContext.SelectedDetailTab, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource IntEqualsToVisibilityConverter}, ConverterParameter=0}">
+                                            <TextBlock Text="Description" FontSize="10" Foreground="#94A3B8"/>
+                                            <TextBlock Text="{Binding Description}" TextWrapping="Wrap" Margin="0,2,0,8"/>
+                                            <TextBlock Text="Emplacement" FontSize="10" Foreground="#94A3B8"/><TextBlock Text="{Binding Location}" Margin="0,2,0,6"/>
+                                            <TextBlock Text="Responsable" FontSize="10" Foreground="#94A3B8"/><TextBlock Text="{Binding Responsible}" Margin="0,2,0,6"/>
+                                            <TextBlock Text="Niveau risque" FontSize="10" Foreground="#94A3B8"/><TextBlock Text="{Binding RiskLevel}" FontWeight="SemiBold" Margin="0,2,0,6"/>
+                                            <TextBlock Text="Coût réparation" FontSize="10" Foreground="#94A3B8"/>
+                                            <TextBlock Text="{Binding CostDisplay}" FontSize="16" FontWeight="Bold" Foreground="#6D28D9" Margin="0,2,0,6"/>
+                                            <TextBlock Text="Durée résolution" FontSize="10" Foreground="#94A3B8"/><TextBlock Text="{Binding ResolutionDurationDisplay}" Margin="0,2,0,6"/>
+                                            <Border Background="#F1F5F9" CornerRadius="8" Padding="20" Margin="0,4,0,0"
+                                                    Visibility="{Binding HasPhoto, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                <StackPanel HorizontalAlignment="Center">
+                                                    <materialDesign:PackIcon Kind="Image" Width="32" Height="32" Foreground="#94A3B8"/>
+                                                    <TextBlock Text="Photo incident" FontSize="10" Foreground="#64748B" HorizontalAlignment="Center"/>
+                                                </StackPanel>
+                                            </Border>
+                                        </StackPanel>
+
+                                        <ItemsControl ItemsSource="{Binding Interventions}"
+                                                      Visibility="{Binding DataContext.SelectedDetailTab, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource IntEqualsToVisibilityConverter}, ConverterParameter=1}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Background="#F8FAFC" CornerRadius="8" Padding="10" Margin="0,0,0,8" BorderBrush="#E8EFED" BorderThickness="1">
+                                                        <StackPanel>
+                                                            <TextBlock Text="{Binding InterventionType}" FontWeight="SemiBold"/>
+                                                            <TextBlock Text="{Binding Technician}" FontSize="10" Foreground="#64748B"/>
+                                                            <TextBlock Margin="0,4,0,0"><Run Text="{Binding StartDisplay}"/><Run Text=" → "/><Run Text="{Binding EndDisplay}"/></TextBlock>
+                                                            <TextBlock Text="{Binding Result}" FontSize="11" Foreground="#64748B" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                                        </StackPanel>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </ScrollViewer>
+                                <Border Grid.Row="2" Padding="14,10,14,12" BorderBrush="#E8EFED" BorderThickness="0,1,0,0">
+                                    <UniformGrid Columns="2">
+                                        <Button Style="{StaticResource IncidentsToolbarButton}" Margin="0,0,4,0" Content="Modifier"/>
+                                        <Button Style="{StaticResource IncidentsPrimaryButton}" Margin="4,0,0,0" Content="Résoudre"/>
+                                    </UniformGrid>
+                                </Border>
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </Grid>
+            </Grid>
+        </ScrollViewer>
+
+        <Border Grid.RowSpan="2" Background="#80000000" Visibility="{Binding IsAddFormOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Border Background="White" CornerRadius="12" Padding="24" MaxWidth="460" VerticalAlignment="Center" HorizontalAlignment="Center">
+                <StackPanel>
+                    <TextBlock Text="Signaler un incident" FontSize="18" FontWeight="Bold" Foreground="#1B3D3B" Margin="0,0,0,16"/>
+                    <ComboBox ItemsSource="{Binding IncidentTypes}" SelectedItem="{Binding FormType}" Style="{StaticResource IncidentsFilterCombo}" Margin="0,0,0,8"/>
+                    <TextBox materialDesign:HintAssist.Hint="Titre *" Text="{Binding FormTitle, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
+                    <TextBox materialDesign:HintAssist.Hint="Description" Text="{Binding FormDescription, UpdateSourceTrigger=PropertyChanged}"
+                             AcceptsReturn="True" Height="60" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                    <ComboBox ItemsSource="{Binding IncidentLocations}" SelectedItem="{Binding FormLocation}" Style="{StaticResource IncidentsFilterCombo}" Margin="0,0,0,8"/>
+                    <ComboBox ItemsSource="{Binding FormSeverityOptions}" SelectedItem="{Binding FormSeverity}"
+                              Style="{StaticResource IncidentsFilterCombo}" Margin="0,0,0,8"/>
+                    <TextBlock Text="{Binding FormError}" Foreground="#DC2626" FontSize="12" Margin="0,0,0,8"
+                               Visibility="{Binding FormError, Converter={StaticResource NullToVisibilityConverter}}"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Content="Annuler" Command="{Binding CloseAddFormCommand}" Style="{StaticResource IncidentsToolbarButton}" Margin="0,0,8,0"/>
+                        <Button Content="Signaler" Command="{Binding SaveIncidentCommand}" Style="{StaticResource IncidentsPrimaryButton}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Border>
+
+        <ProgressBar Grid.Row="1" IsIndeterminate="True" Height="3" VerticalAlignment="Top"
+                     Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibilityConverter}}"
+                     Foreground="#DC2626"/>
+    </Grid>
+</UserControl>

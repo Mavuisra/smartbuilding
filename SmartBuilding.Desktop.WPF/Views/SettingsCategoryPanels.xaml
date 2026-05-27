@@ -1,0 +1,559 @@
+<UserControl x:Class="SmartBuilding.Desktop.WPF.Views.SettingsCategoryPanels"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:conv="clr-namespace:SmartBuilding.Desktop.WPF.Converters"
+             xmlns:models="clr-namespace:SmartBuilding.Desktop.WPF.Models">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Themes/SettingsStyles.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <conv:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+            <conv:InverseBoolConverter x:Key="InverseBoolConverter"/>
+            <conv:StringEqualsToVisibilityConverter x:Key="StringEqualsToVisibilityConverter"/>
+            <conv:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <StackPanel>
+        <Border Style="{StaticResource SettingsPanelCard}" Margin="0,0,0,8"
+                Visibility="{Binding SelectedCategoryId, Converter={StaticResource StringEqualsToVisibilityConverter}, ConverterParameter=general}">
+            <StackPanel>
+                <TextBlock Text="Paramètres généraux" Style="{StaticResource SettingsSectionTitle}"/>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/><ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/>
+                    </Grid.RowDefinitions>
+                    <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,8,12">
+                        <TextBlock Text="Nom de l'entreprise" Style="{StaticResource SettingsFieldLabel}"/>
+                        <TextBox Text="{Binding CompanyName, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{StaticResource MaterialDesignOutlinedTextBox}"/>
+                    </StackPanel>
+                    <StackPanel Grid.Row="0" Grid.Column="1" Margin="8,0,0,12">
+                        <TextBlock Text="Fuseau horaire" Style="{StaticResource SettingsFieldLabel}"/>
+                        <ComboBox ItemsSource="{Binding TimeZones}" SelectedItem="{Binding SelectedTimeZone, Mode=TwoWay}"
+                                  Style="{StaticResource MaterialDesignOutlinedComboBox}"/>
+                    </StackPanel>
+                    <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,8,12">
+                        <TextBlock Text="Devise" Style="{StaticResource SettingsFieldLabel}"/>
+                        <ComboBox ItemsSource="{Binding Currencies}" SelectedItem="{Binding SelectedCurrency, Mode=TwoWay}"
+                                  Style="{StaticResource MaterialDesignOutlinedComboBox}"/>
+                        <Border Margin="0,10,0,0" Padding="12" CornerRadius="8"
+                                Background="{DynamicResource SbmsSettingsPreviewBgBrush}"
+                                BorderBrush="{DynamicResource SbmsSettingsPreviewBorderBrush}" BorderThickness="1"
+                                Visibility="{Binding IsUsdCurrency, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <StackPanel>
+                                <TextBlock Text="Taux de change (obligatoire pour USD)" FontWeight="SemiBold" FontSize="11" Margin="0,0,0,6"/>
+                                <DockPanel>
+                                    <TextBlock Text="1 USD =" VerticalAlignment="Center" DockPanel.Dock="Left" Margin="0,0,8,0"/>
+                                    <TextBox Text="{Binding UsdExchangeRateText, UpdateSourceTrigger=PropertyChanged}"
+                                             Style="{StaticResource MaterialDesignOutlinedTextBox}" Width="120" HorizontalAlignment="Left"/>
+                                    <TextBlock Text="CDF" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                                </DockPanel>
+                                <Button Content="Configurer le taux…" Command="{Binding PromptUsdExchangeRateCommand}"
+                                        Style="{StaticResource SettingsOutlineAccentButton}" HorizontalAlignment="Left" Margin="0,8,0,0"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                    <StackPanel Grid.Row="1" Grid.Column="1" Margin="8,0,0,12">
+                        <TextBlock Text="Format de date" Style="{StaticResource SettingsFieldLabel}"/>
+                        <ComboBox ItemsSource="{Binding DateFormats}" SelectedItem="{Binding SelectedDateFormat, Mode=TwoWay}"
+                                  Style="{StaticResource MaterialDesignOutlinedComboBox}"/>
+                    </StackPanel>
+                    <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,8,12">
+                        <TextBlock Text="Langue" Style="{StaticResource SettingsFieldLabel}"/>
+                        <ComboBox ItemsSource="{Binding Languages}" SelectedItem="{Binding SelectedLanguage, Mode=TwoWay}"
+                                  Style="{StaticResource MaterialDesignOutlinedComboBox}"/>
+                    </StackPanel>
+                    <StackPanel Grid.Row="2" Grid.Column="1" Margin="8,0,0,12">
+                        <TextBlock Text="Format d'heure" Style="{StaticResource SettingsFieldLabel}"/>
+                        <ComboBox ItemsSource="{Binding TimeFormats}" SelectedItem="{Binding SelectedTimeFormat, Mode=TwoWay}"
+                                  Style="{StaticResource MaterialDesignOutlinedComboBox}"/>
+                    </StackPanel>
+                </Grid>
+                <StackPanel>
+                    <TextBlock Text="Logo de l'entreprise" Style="{StaticResource SettingsFieldLabel}"/>
+                    <Border BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="8" Padding="16" Margin="0,0,0,16">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Border Width="64" Height="64" CornerRadius="8" Background="#F1F5F9">
+                                <Grid>
+                                    <materialDesign:PackIcon Kind="Image" Width="32" Height="32" Foreground="#94A3B8"
+                                                             HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                             Visibility="{Binding HasLogo, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}"/>
+                                    <Image Source="{Binding LogoPath}" Stretch="Uniform" Margin="4"
+                                           Visibility="{Binding HasLogo, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                </Grid>
+                            </Border>
+                            <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center">
+                                <Button Content="Changer le logo" Command="{Binding ChangeLogoCommand}"
+                                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                                        BorderBrush="#2D6A4F" Foreground="#2D6A4F" HorizontalAlignment="Left" Margin="0,0,0,8"/>
+                                <Button Content="Supprimer" Command="{Binding RemoveLogoCommand}"
+                                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                                        BorderBrush="#EF4444" Foreground="#EF4444" HorizontalAlignment="Left"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                    <DockPanel Margin="0,0,0,16">
+                        <ToggleButton IsChecked="{Binding MaintenanceMode}" DockPanel.Dock="Left" Margin="0,0,12,0"/>
+                        <TextBlock Text="Activer le mode maintenance" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                    </DockPanel>
+                    <TextBlock Text="{Binding StatusMessage}" Foreground="#2D6A4F" FontSize="12" Margin="0,0,0,8" TextWrapping="Wrap"
+                               Visibility="{Binding StatusMessage, Converter={StaticResource NullToVisibilityConverter}}"/>
+                    <TextBlock Text="{Binding ErrorMessage}" Foreground="#DC2626" FontSize="12" Margin="0,0,0,8" TextWrapping="Wrap"
+                               Visibility="{Binding ErrorMessage, Converter={StaticResource NullToVisibilityConverter}}"/>
+                    <Button Content="Enregistrer les modifications" Command="{Binding SaveCommand}"
+                            Style="{StaticResource SettingsSaveButton}" HorizontalAlignment="Right"
+                            IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <!-- Société & bailleur (quittances PDF) -->
+        <Border Style="{StaticResource SettingsPanelCard}" Margin="0,0,0,8"
+                Visibility="{Binding SelectedCategoryId, Converter={StaticResource StringEqualsToVisibilityConverter}, ConverterParameter=buildings}">
+            <StackPanel>
+                <Border Style="{StaticResource SettingsHeroBanner}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="Société &amp; bailleur" FontSize="20" FontWeight="Bold" Foreground="White"/>
+                            <TextBlock Text="Coordonnées affichées sur les quittances de loyer PDF"
+                                       FontSize="12" Foreground="#E8F5EE" Margin="0,6,0,10" TextWrapping="Wrap"/>
+                            <Border Style="{StaticResource SettingsLocationBadge}">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="MapMarker" Width="16" Height="16" Foreground="White" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding CompanyLocationBadge}" Foreground="White" FontWeight="SemiBold" FontSize="11" Margin="6,0,0,0"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                        <Border Grid.Column="1" Background="#FFFFFF18" CornerRadius="12" Padding="14" VerticalAlignment="Center">
+                            <StackPanel HorizontalAlignment="Center">
+                                <materialDesign:PackIcon Kind="FileDocumentOutline" Width="36" Height="36" Foreground="White" HorizontalAlignment="Center"/>
+                                <TextBlock Text="Quittances" Foreground="White" FontSize="10" FontWeight="SemiBold" Margin="0,6,0,0"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </Border>
+
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="1.4*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0" Margin="0,0,14,0">
+                        <TextBlock Text="Identité légale" FontSize="14" FontWeight="Bold"
+                                   Foreground="{DynamicResource SbmsSettingsTitleBrush}" Margin="0,0,0,12"/>
+                        <StackPanel Margin="0,0,0,12">
+                            <TextBlock Text="Raison sociale *" Style="{StaticResource SettingsFieldLabel}"/>
+                            <TextBox Text="{Binding CompanyName, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource MaterialDesignOutlinedTextBox}"/>
+                        </StackPanel>
+                        <StackPanel Margin="0,0,0,12">
+                            <TextBlock Text="Adresse (Gombe) *" Style="{StaticResource SettingsFieldLabel}"/>
+                            <TextBox Text="{Binding BuildingAddress, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource MaterialDesignOutlinedTextBox}"/>
+                        </StackPanel>
+                        <Grid Margin="0,0,0,12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                <TextBlock Text="Ville *" Style="{StaticResource SettingsFieldLabel}"/>
+                                <TextBox Text="{Binding BuildingCity, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{StaticResource MaterialDesignOutlinedTextBox}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                                <TextBlock Text="Pays *" Style="{StaticResource SettingsFieldLabel}"/>
+                                <TextBox Text="{Binding BuildingCountry, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{StaticResource MaterialDesignOutlinedTextBox}"/>
+                            </StackPanel>
+                        </Grid>
+                        <Grid Margin="0,0,0,12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                <TextBlock Text="Téléphone *" Style="{StaticResource SettingsFieldLabel}"/>
+                                <TextBox Text="{Binding BuildingPhone, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{StaticResource MaterialDesignOutlinedTextBox}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                                <TextBlock Text="Email *" Style="{StaticResource SettingsFieldLabel}"/>
+                                <TextBox Text="{Binding BuildingEmail, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{StaticResource MaterialDesignOutlinedTextBox}"/>
+                            </StackPanel>
+                        </Grid>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                <TextBlock Text="Site web" Style="{StaticResource SettingsFieldLabel}"/>
+                                <TextBox Text="{Binding BuildingWebsite, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{StaticResource MaterialDesignOutlinedTextBox}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                                <TextBlock Text="ID National" Style="{StaticResource SettingsFieldLabel}"/>
+                                <TextBox Text="{Binding BuildingNationalId, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{StaticResource MaterialDesignOutlinedTextBox}"/>
+                            </StackPanel>
+                        </Grid>
+                        <StackPanel Margin="0,12,0,0">
+                            <TextBlock Text="Nombre d'étages (bâtiment)" Style="{StaticResource SettingsFieldLabel}"/>
+                            <TextBox Text="{Binding BuildingFloors, UpdateSourceTrigger=PropertyChanged}" Width="120" HorizontalAlignment="Left"
+                                     Style="{StaticResource MaterialDesignOutlinedTextBox}"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1">
+                        <TextBlock Text="Aperçu quittance" FontSize="14" FontWeight="Bold"
+                                   Foreground="{DynamicResource SbmsSettingsTitleBrush}" Margin="0,0,0,10"/>
+                        <Border Style="{StaticResource SettingsPreviewCard}">
+                            <StackPanel>
+                                <TextBlock Text="PROPRIÉTAIRE / BAILLEUR" FontSize="9" FontWeight="Bold"
+                                           Foreground="{DynamicResource SbmsSettingsTitleBrush}" Margin="0,0,0,8"/>
+                                <TextBlock Text="{Binding CompanyName}" FontSize="13" FontWeight="Bold" Foreground="#0F172A" TextWrapping="Wrap"/>
+                                <TextBlock Margin="0,8,0,0" FontSize="10" Foreground="#475569" TextWrapping="Wrap">
+                                    <Run Text="{Binding BuildingAddress, Mode=OneWay}"/>
+                                    <LineBreak/>
+                                    <Run Text="{Binding BuildingCity, Mode=OneWay}"/>
+                                    <Run Text=" — "/>
+                                    <Run Text="{Binding BuildingCountry, Mode=OneWay}"/>
+                                </TextBlock>
+                                <TextBlock Margin="0,6,0,0" FontSize="10" Foreground="#475569">
+                                    <Run Text="Tél : "/>
+                                    <Run Text="{Binding BuildingPhone, Mode=OneWay}" FontWeight="SemiBold"/>
+                                </TextBlock>
+                                <TextBlock FontSize="10" Foreground="#475569">
+                                    <Run Text="Email : "/>
+                                    <Run Text="{Binding BuildingEmail, Mode=OneWay}" FontWeight="SemiBold"/>
+                                </TextBlock>
+                                <TextBlock FontSize="10" Foreground="#475569" Margin="0,2,0,0">
+                                    <Run Text="{Binding BuildingNationalId, Mode=OneWay}"/>
+                                </TextBlock>
+                                <Border Background="#DCFCE7" CornerRadius="6" Padding="8,4" Margin="0,12,0,0" HorizontalAlignment="Left">
+                                    <TextBlock Text="Utilisé sur chaque quittance PDF" FontSize="9" FontWeight="SemiBold" Foreground="#166534"/>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+
+                        <Grid Margin="0,14,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Border Background="{DynamicResource SbmsSettingsStat1BgBrush}" CornerRadius="10" Padding="12" Margin="0,0,6,0">
+                                <StackPanel>
+                                    <TextBlock Text="Locaux" FontSize="10" Foreground="{DynamicResource SbmsSettingsStat1FgBrush}"/>
+                                    <TextBlock Text="{Binding PremisesCountDisplay}" FontSize="22" FontWeight="Bold"
+                                               Foreground="{DynamicResource SbmsSettingsStat1FgBrush}"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Grid.Column="1" Background="{DynamicResource SbmsSettingsStat2BgBrush}" CornerRadius="10" Padding="12" Margin="6,0,0,0">
+                                <StackPanel>
+                                    <TextBlock Text="Surface" FontSize="10" Foreground="{DynamicResource SbmsSettingsStat2FgBrush}"/>
+                                    <TextBlock Text="{Binding BuildingAreaDisplay}" FontSize="16" FontWeight="Bold"
+                                               Foreground="{DynamicResource SbmsSettingsStat2FgBrush}"/>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                    </StackPanel>
+                </Grid>
+
+                <Border Background="#FEF2F2" BorderBrush="#FECACA" BorderThickness="1" CornerRadius="8" Padding="12,8" Margin="0,16,0,8"
+                        Visibility="{Binding ErrorMessage, Converter={StaticResource NullToVisibilityConverter}}">
+                    <TextBlock Text="{Binding ErrorMessage}" Foreground="#DC2626" TextWrapping="Wrap"/>
+                </Border>
+                <TextBlock Text="{Binding StatusMessage}" Foreground="{DynamicResource SbmsAccentGreenBrush}" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,8"
+                           Visibility="{Binding StatusMessage, Converter={StaticResource NullToVisibilityConverter}}"/>
+
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+                    <Button Content="Valeurs Kinshasa (Gombe)" Command="{Binding ApplyKinshasaDefaultsCommand}"
+                            Style="{StaticResource SettingsOutlineAccentButton}" Margin="0,0,8,0"/>
+                    <Button Content="Gérer les locaux" Command="{Binding OpenModuleCommand}" CommandParameter="locations"
+                            Style="{StaticResource MaterialDesignOutlinedButton}" Margin="0,0,8,0"/>
+                    <Button Content="Enregistrer la société" Command="{Binding SaveBuildingCommand}" Style="{StaticResource SettingsSaveButton}"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <!-- Utilisateurs -->
+        <Border Style="{StaticResource SettingsPanelCard}" Margin="0,0,0,8"
+                Visibility="{Binding SelectedCategoryId, Converter={StaticResource StringEqualsToVisibilityConverter}, ConverterParameter=utilisateurs}">
+            <StackPanel>
+                <TextBlock Text="Utilisateurs &amp; rôles" Style="{StaticResource SettingsSectionTitle}"/>
+                <TextBlock Text="{Binding CategoryDescription}" Foreground="{StaticResource SbmsTextMutedBrush}" FontSize="12" Margin="0,0,0,12"/>
+                <Grid Margin="0,0,0,16">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                    <Border Background="#EDE9FE" CornerRadius="8" Padding="16" Margin="0,0,6,0">
+                        <StackPanel>
+                            <TextBlock Text="Utilisateurs actifs" FontSize="11" Foreground="#6D28D9"/>
+                            <TextBlock Text="{Binding ActiveUsersDisplay}" FontSize="28" FontWeight="Bold"/>
+                            <TextBlock Text="{Binding ActiveUsersSub}" FontSize="11" Foreground="#8B5CF6"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Grid.Column="1" Background="#DBEAFE" CornerRadius="8" Padding="16" Margin="6,0,0,0">
+                        <StackPanel>
+                            <TextBlock Text="Rôles distincts" FontSize="11" Foreground="#2563EB"/>
+                            <TextBlock Text="{Binding RolesDisplay}" FontSize="28" FontWeight="Bold"/>
+                            <TextBlock Text="{Binding RolesSub}" FontSize="11" Foreground="#3B82F6"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+                <Button Content="Ouvrir le module Utilisateurs" Command="{Binding OpenModuleCommand}" CommandParameter="utilisateurs"
+                        Style="{StaticResource SettingsSaveButton}" HorizontalAlignment="Left"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Permissions -->
+        <Border Style="{StaticResource SettingsPanelCard}" Margin="0,0,0,8"
+                Visibility="{Binding SelectedCategoryId, Converter={StaticResource StringEqualsToVisibilityConverter}, ConverterParameter=permissions}">
+            <StackPanel>
+                <TextBlock Text="Permissions" Style="{StaticResource SettingsSectionTitle}"/>
+                <TextBlock Text="Les droits d'accès sont définis par rôle (Administrateur, Gestionnaire, etc.) dans le module Utilisateurs."
+                           TextWrapping="Wrap" Foreground="{StaticResource SbmsTextMutedBrush}" FontSize="12" Margin="0,0,0,16"/>
+                <TextBlock Margin="0,0,0,8" FontWeight="SemiBold" Text="Votre rôle :"/>
+                <TextBlock Text="{Binding UserRole}" FontSize="16" FontWeight="Bold" Foreground="#2D6A4F" Margin="0,0,0,16"/>
+                <Button Content="Configurer les permissions" Command="{Binding OpenModuleCommand}" CommandParameter="utilisateurs"
+                        Style="{StaticResource SettingsSaveButton}" HorizontalAlignment="Left"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Emails -->
+        <Border Style="{StaticResource SettingsPanelCard}" Margin="0,0,0,8"
+                Visibility="{Binding SelectedCategoryId, Converter={StaticResource StringEqualsToVisibilityConverter}, ConverterParameter=emails}">
+            <StackPanel>
+                <TextBlock Text="Emails &amp; SMTP" Style="{StaticResource SettingsSectionTitle}"/>
+                <Grid Margin="0,0,0,16">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                    <Border Background="#CFFAFE" CornerRadius="8" Padding="16" Margin="0,0,6,0">
+                        <StackPanel>
+                            <TextBlock Text="Messages en cache" FontSize="11" Foreground="#0891B2"/>
+                            <TextBlock Text="{Binding EmailsCountDisplay}" FontSize="28" FontWeight="Bold"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Grid.Column="1" Background="#E0F2FE" CornerRadius="8" Padding="16" Margin="6,0,0,0">
+                        <StackPanel>
+                            <TextBlock Text="Comptes connectés" FontSize="11" Foreground="#0369A1"/>
+                            <TextBlock Text="{Binding EmailAccountsDisplay}" FontSize="28" FontWeight="Bold"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+                <Button Content="Ouvrir Emails &amp; Communication" Command="{Binding OpenModuleCommand}" CommandParameter="emails"
+                        Style="{StaticResource SettingsSaveButton}" HorizontalAlignment="Left"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Synchronisation -->
+        <Border Style="{StaticResource SettingsPanelCard}" Margin="0,0,0,8"
+                Visibility="{Binding SelectedCategoryId, Converter={StaticResource StringEqualsToVisibilityConverter}, ConverterParameter=synchronisation}">
+            <StackPanel>
+                <TextBlock Text="Synchronisation" Style="{StaticResource SettingsSectionTitle}"/>
+                <Grid Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <TextBlock Text="État" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="1" Text="{Binding SyncKpiLabel}" FontWeight="Bold" Foreground="#2D6A4F"/>
+                </Grid>
+                <TextBlock Text="{Binding SyncKpiSub}" Foreground="{StaticResource SbmsTextMutedBrush}" Margin="0,0,0,16"/>
+                <Button Content="Ouvrir la synchronisation" Command="{Binding OpenModuleCommand}" CommandParameter="synchronisation"
+                        Style="{StaticResource SettingsSaveButton}" HorizontalAlignment="Left"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Sauvegardes -->
+        <Border Style="{StaticResource SettingsPanelCard}" Margin="0,0,0,8"
+                Visibility="{Binding SelectedCategoryId, Converter={StaticResource StringEqualsToVisibilityConverter}, ConverterParameter=backups}">
+            <StackPanel>
+                <TextBlock Text="Sauvegardes" Style="{StaticResource SettingsSectionTitle}"/>
+                <TextBlock Text="{Binding BackupsSub}" Foreground="{StaticResource SbmsTextMutedBrush}" Margin="0,0,0,12"/>
+                <DataGrid ItemsSource="{Binding BackupHistory}" Style="{StaticResource SbmsDataGrid}" AutoGenerateColumns="False" IsReadOnly="True"
+                          HeadersVisibility="Column" GridLinesVisibility="Horizontal" BorderThickness="1" BorderBrush="#E2E8F0"
+                          MaxHeight="320" CanUserAddRows="False">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Date" Binding="{Binding DateDisplay}" Width="140"/>
+                        <DataGridTextColumn Header="Statut" Binding="{Binding StatusDisplay}" Width="90"/>
+                        <DataGridTextColumn Header="Détails" Binding="{Binding DetailsDisplay}" Width="*"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+                <Button Content="Synchroniser maintenant" Command="{Binding OpenModuleCommand}" CommandParameter="synchronisation"
+                        Style="{StaticResource MaterialDesignOutlinedButton}" Foreground="#2D6A4F" BorderBrush="#2D6A4F"
+                        HorizontalAlignment="Left" Margin="0,12,0,0"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Sécurité -->
+        <Border Style="{StaticResource SettingsPanelCard}" Margin="0,0,0,8"
+                Visibility="{Binding SelectedCategoryId, Converter={StaticResource StringEqualsToVisibilityConverter}, ConverterParameter=security}">
+            <StackPanel>
+                <TextBlock Text="Sécurité" Style="{StaticResource SettingsSectionTitle}"/>
+                <Grid Margin="0,4">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <TextBlock Text="Authentification 2FA" FontSize="12"/>
+                    <TextBlock Grid.Column="1" Text="{Binding TwoFactorLabel}" FontWeight="SemiBold" Foreground="#2D6A4F"/>
+                </Grid>
+                <Grid Margin="0,8">
+                    <TextBlock Text="Sessions actives"/>
+                    <TextBlock HorizontalAlignment="Right" Text="{Binding ActiveSessionsLabel}" FontWeight="SemiBold"/>
+                </Grid>
+                <Grid Margin="0,8">
+                    <TextBlock Text="Appareils autorisés"/>
+                    <TextBlock HorizontalAlignment="Right" Text="{Binding AuthorizedDevicesLabel}" FontWeight="SemiBold"/>
+                </Grid>
+                <Grid Margin="0,8">
+                    <TextBlock Text="Niveau de sécurité"/>
+                    <TextBlock HorizontalAlignment="Right" Text="{Binding SecurityKpiLabel}" FontWeight="SemiBold" Foreground="#2D6A4F"/>
+                </Grid>
+                <Button Content="Voir le journal d'activité" Command="{Binding OpenModuleCommand}" CommandParameter="journal"
+                        Style="{StaticResource SettingsSaveButton}" HorizontalAlignment="Left" Margin="0,16,0,0"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Notifications -->
+        <Border Style="{StaticResource SettingsPanelCard}" Margin="0,0,0,8"
+                Visibility="{Binding SelectedCategoryId, Converter={StaticResource StringEqualsToVisibilityConverter}, ConverterParameter=notifications}">
+            <StackPanel>
+                <TextBlock Text="Notifications" Style="{StaticResource SettingsSectionTitle}"/>
+                <DockPanel Margin="0,8"><ToggleButton IsChecked="{Binding NotifyEmail}" DockPanel.Dock="Right"/><TextBlock Text="Notifications par email" VerticalAlignment="Center"/></DockPanel>
+                <DockPanel Margin="0,8"><ToggleButton IsChecked="{Binding NotifyPush}" DockPanel.Dock="Right"/><TextBlock Text="Notifications push" VerticalAlignment="Center"/></DockPanel>
+                <DockPanel Margin="0,8"><ToggleButton IsChecked="{Binding NotifyCritical}" DockPanel.Dock="Right"/><TextBlock Text="Alertes critiques" VerticalAlignment="Center"/></DockPanel>
+                <DockPanel Margin="0,8"><ToggleButton IsChecked="{Binding NotifyDailyReports}" DockPanel.Dock="Right"/><TextBlock Text="Rapports quotidiens" VerticalAlignment="Center"/></DockPanel>
+                <Button Content="Enregistrer les notifications" Command="{Binding SaveNotificationsCommand}"
+                        Style="{StaticResource SettingsSaveButton}" HorizontalAlignment="Right" Margin="0,16,0,0"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Documents -->
+        <Border Style="{StaticResource SettingsPanelCard}" Margin="0,0,0,8"
+                Visibility="{Binding SelectedCategoryId, Converter={StaticResource StringEqualsToVisibilityConverter}, ConverterParameter=documents}">
+            <StackPanel>
+                <TextBlock Text="Documents" Style="{StaticResource SettingsSectionTitle}"/>
+                <TextBlock Margin="0,0,0,8" FontWeight="SemiBold"
+                           Text="{Binding DocumentsCountDisplay, StringFormat=Documents référencés : {0}}"/>
+                <TextBlock Text="Contrats, factures, pièces jointes et fichiers liés aux modules SBMS."
+                           TextWrapping="Wrap" Foreground="{StaticResource SbmsTextMutedBrush}" Margin="0,0,0,16"/>
+                <Button Content="Ouvrir le module Documents" Command="{Binding OpenModuleCommand}" CommandParameter="documents"
+                        Style="{StaticResource SettingsSaveButton}" HorizontalAlignment="Left"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Apparence & thème global -->
+        <Border Style="{StaticResource SettingsPanelCard}" Margin="0,0,0,8"
+                Visibility="{Binding SelectedCategoryId, Converter={StaticResource StringEqualsToVisibilityConverter}, ConverterParameter=appearance}">
+            <StackPanel>
+                <TextBlock Text="Apparence &amp; thème" Style="{StaticResource SettingsSectionTitle}"/>
+                <TextBlock Text="Toute modification est propagée immédiatement à l'interface (menu, boutons, cartes, tableaux) et conservée au redémarrage."
+                           TextWrapping="Wrap" Foreground="{StaticResource SbmsTextMutedBrush}" FontSize="12" Margin="0,0,0,14"/>
+
+                <TextBlock Text="Thème de l'application" Style="{StaticResource SettingsFieldLabel}"/>
+                <ComboBox ItemsSource="{Binding ThemeModeOptions}" SelectedItem="{Binding SelectedThemeMode, Mode=TwoWay}"
+                          Style="{StaticResource MaterialDesignOutlinedComboBox}" Margin="0,0,0,12"/>
+
+                <TextBlock Text="Couleur principale (accent)" Style="{StaticResource SettingsFieldLabel}"/>
+                <ComboBox ItemsSource="{Binding AccentColorOptions}" SelectedItem="{Binding SelectedAccentColor, Mode=TwoWay}"
+                          Style="{StaticResource MaterialDesignOutlinedComboBox}" Margin="0,0,0,12"/>
+
+                <StackPanel Visibility="{Binding SelectedThemeMode, Converter={StaticResource StringEqualsToVisibilityConverter}, ConverterParameter=Personnalisé}">
+                    <TextBlock Text="Couleur du menu latéral" Style="{StaticResource SettingsFieldLabel}"/>
+                    <ComboBox ItemsSource="{Binding AccentColorOptions}" SelectedItem="{Binding SelectedSidebarColor, Mode=TwoWay}"
+                              Style="{StaticResource MaterialDesignOutlinedComboBox}" Margin="0,0,0,12"/>
+                </StackPanel>
+
+                <TextBlock Text="Couleur secondaire" Style="{StaticResource SettingsFieldLabel}"/>
+                <ComboBox ItemsSource="{Binding AccentColorOptions}" SelectedItem="{Binding SelectedSecondaryColor, Mode=TwoWay}"
+                          Style="{StaticResource MaterialDesignOutlinedComboBox}" Margin="0,0,0,12"/>
+
+                <DockPanel Margin="0,8"><ToggleButton IsChecked="{Binding CompactTables}" DockPanel.Dock="Right"/><TextBlock Text="Tableaux compacts" VerticalAlignment="Center"/></DockPanel>
+                <DockPanel Margin="0,8"><ToggleButton IsChecked="{Binding ShowKpiSparklines}" DockPanel.Dock="Right"/><TextBlock Text="Afficher les mini-graphiques KPI" VerticalAlignment="Center"/></DockPanel>
+
+                <Button Content="Appliquer" Command="{Binding SaveAppearanceAsyncCommand}"
+                        Style="{StaticResource SettingsSaveButton}" HorizontalAlignment="Right" Margin="0,16,0,0"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Logs -->
+        <Border Style="{StaticResource SettingsPanelCard}" Margin="0,0,0,8"
+                Visibility="{Binding SelectedCategoryId, Converter={StaticResource StringEqualsToVisibilityConverter}, ConverterParameter=logs}">
+            <StackPanel>
+                <TextBlock Text="Logs système" Style="{StaticResource SettingsSectionTitle}"/>
+                <ItemsControl ItemsSource="{Binding RecentLogs}" Margin="0,0,0,12">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type models:SettingsLogPreviewItem}">
+                            <Border BorderBrush="#E2E8F0" BorderThickness="0,0,0,1" Padding="0,8">
+                                <Grid>
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="80"/><ColumnDefinition Width="70"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                    <TextBlock Text="{Binding TimeDisplay}" FontSize="11" Foreground="{StaticResource SbmsTextMutedBrush}"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding Level}" FontWeight="SemiBold" FontSize="11"/>
+                                    <TextBlock Grid.Column="2" Text="{Binding Message}" FontSize="11" TextTrimming="CharacterEllipsis"/>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <Button Content="Ouvrir le journal complet" Command="{Binding OpenModuleCommand}" CommandParameter="journal"
+                        Style="{StaticResource SettingsSaveButton}" HorizontalAlignment="Left"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Intégrations -->
+        <Border Style="{StaticResource SettingsPanelCard}" Margin="0,0,0,8"
+                Visibility="{Binding SelectedCategoryId, Converter={StaticResource StringEqualsToVisibilityConverter}, ConverterParameter=integrations}">
+            <StackPanel>
+                <TextBlock Text="Intégrations" Style="{StaticResource SettingsSectionTitle}"/>
+                <ItemsControl ItemsSource="{Binding Integrations}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type models:SettingsIntegrationItem}">
+                            <Border BorderBrush="#E2E8F0" BorderThickness="0,0,0,1" Padding="0,10">
+                                <Grid>
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+                                        <TextBlock Text="{Binding Description}" FontSize="11" Foreground="{StaticResource SbmsTextMutedBrush}" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                    <TextBlock Grid.Column="1" Text="{Binding StatusLabel}" FontWeight="SemiBold" Foreground="#2D6A4F"/>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </Border>
+
+        <!-- À propos -->
+        <Border Style="{StaticResource SettingsPanelCard}" Margin="0,0,0,8"
+                Visibility="{Binding SelectedCategoryId, Converter={StaticResource StringEqualsToVisibilityConverter}, ConverterParameter=about}">
+            <StackPanel>
+                <TextBlock Text="À propos" Style="{StaticResource SettingsSectionTitle}"/>
+                <Grid Margin="0,4">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Text="Application" Foreground="{StaticResource SbmsTextMutedBrush}"/>
+                    <TextBlock Grid.Row="0" Grid.Column="1" Text="SBMS — Smart Building Management System" FontWeight="SemiBold"/>
+                    <TextBlock Grid.Row="1" Text="Version" Foreground="{StaticResource SbmsTextMutedBrush}"/>
+                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding AppVersion}" FontWeight="SemiBold"/>
+                    <TextBlock Grid.Row="2" Text="Base de données" Foreground="{StaticResource SbmsTextMutedBrush}"/>
+                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding DatabaseLabel}" FontWeight="SemiBold"/>
+                    <TextBlock Grid.Row="3" Text="Espace utilisé" Foreground="{StaticResource SbmsTextMutedBrush}"/>
+                    <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding StorageLabel}" FontWeight="SemiBold"/>
+                    <TextBlock Grid.Row="4" Text="Environnement" Foreground="{StaticResource SbmsTextMutedBrush}"/>
+                    <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding EnvironmentName}" FontWeight="SemiBold"/>
+                </Grid>
+                <TextBlock Text="© 2026 SBMS. Tous droits réservés." Foreground="{StaticResource SbmsTextMutedBrush}" FontSize="11" Margin="0,16,0,0"/>
+            </StackPanel>
+        </Border>
+    </StackPanel>
+</UserControl>

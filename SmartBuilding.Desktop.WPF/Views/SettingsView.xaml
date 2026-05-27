@@ -1,0 +1,397 @@
+<UserControl x:Class="SmartBuilding.Desktop.WPF.Views.SettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:lvc="clr-namespace:LiveChartsCore.SkiaSharpView.WPF;assembly=LiveChartsCore.SkiaSharpView.WPF"
+             xmlns:conv="clr-namespace:SmartBuilding.Desktop.WPF.Converters"
+             xmlns:models="clr-namespace:SmartBuilding.Desktop.WPF.Models"
+             xmlns:views="clr-namespace:SmartBuilding.Desktop.WPF.Views"
+             Background="{DynamicResource SbmsPageBackgroundBrush}">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Themes/SettingsStyles.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <conv:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+            <conv:InverseBoolConverter x:Key="InverseBoolConverter"/>
+            <conv:StringEqualsConverter x:Key="StringEqualsConverter"/>
+            <conv:StringEqualsToVisibilityConverter x:Key="StringEqualsToVisibilityConverter"/>
+            <conv:StringNotEqualsToVisibilityConverter x:Key="StringNotEqualsToVisibilityConverter"/>
+            <conv:CategoryIsSelectedConverter x:Key="CategoryIsSelectedConverter"/>
+            <conv:HexToBrushConverter x:Key="HexToBrushConverter"/>
+            <conv:StringToPackIconKindConverter x:Key="StringToPackIconKindConverter"/>
+            <conv:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- En-tête -->
+        <Border Grid.Row="0" Background="{DynamicResource SbmsCardBrush}" Padding="24,16"
+                BorderBrush="{DynamicResource SbmsBorderBrush}" BorderThickness="0,0,0,1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="280"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                    <TextBlock Text="Paramètres" FontSize="26" FontWeight="Bold" Foreground="#1B3D3B"/>
+                    <TextBlock Text="Configuration et gestion du système"
+                               Foreground="{StaticResource SbmsTextMutedBrush}" FontSize="13" Margin="0,2,0,0"/>
+                </StackPanel>
+                <Border Grid.Column="1" Margin="24,0" BorderBrush="#E2E8F0" BorderThickness="1"
+                        CornerRadius="8" Background="White" VerticalAlignment="Center" Height="44" MaxWidth="520">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="44"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <materialDesign:PackIcon Kind="Magnify" Width="20" Height="20" Foreground="#94A3B8"
+                                                 HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <TextBox Grid.Column="1" BorderThickness="0" Background="Transparent" VerticalContentAlignment="Center"
+                                 materialDesign:HintAssist.Hint="Rechercher dans les paramètres..."
+                                 materialDesign:TextFieldAssist.DecorationVisibility="Hidden"
+                                 Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"/>
+                        <Border Grid.Column="2" Background="#F1F5F9" CornerRadius="4" Padding="6,2" Margin="0,0,10,0" VerticalAlignment="Center">
+                            <TextBlock Text="Ctrl + K" FontSize="10" Foreground="#64748B"/>
+                        </Border>
+                    </Grid>
+                </Border>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border Background="#D1FAE5" CornerRadius="8" Padding="10,6" Margin="0,0,12,0">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="ShieldCheck" Foreground="#2D6A4F" Width="18" Height="18" VerticalAlignment="Center"/>
+                            <StackPanel Margin="8,0,0,0">
+                                <TextBlock Text="Sécurité" FontSize="10" Foreground="#64748B"/>
+                                <TextBlock Text="Niveau élevé" FontSize="11" FontWeight="SemiBold" Foreground="#2D6A4F"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                    <Button Style="{StaticResource MaterialDesignIconButton}" Width="40" Height="40">
+                        <materialDesign:PackIcon Kind="BellOutline"/>
+                    </Button>
+                    <Border Background="#E63946" CornerRadius="9" MinWidth="18" Height="18"
+                            Margin="-14,-8,8,0" VerticalAlignment="Top">
+                        <TextBlock Text="{Binding NotificationCount}" Foreground="White" FontSize="10" FontWeight="Bold"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <Button Style="{StaticResource MaterialDesignIconButton}" Width="40" Height="40" Margin="0,0,8,0">
+                        <materialDesign:PackIcon Kind="HelpCircleOutline"/>
+                    </Button>
+                    <Border Width="36" Height="36" CornerRadius="18" Background="{StaticResource SbmsAccentGreenBrush}" Margin="0,0,8,0">
+                        <TextBlock Text="{Binding UserInitials}" Foreground="White" FontWeight="Bold"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="{Binding UserName}" FontWeight="SemiBold" FontSize="12"/>
+                        <TextBlock Text="{Binding UserRole}" FontSize="10" Foreground="{StaticResource SbmsTextMutedBrush}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="12,10">
+            <StackPanel>
+                <!-- 5 KPI -->
+                <UniformGrid Columns="5" Margin="0,0,0,8">
+                    <Border Style="{StaticResource SettingsKpiCard}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="32"/>
+                            </Grid.RowDefinitions>
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="30" Height="30" CornerRadius="8" Background="#EDE9FE" Margin="0,0,8,0">
+                                    <materialDesign:PackIcon Kind="AccountGroup" Foreground="#8B5CF6" Width="16" Height="16"
+                                                             HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="Utilisateurs actifs" FontSize="10" Foreground="{StaticResource SbmsTextMutedBrush}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <StackPanel Grid.Row="1" Margin="0,6,0,0">
+                                <TextBlock Text="{Binding ActiveUsersDisplay}" FontSize="20" FontWeight="Bold"/>
+                                <TextBlock Text="{Binding ActiveUsersSub}" FontSize="9" Foreground="#8B5CF6"/>
+                            </StackPanel>
+                            <lvc:CartesianChart Grid.Row="2" Series="{Binding UsersSparkline}" Height="32"/>
+                        </Grid>
+                    </Border>
+                    <Border Style="{StaticResource SettingsKpiCard}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="32"/>
+                            </Grid.RowDefinitions>
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="30" Height="30" CornerRadius="8" Background="#DBEAFE" Margin="0,0,8,0">
+                                    <materialDesign:PackIcon Kind="ShieldAccount" Foreground="#3B82F6" Width="16" Height="16"
+                                                             HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="Rôles système" FontSize="10" Foreground="{StaticResource SbmsTextMutedBrush}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <StackPanel Grid.Row="1" Margin="0,6,0,0">
+                                <TextBlock Text="{Binding RolesDisplay}" FontSize="20" FontWeight="Bold"/>
+                                <TextBlock Text="{Binding RolesSub}" FontSize="9" Foreground="#3B82F6"/>
+                            </StackPanel>
+                            <lvc:CartesianChart Grid.Row="2" Series="{Binding RolesSparkline}" Height="32"/>
+                        </Grid>
+                    </Border>
+                    <Border Style="{StaticResource SettingsKpiCard}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="32"/>
+                            </Grid.RowDefinitions>
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="30" Height="30" CornerRadius="8" Background="#D1FAE5" Margin="0,0,8,0">
+                                    <materialDesign:PackIcon Kind="BackupRestore" Foreground="#2D6A4F" Width="16" Height="16"
+                                                             HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="Sauvegardes" FontSize="10" Foreground="{StaticResource SbmsTextMutedBrush}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <StackPanel Grid.Row="1" Margin="0,6,0,0">
+                                <TextBlock Text="{Binding BackupsDisplay}" FontSize="20" FontWeight="Bold"/>
+                                <TextBlock Text="{Binding BackupsSub}" FontSize="9" Foreground="#2D6A4F"/>
+                            </StackPanel>
+                            <lvc:CartesianChart Grid.Row="2" Series="{Binding BackupsSparkline}" Height="32"/>
+                        </Grid>
+                    </Border>
+                    <Border Style="{StaticResource SettingsKpiCard}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="32"/>
+                            </Grid.RowDefinitions>
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="30" Height="30" CornerRadius="8" Background="#FFEDD5" Margin="0,0,8,0">
+                                    <materialDesign:PackIcon Kind="Sync" Foreground="#F59E0B" Width="16" Height="16"
+                                                             HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="Synchronisation" FontSize="10" Foreground="{StaticResource SbmsTextMutedBrush}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <StackPanel Grid.Row="1" Margin="0,6,0,0">
+                                <TextBlock Text="{Binding SyncKpiLabel}" FontSize="18" FontWeight="Bold"/>
+                                <TextBlock Text="{Binding SyncKpiSub}" FontSize="9" Foreground="#F59E0B"/>
+                            </StackPanel>
+                            <lvc:CartesianChart Grid.Row="2" Series="{Binding SyncSparkline}" Height="32"/>
+                        </Grid>
+                    </Border>
+                    <Border Style="{StaticResource SettingsKpiCard}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="32"/>
+                            </Grid.RowDefinitions>
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="30" Height="30" CornerRadius="8" Background="#FEE2E2" Margin="0,0,8,0">
+                                    <materialDesign:PackIcon Kind="ShieldCheck" Foreground="#EF4444" Width="16" Height="16"
+                                                             HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="Sécurité" FontSize="10" Foreground="{StaticResource SbmsTextMutedBrush}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <StackPanel Grid.Row="1" Margin="0,6,0,0">
+                                <TextBlock Text="{Binding SecurityKpiLabel}" FontSize="18" FontWeight="Bold"/>
+                                <TextBlock Text="{Binding SecurityKpiSub}" FontSize="9" Foreground="#EF4444"/>
+                            </StackPanel>
+                            <lvc:CartesianChart Grid.Row="2" Series="{Binding SecuritySparkline}" Height="32"/>
+                        </Grid>
+                    </Border>
+                </UniformGrid>
+
+                <!-- Corps : catégories | formulaire | panneaux -->
+                <Grid Margin="0,4,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="220"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="300"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Catégories -->
+                    <Border Grid.Column="0" Style="{StaticResource SettingsPanelCard}" Margin="6,6,4,6">
+                        <StackPanel>
+                            <TextBlock Text="Catégories de paramètres" Style="{StaticResource SettingsSectionTitle}"/>
+                            <ItemsControl ItemsSource="{Binding Categories}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type models:SettingsCategoryItem}">
+                                        <Button Style="{StaticResource SettingsCategoryButton}"
+                                                Command="{Binding DataContext.SelectCategoryCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding Id}">
+                                            <Button.Background>
+                                                <MultiBinding Converter="{StaticResource CategoryIsSelectedConverter}">
+                                                    <Binding Path="DataContext.SelectedCategoryId" RelativeSource="{RelativeSource AncestorType=UserControl}"/>
+                                                    <Binding Path="Id"/>
+                                                </MultiBinding>
+                                            </Button.Background>
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Kind="{Binding IconKind, Converter={StaticResource StringToPackIconKindConverter}}"
+                                                                         Width="18" Height="18" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                <TextBlock Text="{Binding Label}" VerticalAlignment="Center" FontSize="12"/>
+                                            </StackPanel>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Centre -->
+                    <StackPanel Grid.Column="1" Margin="4,6">
+                        <Border Style="{StaticResource SettingsPanelCard}" Margin="0,0,0,8" Padding="16,12"
+                                Visibility="{Binding SelectedCategoryId, Converter={StaticResource StringNotEqualsToVisibilityConverter}, ConverterParameter=general}">
+                            <StackPanel>
+                                <TextBlock Text="{Binding CategoryTitle}" FontSize="18" FontWeight="Bold" Foreground="#1B3D3B"/>
+                                <TextBlock Text="{Binding CategoryDescription}" FontSize="12"
+                                           Foreground="{StaticResource SbmsTextMutedBrush}" Margin="0,4,0,0"/>
+                            </StackPanel>
+                        </Border>
+
+                        <views:SettingsCategoryPanels/>
+
+                        <TextBlock Text="{Binding StatusMessage}" Foreground="#2D6A4F" FontSize="12" Margin="4,4,4,0"
+                                   TextWrapping="Wrap"
+                                   Visibility="{Binding StatusMessage, Converter={StaticResource NullToVisibilityConverter}}"/>
+                        <TextBlock Text="{Binding ErrorMessage}" Foreground="#DC2626" FontSize="12" Margin="4,2,4,0"
+                                   TextWrapping="Wrap"
+                                   Visibility="{Binding ErrorMessage, Converter={StaticResource NullToVisibilityConverter}}"/>
+
+                        <!-- Accès rapides (vue Général) -->
+                        <Border Style="{StaticResource SettingsPanelCard}" Margin="0,8,0,0"
+                                Visibility="{Binding SelectedCategoryId, Converter={StaticResource StringEqualsToVisibilityConverter}, ConverterParameter=general}">
+                            <StackPanel>
+                                <TextBlock Text="Accès rapides" Style="{StaticResource SettingsSectionTitle}"/>
+                                <ItemsControl ItemsSource="{Binding QuickAccessItems}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <UniformGrid Columns="4"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="{x:Type models:SettingsQuickAccessItem}">
+                                                <Button Style="{StaticResource SettingsQuickCard}" Margin="4"
+                                                        Command="{Binding DataContext.QuickNavigateCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        CommandParameter="{Binding CategoryId}">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <Border Width="36" Height="36" CornerRadius="8"
+                                                                Background="{Binding IconBg, Converter={StaticResource HexToBrushConverter}}" Margin="0,0,10,0">
+                                                            <materialDesign:PackIcon Kind="{Binding IconKind, Converter={StaticResource StringToPackIconKindConverter}}"
+                                                                                     Foreground="{Binding IconColor, Converter={StaticResource HexToBrushConverter}}"
+                                                                                     Width="20" Height="20" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                        </Border>
+                                                        <StackPanel Grid.Column="1">
+                                                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="12"/>
+                                                            <TextBlock Text="{Binding Description}" FontSize="10"
+                                                                       Foreground="{StaticResource SbmsTextMutedBrush}" TextWrapping="Wrap"/>
+                                                        </StackPanel>
+                                                        <materialDesign:PackIcon Grid.Column="2" Kind="ChevronRight" Foreground="#CBD5E1" VerticalAlignment="Center"/>
+                                                    </Grid>
+                                                </Button>
+                                            </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- Panneaux droite -->
+                    <StackPanel Grid.Column="2" Margin="4,6,6,6">
+                        <Border Style="{StaticResource SettingsPanelCard}" Margin="0,0,0,8">
+                            <StackPanel>
+                                <TextBlock Text="Notifications système" Style="{StaticResource SettingsSectionTitle}"/>
+                                <DockPanel Margin="0,6">
+                                    <ToggleButton IsChecked="{Binding NotifyEmail}" DockPanel.Dock="Right"/>
+                                    <TextBlock Text="Notifications par email" VerticalAlignment="Center"/>
+                                </DockPanel>
+                                <DockPanel Margin="0,6">
+                                    <ToggleButton IsChecked="{Binding NotifyPush}" DockPanel.Dock="Right"/>
+                                    <TextBlock Text="Notifications push" VerticalAlignment="Center"/>
+                                </DockPanel>
+                                <DockPanel Margin="0,6">
+                                    <ToggleButton IsChecked="{Binding NotifyCritical}" DockPanel.Dock="Right"/>
+                                    <TextBlock Text="Alertes critiques" VerticalAlignment="Center"/>
+                                </DockPanel>
+                                <DockPanel Margin="0,6">
+                                    <ToggleButton IsChecked="{Binding NotifyDailyReports}" DockPanel.Dock="Right"/>
+                                    <TextBlock Text="Rapports quotidiens" VerticalAlignment="Center"/>
+                                </DockPanel>
+                                <Button Content="Gérer les notifications" Style="{StaticResource MaterialDesignFlatButton}"
+                                        Foreground="#2D6A4F" HorizontalAlignment="Left" Padding="0" Margin="0,8,0,0"
+                                        Command="{Binding SelectCategoryCommand}" CommandParameter="notifications"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource SettingsPanelCard}" Margin="0,0,0,8">
+                            <StackPanel>
+                                <TextBlock Text="Sécurité du système" Style="{StaticResource SettingsSectionTitle}"/>
+                                <Grid Margin="0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Authentification 2FA" FontSize="12"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding TwoFactorLabel}" FontWeight="SemiBold" FontSize="12" Foreground="#2D6A4F"/>
+                                </Grid>
+                                <Grid Margin="0,4">
+                                    <TextBlock Text="Sessions actives"/>
+                                    <TextBlock HorizontalAlignment="Right" Text="{Binding ActiveSessionsLabel}" FontWeight="SemiBold"/>
+                                </Grid>
+                                <Button Content="Logs de connexion" Style="{StaticResource MaterialDesignFlatButton}"
+                                        Foreground="#2D6A4F" HorizontalAlignment="Left" Padding="0" Margin="0,4"
+                                        Command="{Binding OpenModuleCommand}" CommandParameter="journal"/>
+                                <Grid Margin="0,4">
+                                    <TextBlock Text="Appareils autorisés"/>
+                                    <TextBlock HorizontalAlignment="Right" Text="{Binding AuthorizedDevicesLabel}" FontWeight="SemiBold"/>
+                                </Grid>
+                                <Button Content="Gérer la sécurité" Style="{StaticResource MaterialDesignFlatButton}"
+                                        Foreground="#2D6A4F" HorizontalAlignment="Left" Padding="0" Margin="0,8,0,0"
+                                        Command="{Binding SelectCategoryCommand}" CommandParameter="security"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource SettingsPanelCard}">
+                            <StackPanel>
+                                <TextBlock Text="Informations système" Style="{StaticResource SettingsSectionTitle}"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/>
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Grid.Row="0" Text="Version" FontSize="11" Foreground="{StaticResource SbmsTextMutedBrush}"/>
+                                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding AppVersion}" FontWeight="SemiBold" FontSize="11"/>
+                                    <TextBlock Grid.Row="1" Text="Base de données" FontSize="11" Foreground="{StaticResource SbmsTextMutedBrush}"/>
+                                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding DatabaseLabel}" FontWeight="SemiBold" FontSize="11"/>
+                                    <TextBlock Grid.Row="2" Text="Espace utilisé" FontSize="11" Foreground="{StaticResource SbmsTextMutedBrush}"/>
+                                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding StorageLabel}" FontWeight="SemiBold" FontSize="11"/>
+                                    <TextBlock Grid.Row="3" Text="Environnement" FontSize="11" Foreground="{StaticResource SbmsTextMutedBrush}"/>
+                                    <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding EnvironmentName}" FontWeight="SemiBold" FontSize="11"/>
+                                </Grid>
+                                <Button Content="Voir les détails système" Style="{StaticResource MaterialDesignFlatButton}"
+                                        Foreground="#2D6A4F" HorizontalAlignment="Left" Padding="0" Margin="0,8,0,0"
+                                        Command="{Binding SelectCategoryCommand}" CommandParameter="about"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Grid>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Pied de page -->
+        <Border Grid.Row="2" Background="White" BorderBrush="#E0E8E6" BorderThickness="0,1,0,0" Padding="24,12">
+            <DockPanel>
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+                    <Button Content="Politique de confidentialité" Style="{StaticResource MaterialDesignFlatButton}"
+                            Foreground="{StaticResource SbmsTextMutedBrush}" Padding="8,0"/>
+                    <Button Content="Conditions d'utilisation" Style="{StaticResource MaterialDesignFlatButton}"
+                            Foreground="{StaticResource SbmsTextMutedBrush}" Padding="8,0"/>
+                </StackPanel>
+                <TextBlock Text="© 2026 SBMS — Smart Building Management System. Tous droits réservés."
+                           VerticalAlignment="Center" Foreground="{StaticResource SbmsTextMutedBrush}" FontSize="11"/>
+            </DockPanel>
+        </Border>
+    </Grid>
+</UserControl>

@@ -1,0 +1,496 @@
+<UserControl x:Class="SmartBuilding.Desktop.WPF.Views.TechnicalView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:lvc="clr-namespace:LiveChartsCore.SkiaSharpView.WPF;assembly=LiveChartsCore.SkiaSharpView.WPF"
+             xmlns:conv="clr-namespace:SmartBuilding.Desktop.WPF.Converters"
+             Background="{StaticResource SbmsPageBackgroundBrush}">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Themes/TechnicalStyles.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <conv:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+            <conv:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
+            <conv:IntEqualsToVisibilityConverter x:Key="IntEqualsToVisibilityConverter"/>
+            <conv:HexToBrushConverter x:Key="HexToBrushConverter"/>
+            <conv:TabIndexActiveConverter x:Key="TabIndexActiveConverter"/>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Background="White" Padding="24,16" BorderBrush="#E8EFED" BorderThickness="0,0,0,1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="360"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                    <TextBlock Text="Accueil › Technique &amp; Sécurité" FontSize="11" Foreground="{StaticResource SbmsTextMutedBrush}"/>
+                    <TextBlock Text="Technique &amp; Sécurité" FontSize="26" FontWeight="Bold" Foreground="#1B3D3B"/>
+                    <TextBlock Text="{Binding SectionSubtitle}" FontSize="13"
+                               Foreground="{StaticResource SbmsTextMutedBrush}" Margin="0,2,0,0" TextWrapping="Wrap"/>
+                </StackPanel>
+                <Border Grid.Column="1" Margin="24,0" BorderBrush="#E2E8F0" BorderThickness="1"
+                        CornerRadius="8" Background="White" VerticalAlignment="Center" Height="44">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="44"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <materialDesign:PackIcon Kind="Magnify" Width="20" Height="20" Foreground="#94A3B8"
+                                                 HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <TextBox Grid.Column="1" BorderThickness="0" Background="Transparent"
+                                 VerticalContentAlignment="Center"
+                                 materialDesign:HintAssist.Hint="{Binding SearchHint}"
+                                 materialDesign:TextFieldAssist.DecorationVisibility="Hidden"
+                                 Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"/>
+                    </Grid>
+                </Border>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border CornerRadius="8" Padding="10,6" Margin="0,0,10,0"
+                            Background="{Binding SecurityStatusColor, Converter={StaticResource HexToBrushConverter}}">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="ShieldCheck" Width="16" Height="16" Foreground="White" Margin="0,0,6,0"/>
+                            <TextBlock Text="{Binding SecurityStatusLabel}" FontSize="11" FontWeight="SemiBold" Foreground="White"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Background="#E8F5EE" CornerRadius="8" Padding="10,6" Margin="0,0,12,0">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="Sync" Width="16" Height="16" Foreground="#2D6A4F" Margin="0,0,6,0"/>
+                            <StackPanel>
+                                <TextBlock Text="{Binding SyncStatusLabel}" FontSize="11" FontWeight="SemiBold" Foreground="#166534"/>
+                                <TextBlock Text="{Binding LastSyncDisplay}" FontSize="9" Foreground="#64748B"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                    <Button Style="{StaticResource MaterialDesignIconButton}" Width="40" Height="40">
+                        <materialDesign:PackIcon Kind="BellOutline"/>
+                    </Button>
+                    <Border Background="#E63946" CornerRadius="9" MinWidth="18" Height="18" Margin="-14,-8,12,0" VerticalAlignment="Top">
+                        <TextBlock Text="{Binding NotificationCount}" Foreground="White" FontSize="10" FontWeight="Bold"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <Border Width="40" Height="40" CornerRadius="20" Background="{StaticResource SbmsAccentGreenBrush}" Margin="0,0,10,0">
+                        <TextBlock Text="{Binding UserInitials}" Foreground="White" FontWeight="Bold"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="{Binding UserName}" FontWeight="SemiBold" FontSize="13"/>
+                        <TextBlock Text="{Binding UserRole}" FontSize="11" Foreground="{StaticResource SbmsTextMutedBrush}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="1" Background="White" Padding="12,8,0,8" BorderBrush="#E8EFED" BorderThickness="0,0,0,1">
+            <ItemsControl ItemsSource="{Binding SectionTabs}" AlternationCount="99">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Button Command="{Binding DataContext.SetSectionTabCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                CommandParameter="{Binding (ItemsControl.AlternationIndex), RelativeSource={RelativeSource AncestorType=ContentPresenter}}"
+                                Content="{Binding}" Margin="0,0,4,0" Padding="16,10">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource TechnicalSectionTabButton}">
+                                    <Style.Triggers>
+                                        <DataTrigger Value="True">
+                                            <DataTrigger.Binding>
+                                                <MultiBinding Converter="{StaticResource TabIndexActiveConverter}">
+                                                    <Binding Path="DataContext.SelectedSectionTab" RelativeSource="{RelativeSource AncestorType=UserControl}"/>
+                                                    <Binding Path="(ItemsControl.AlternationIndex)" RelativeSource="{RelativeSource AncestorType=ContentPresenter}"/>
+                                                </MultiBinding>
+                                            </DataTrigger.Binding>
+                                            <Setter Property="Foreground" Value="#2D6A4F"/>
+                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                            <Setter Property="BorderBrush" Value="#2D6A4F"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </Border>
+
+        <Grid Grid.Row="2">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="12,8"
+                          Visibility="{Binding SelectedSectionTab, Converter={StaticResource IntEqualsToVisibilityConverter}, ConverterParameter=0}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- 6 KPI -->
+                <UniformGrid Grid.Row="0" Columns="3" Margin="0,0,0,8">
+                    <Border Style="{StaticResource TechnicalKpiCard}">
+                        <StackPanel Orientation="Horizontal">
+                            <Border Width="32" Height="32" CornerRadius="8" Background="#E8F5EE" Margin="0,0,8,0">
+                                <materialDesign:PackIcon Kind="Engine" Foreground="#2D6A4F" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <StackPanel>
+                                <TextBlock Text="Total équipements" FontSize="10" Foreground="#94A3B8"/>
+                                <TextBlock Text="{Binding TotalEquipment}" FontSize="18" FontWeight="Bold" Foreground="#1B3D3B"/>
+                                <TextBlock Text="Tous équipements" FontSize="10" Foreground="#64748B"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource TechnicalKpiCard}">
+                        <StackPanel Orientation="Horizontal">
+                            <Border Width="32" Height="32" CornerRadius="8" Background="#DBEAFE" Margin="0,0,8,0">
+                                <materialDesign:PackIcon Kind="CheckCircle" Foreground="#2563EB" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <StackPanel>
+                                <TextBlock Text="Opérationnels" FontSize="10" Foreground="#94A3B8"/>
+                                <TextBlock Text="{Binding OperationalCount}" FontSize="18" FontWeight="Bold" Foreground="#166534"/>
+                                <TextBlock Text="{Binding OperationalPercent}" FontSize="10" Foreground="#64748B"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource TechnicalKpiCard}">
+                        <StackPanel Orientation="Horizontal">
+                            <Border Width="32" Height="32" CornerRadius="8" Background="#FFEDD5" Margin="0,0,8,0">
+                                <materialDesign:PackIcon Kind="Wrench" Foreground="#EA580C" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <StackPanel>
+                                <TextBlock Text="En maintenance" FontSize="10" Foreground="#94A3B8"/>
+                                <TextBlock Text="{Binding MaintenanceCount}" FontSize="18" FontWeight="Bold" Foreground="#EA580C"/>
+                                <TextBlock Text="{Binding MaintenancePercent}" FontSize="10" Foreground="#64748B"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource TechnicalKpiCard}">
+                        <StackPanel Orientation="Horizontal">
+                            <Border Width="32" Height="32" CornerRadius="8" Background="#FEE2E2" Margin="0,0,8,0">
+                                <materialDesign:PackIcon Kind="Alert" Foreground="#DC2626" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <StackPanel>
+                                <TextBlock Text="En panne" FontSize="10" Foreground="#94A3B8"/>
+                                <TextBlock Text="{Binding BrokenCount}" FontSize="18" FontWeight="Bold" Foreground="#DC2626"/>
+                                <TextBlock Text="{Binding BrokenPercent}" FontSize="10" Foreground="#64748B"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource TechnicalKpiCard}">
+                        <StackPanel Orientation="Horizontal">
+                            <Border Width="32" Height="32" CornerRadius="8" Background="#EDE9FE" Margin="0,0,8,0">
+                                <materialDesign:PackIcon Kind="Cash" Foreground="#6D28D9" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <StackPanel>
+                                <TextBlock Text="Coûts maintenance réalisés (mois)" FontSize="10" Foreground="#94A3B8"/>
+                                <TextBlock Text="{Binding MonthlyMaintenanceDisplay}" FontSize="14" FontWeight="Bold" Foreground="#1B3D3B"/>
+                                <TextBlock Text="Soumis au plafond loyers" FontSize="10" Foreground="#64748B"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource TechnicalKpiCard}">
+                        <StackPanel Orientation="Horizontal">
+                            <Border Width="32" Height="32" CornerRadius="8" Background="#DCFCE7" Margin="0,0,8,0">
+                                <materialDesign:PackIcon Kind="WalletOutline" Foreground="#166534" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <StackPanel>
+                                <TextBlock Text="Disponible" FontSize="10" Foreground="#94A3B8"/>
+                                <TextBlock Text="{Binding AvailableBalanceDisplay}" FontSize="14" FontWeight="Bold" Foreground="#166534"/>
+                                <TextBlock Text="Loyers − dépenses" FontSize="10" Foreground="#64748B"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource TechnicalKpiCard}">
+                        <StackPanel Orientation="Horizontal">
+                            <Border Width="32" Height="32" CornerRadius="8" Background="#E0F2FE" Margin="0,0,8,0">
+                                <materialDesign:PackIcon Kind="CalendarClock" Foreground="#0369A1" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <StackPanel>
+                                <TextBlock Text="Maintenances prévues" FontSize="10" Foreground="#94A3B8"/>
+                                <TextBlock Text="{Binding PlannedThisWeek}" FontSize="18" FontWeight="Bold" Foreground="#0369A1"/>
+                                <TextBlock Text="Cette semaine" FontSize="10" Foreground="#64748B"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </UniformGrid>
+
+                <!-- Actions -->
+                <Border Grid.Row="1" Background="White" CornerRadius="8" BorderBrush="#E8EFED" BorderThickness="1"
+                        Padding="10,8" Margin="0,0,0,8">
+                    <WrapPanel>
+                        <Button Command="{Binding OpenAddFormCommand}" Style="{StaticResource TechnicalPrimaryButton}">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="Plus" Margin="0,0,6,0"/>
+                                <TextBlock Text="Ajouter un équipement"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource TechnicalToolbarButton}">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="CalendarPlus" Margin="0,0,6,0"/>
+                                <TextBlock Text="Planifier maintenance"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource TechnicalToolbarButton}">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="History" Margin="0,0,6,0"/>
+                                <TextBlock Text="Historique interventions"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Command="{Binding ExportCsvCommand}" Style="{StaticResource TechnicalToolbarButton}">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="MicrosoftExcel" Margin="0,0,6,0"/>
+                                <TextBlock Text="Export Excel"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource TechnicalToolbarButton}">
+                            <materialDesign:PackIcon Kind="FilePdfBox"/>
+                        </Button>
+                        <Button Style="{StaticResource TechnicalToolbarButton}">
+                            <materialDesign:PackIcon Kind="Printer"/>
+                        </Button>
+                        <Button Command="{Binding RefreshCommand}" Style="{StaticResource TechnicalToolbarButton}">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="Refresh" Margin="0,0,6,0"/>
+                                <TextBlock Text="Actualiser"/>
+                            </StackPanel>
+                        </Button>
+                    </WrapPanel>
+                </Border>
+
+                <!-- Tableau + détail -->
+                <Grid Grid.Row="2" MinHeight="320">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="300"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Border Grid.Column="0" Background="White" CornerRadius="10" BorderBrush="#E8EFED" BorderThickness="1"
+                            Margin="0,0,8,0" Padding="10,8">
+                        <DockPanel>
+                            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,6">
+                                <ComboBox ItemsSource="{Binding CategoryFilters}" SelectedItem="{Binding FilterCategory}" Style="{StaticResource TechnicalFilterCombo}"/>
+                                <ComboBox ItemsSource="{Binding StatusFilters}" SelectedItem="{Binding FilterStatus}" Style="{StaticResource TechnicalFilterCombo}"/>
+                                <ComboBox ItemsSource="{Binding LocationFilters}" SelectedItem="{Binding FilterLocation}" Style="{StaticResource TechnicalFilterCombo}"/>
+                                <TextBox Style="{StaticResource TechnicalFilterSearch}" materialDesign:HintAssist.Hint="Rechercher..."
+                                         Text="{Binding TableSearchQuery, UpdateSourceTrigger=PropertyChanged}"/>
+                            </StackPanel>
+
+                            <DataGrid ItemsSource="{Binding Equipment}" SelectedItem="{Binding SelectedEquipment}"
+                                      Style="{StaticResource TechnicalDataGrid}" materialDesign:DataGridAssist.CellPadding="8,4"
+                                      MinHeight="220">
+                                <DataGrid.Columns>
+                                    <DataGridTemplateColumn Header="ÉQUIPEMENT" Width="*">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <StackPanel>
+                                                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="#1B3D3B"/>
+                                                    <TextBlock Text="{Binding Code}" FontSize="10" Foreground="#94A3B8"/>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTextColumn Header="CATÉGORIE" Binding="{Binding Category}" Width="100"/>
+                                    <DataGridTextColumn Header="EMPLACEMENT" Binding="{Binding Location}" Width="*"/>
+                                    <DataGridTemplateColumn Header="STATUT" Width="110">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <Border CornerRadius="8" Padding="6,2" Background="{Binding StatusBadgeBackground}">
+                                                    <TextBlock Text="{Binding StatusLabel}" Foreground="{Binding StatusBadgeForeground}"
+                                                               FontSize="10" FontWeight="SemiBold"/>
+                                                </Border>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTextColumn Header="DERN. MAINT." Binding="{Binding LastMaintenanceDisplay}" Width="95"/>
+                                    <DataGridTextColumn Header="PROCH. MAINT." Binding="{Binding NextMaintenanceDisplay}" Width="95"/>
+                                    <DataGridTextColumn Header="COÛT" Binding="{Binding MaintenanceCostDisplay}" Width="90"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+
+                            <DockPanel DockPanel.Dock="Bottom" Margin="0,6,0,0">
+                                <TextBlock Text="{Binding PaginationText}" DockPanel.Dock="Left" VerticalAlignment="Center"
+                                           Foreground="{StaticResource SbmsTextMutedBrush}" FontSize="11"/>
+                                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                    <TextBlock Text="Par page :" VerticalAlignment="Center" Foreground="#94A3B8" FontSize="12" Margin="0,0,8,0"/>
+                                    <ComboBox Width="70" ItemsSource="{Binding PageSizeOptions}" SelectedItem="{Binding PageSize}" Margin="0,0,16,0"/>
+                                    <Button Command="{Binding PreviousPageCommand}" Style="{StaticResource MaterialDesignIconButton}">
+                                        <materialDesign:PackIcon Kind="ChevronLeft"/>
+                                    </Button>
+                                    <TextBlock Text="{Binding CurrentPage}" VerticalAlignment="Center" Margin="8,0" FontWeight="SemiBold"/>
+                                    <TextBlock Text="/" VerticalAlignment="Center" Foreground="#94A3B8"/>
+                                    <TextBlock Text="{Binding TotalPages}" VerticalAlignment="Center" Margin="8,0" Foreground="#94A3B8"/>
+                                    <Button Command="{Binding NextPageCommand}" Style="{StaticResource MaterialDesignIconButton}">
+                                        <materialDesign:PackIcon Kind="ChevronRight"/>
+                                    </Button>
+                                </StackPanel>
+                            </DockPanel>
+                        </DockPanel>
+                    </Border>
+
+                    <!-- Panneau détail -->
+                    <Border Grid.Column="1" Background="White" CornerRadius="12" BorderBrush="#E8EFED" BorderThickness="1"
+                            Visibility="{Binding IsDetailPanelOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <DockPanel Grid.Row="0" Margin="16,14,16,10">
+                                <Button DockPanel.Dock="Right" Command="{Binding CloseDetailPanelCommand}" Style="{StaticResource MaterialDesignIconButton}">
+                                    <materialDesign:PackIcon Kind="Close"/>
+                                </Button>
+                                <TextBlock Text="Détails de l'équipement" FontSize="15" FontWeight="Bold" Foreground="#1B3D3B" VerticalAlignment="Center"/>
+                            </DockPanel>
+                            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="16,0,16,12">
+                                <StackPanel DataContext="{Binding SelectedEquipment}">
+                                    <Border Height="100" CornerRadius="10" Background="#E8F5EE" Margin="0,0,0,10">
+                                        <materialDesign:PackIcon Kind="Engine" Width="40" Height="40" Foreground="#2D6A4F"
+                                                                 HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <TextBlock Text="{Binding Name}" FontSize="16" FontWeight="Bold" TextAlignment="Center" TextWrapping="Wrap"/>
+                                    <TextBlock Text="{Binding Code}" FontSize="11" Foreground="#94A3B8" TextAlignment="Center" Margin="0,2,0,8"/>
+                                    <Border Background="{Binding StatusBadgeBackground}" CornerRadius="10" Padding="10,4"
+                                            HorizontalAlignment="Center" Margin="0,0,0,12">
+                                        <TextBlock Text="{Binding StatusLabel}" Foreground="{Binding StatusBadgeForeground}" FontWeight="SemiBold"/>
+                                    </Border>
+
+                                    <WrapPanel Margin="0,0,0,10">
+                                        <Button Content="Informations" Command="{Binding DataContext.SetDetailTabCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="0" Style="{StaticResource PersonnelDetailTabButton}"/>
+                                        <Button Content="Maintenance" Command="{Binding DataContext.SetDetailTabCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="1" Style="{StaticResource PersonnelDetailTabButton}"/>
+                                        <Button Content="Interventions" Command="{Binding DataContext.SetDetailTabCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="2" Style="{StaticResource PersonnelDetailTabButton}"/>
+                                    </WrapPanel>
+
+                                    <!-- Informations -->
+                                    <StackPanel Visibility="{Binding DataContext.SelectedDetailTab, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource IntEqualsToVisibilityConverter}, ConverterParameter=0}">
+                                        <TextBlock Text="Informations générales" FontWeight="SemiBold" Foreground="#1B3D3B" Margin="0,0,0,8"/>
+                                        <TextBlock Text="Catégorie" FontSize="10" Foreground="#94A3B8"/><TextBlock Text="{Binding Category}" Margin="0,2,0,6"/>
+                                        <TextBlock Text="Marque" FontSize="10" Foreground="#94A3B8"/><TextBlock Text="{Binding Brand}" Margin="0,2,0,6"/>
+                                        <TextBlock Text="Modèle" FontSize="10" Foreground="#94A3B8"/><TextBlock Text="{Binding Model}" Margin="0,2,0,6"/>
+                                        <TextBlock Text="N° de série" FontSize="10" Foreground="#94A3B8"/><TextBlock Text="{Binding SerialNumber}" Margin="0,2,0,6"/>
+                                        <TextBlock Text="Installation" FontSize="10" Foreground="#94A3B8"/><TextBlock Text="{Binding InstallationDisplay}" Margin="0,2,0,6"/>
+                                        <TextBlock Text="Emplacement" FontSize="10" Foreground="#94A3B8"/><TextBlock Text="{Binding Location}" Margin="0,2,0,6"/>
+                                        <TextBlock Text="Valeur d'achat (comptable, hors trésorerie)" FontSize="10" Foreground="#94A3B8"/><TextBlock Text="{Binding PurchaseValueDisplay}" Margin="0,2,0,6"/>
+                                        <TextBlock Text="Garantie jusqu'au" FontSize="10" Foreground="#94A3B8"/><TextBlock Text="{Binding WarrantyDisplay}" Margin="0,2,0,10"/>
+                                        <TextBlock Text="Spécifications" FontWeight="SemiBold" Foreground="#1B3D3B" Margin="0,0,0,8"/>
+                                        <TextBlock Text="Puissance" FontSize="10" Foreground="#94A3B8"/><TextBlock Text="{Binding PowerSpec}" Margin="0,2,0,6"/>
+                                        <TextBlock Text="Tension" FontSize="10" Foreground="#94A3B8"/><TextBlock Text="{Binding VoltageSpec}" Margin="0,2,0,6"/>
+                                        <TextBlock Text="Fréquence" FontSize="10" Foreground="#94A3B8"/><TextBlock Text="{Binding FrequencySpec}" Margin="0,2,0,6"/>
+                                        <TextBlock Text="Carburant" FontSize="10" Foreground="#94A3B8"/><TextBlock Text="{Binding FuelType}" Margin="0,2,0,6"/>
+                                        <TextBlock Text="Heures fonctionnement" FontSize="10" Foreground="#94A3B8"/><TextBlock Text="{Binding OperatingHours}" Margin="0,2,0,10"/>
+                                        <TextBlock Text="Statut actuel" FontWeight="SemiBold" Foreground="#1B3D3B" Margin="0,0,0,8"/>
+                                        <TextBlock Text="Dernière maintenance" FontSize="10" Foreground="#94A3B8"/><TextBlock Text="{Binding LastMaintenanceDisplay}" Margin="0,2,0,6"/>
+                                        <TextBlock Text="Prochaine maintenance" FontSize="10" Foreground="#94A3B8"/><TextBlock Text="{Binding NextMaintenanceDisplay}" Margin="0,2,0,6"/>
+                                        <TextBlock Text="Coût maintenance (année)" FontSize="10" Foreground="#94A3B8"/><TextBlock Text="{Binding YearMaintenanceCostDisplay}" Margin="0,2,0,0"/>
+                                    </StackPanel>
+
+                                    <!-- Maintenance résumé -->
+                                    <StackPanel Visibility="{Binding DataContext.SelectedDetailTab, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource IntEqualsToVisibilityConverter}, ConverterParameter=1}">
+                                        <TextBlock Text="Planification" FontWeight="SemiBold" Foreground="#1B3D3B" Margin="0,0,0,8"/>
+                                        <TextBlock Text="Prochaine échéance" FontSize="10" Foreground="#94A3B8"/>
+                                        <TextBlock Text="{Binding NextMaintenanceDisplay}" FontWeight="SemiBold" Margin="0,2,0,12"/>
+                                        <TextBlock Text="Dernière intervention" FontSize="10" Foreground="#94A3B8"/>
+                                        <TextBlock Text="{Binding LastMaintenanceDisplay}" Margin="0,2,0,12"/>
+                                        <TextBlock Text="Budget annuel consommé" FontSize="10" Foreground="#94A3B8"/>
+                                        <TextBlock Text="{Binding YearMaintenanceCostDisplay}" FontSize="16" FontWeight="Bold" Foreground="#2D6A4F"/>
+                                    </StackPanel>
+
+                                    <!-- Interventions -->
+                                    <ItemsControl ItemsSource="{Binding Interventions}"
+                                                  Visibility="{Binding DataContext.SelectedDetailTab, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource IntEqualsToVisibilityConverter}, ConverterParameter=2}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Background="#F8FAFC" CornerRadius="8" Padding="10" Margin="0,0,0,8" BorderBrush="#E8EFED" BorderThickness="1">
+                                                    <StackPanel>
+                                                        <DockPanel>
+                                                            <TextBlock Text="{Binding StatusLabel}" DockPanel.Dock="Right" FontSize="10" Foreground="#64748B"/>
+                                                            <TextBlock Text="{Binding DateDisplay}" FontWeight="SemiBold" Foreground="#1B3D3B"/>
+                                                        </DockPanel>
+                                                        <TextBlock Text="{Binding Description}" FontSize="11" Foreground="#64748B" TextWrapping="Wrap" Margin="0,4,0,4"/>
+                                                        <TextBlock Text="{Binding CostDisplay}" FontWeight="SemiBold" Foreground="#2D6A4F"/>
+                                                        <TextBlock Text="{Binding Technician}" FontSize="10" Foreground="#94A3B8"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </ScrollViewer>
+                            <Border Grid.Row="2" Padding="16,10,16,14" BorderBrush="#E8EFED" BorderThickness="0,1,0,0">
+                                <Button Style="{StaticResource SbmsLoginPrimaryButton}" HorizontalAlignment="Stretch" Padding="12,10">
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                        <materialDesign:PackIcon Kind="PencilOutline" Margin="0,0,8,0"/>
+                                        <TextBlock Text="Modifier les informations"/>
+                                    </StackPanel>
+                                </Button>
+                            </Border>
+                        </Grid>
+                    </Border>
+                </Grid>
+
+                <!-- Graphiques -->
+                <UniformGrid Grid.Row="3" Columns="3" Margin="0,8,0,0">
+                    <Border Style="{StaticResource TechnicalAnalyticsCard}" Margin="0,0,4,0">
+                        <StackPanel>
+                            <TextBlock Text="Équipements par catégorie" FontWeight="SemiBold" FontSize="11" Foreground="#1B3D3B" Margin="0,0,0,4"/>
+                            <lvc:PieChart Series="{Binding CategoryPieSeries}" Height="130"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource TechnicalAnalyticsCard}" Margin="4,0">
+                        <StackPanel>
+                            <TextBlock Text="État des équipements" FontWeight="SemiBold" FontSize="11" Foreground="#1B3D3B" Margin="0,0,0,4"/>
+                            <lvc:PieChart Series="{Binding StatusPieSeries}" Height="130"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource TechnicalAnalyticsCard}" Margin="4,0,0,0">
+                        <StackPanel>
+                            <TextBlock Text="Coût maintenance (6 mois)" FontWeight="SemiBold" FontSize="11" Foreground="#1B3D3B" Margin="0,0,0,4"/>
+                            <lvc:CartesianChart Series="{Binding MaintenanceCostSeries}" Height="130"/>
+                        </StackPanel>
+                    </Border>
+                </UniformGrid>
+            </Grid>
+        </ScrollViewer>
+
+            <ContentControl Content="{Binding Incidents}" VerticalAlignment="Stretch" HorizontalAlignment="Stretch"
+                            Visibility="{Binding SelectedSectionTab, Converter={StaticResource IntEqualsToVisibilityConverter}, ConverterParameter=1}"/>
+        </Grid>
+
+        <!-- Modal ajout équipement -->
+        <Border Grid.RowSpan="3" Background="#80000000" Visibility="{Binding IsAddFormOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Border Background="White" CornerRadius="12" Padding="24" MaxWidth="420" VerticalAlignment="Center" HorizontalAlignment="Center">
+                <StackPanel>
+                    <TextBlock Text="Nouvel équipement" FontSize="18" FontWeight="Bold" Foreground="#1B3D3B" Margin="0,0,0,16"/>
+                    <TextBox materialDesign:HintAssist.Hint="Code *" Text="{Binding FormCode, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
+                    <TextBox materialDesign:HintAssist.Hint="Nom *" Text="{Binding FormName, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
+                    <ComboBox ItemsSource="{Binding EquipmentCategories}" SelectedItem="{Binding FormCategory}" Style="{StaticResource TechnicalFilterCombo}" Margin="0,0,0,8"/>
+                    <TextBox materialDesign:HintAssist.Hint="Emplacement" Text="{Binding FormLocation, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
+                    <TextBox materialDesign:HintAssist.Hint="Marque" Text="{Binding FormBrand, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
+                    <TextBlock Text="{Binding FormError}" Foreground="#DC2626" FontSize="12" Margin="0,0,0,8"
+                               Visibility="{Binding FormError, Converter={StaticResource NullToVisibilityConverter}}"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Content="Annuler" Command="{Binding CloseAddFormCommand}" Style="{StaticResource TechnicalToolbarButton}" Margin="0,0,8,0"/>
+                        <Button Content="Enregistrer" Command="{Binding SaveEquipmentCommand}" Style="{StaticResource TechnicalPrimaryButton}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Border>
+
+        <ProgressBar Grid.Row="2" IsIndeterminate="True" Height="3" VerticalAlignment="Top"
+                     Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibilityConverter}}"
+                     Foreground="{StaticResource SbmsAccentGreenBrush}"/>
+    </Grid>
+</UserControl>
