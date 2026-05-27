@@ -74,27 +74,27 @@ WSGI_APPLICATION = "smartbuilding_web.wsgi.application"
 
 _database_url = os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR / 'db.sqlite3'}")
 if _database_url.startswith("postgresql://"):
-  # postgresql://user:pass@host:port/db
-    import re
+    from urllib.parse import parse_qs, urlparse
 
-    m = re.match(
-        r"postgresql://([^:]+):([^@]*)@([^:/]+)(?::(\d+))?/(.+)",
-        _database_url,
-    )
-    if m:
-        user, password, host, port, name = m.groups()
-        DATABASES = {
-            "default": {
-                "ENGINE": "django.db.backends.postgresql",
-                "NAME": name,
-                "USER": user,
-                "PASSWORD": password,
-                "HOST": host,
-                "PORT": port or "5432",
-            }
-        }
-    else:
+    parsed = urlparse(_database_url)
+    if not parsed.hostname or not parsed.path:
         raise ValueError("DATABASE_URL PostgreSQL invalide")
+
+    db_name = parsed.path.lstrip("/")
+    query = parse_qs(parsed.query)
+    conn_max_age = int(query.get("conn_max_age", ["60"])[0])
+
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": db_name,
+            "USER": parsed.username or "",
+            "PASSWORD": parsed.password or "",
+            "HOST": parsed.hostname,
+            "PORT": str(parsed.port or 5432),
+            "CONN_MAX_AGE": conn_max_age,
+        }
+    }
 else:
     db_path = _database_url.replace("sqlite:///", "")
     DATABASES = {

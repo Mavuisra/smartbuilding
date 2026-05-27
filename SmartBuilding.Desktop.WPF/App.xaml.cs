@@ -80,8 +80,11 @@ public partial class App : System.Windows.Application
                     services.AddInfrastructure(context.Configuration, isDesktop: true);
                     services.AddSingleton<SessionService>();
                     services.AddSingleton<AppConfigurationService>();
+                    services.AddScoped<InitialSetupService>();
                     services.AddSingleton<ShellNavigationService>();
                     services.AddSingleton<NavigationService>();
+                    services.AddTransient<InitialSetupViewModel>();
+                    services.AddTransient<InitialSetupWindow>();
                     services.AddTransient<LoginViewModel>();
                     services.AddTransient<DashboardViewModel>();
                     services.AddTransient<PersonnelViewModel>();
@@ -141,6 +144,36 @@ public partial class App : System.Windows.Application
             {
                 var db = scope.ServiceProvider.GetRequiredService<SmartBuildingDbContext>();
                 await DatabaseSeeder.SeedAsync(db);
+            }
+
+            using (var setupScope = _host.Services.CreateScope())
+            {
+                var setupService = setupScope.ServiceProvider.GetRequiredService<InitialSetupService>();
+                var needsSetup = await setupService.NeedsInitialSetupAsync();
+                if (needsSetup)
+                {
+                    splash.UpdateProgress(80, "Configuration initiale...");
+                    await PumpUiAsync();
+                    await splash.CloseAnimatedAsync();
+
+                    var setupWindow = setupScope.ServiceProvider.GetRequiredService<InitialSetupWindow>();
+                    var setupOk = setupWindow.ShowDialog() == true;
+                    if (!setupOk)
+                    {
+                        Shutdown(0);
+                        return;
+                    }
+
+                    splash = new SplashWindow();
+                    splash.Show();
+                    await PumpUiAsync();
+                    splash.UpdateProgress(90, "Chargement de l'interface...");
+                    await PumpUiAsync();
+                }
+                else
+                {
+                    setupService.EnsureSetupCompletedFlag();
+                }
             }
 
             splash.UpdateProgress(90, "Chargement de l'interface...");

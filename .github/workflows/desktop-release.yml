@@ -10,6 +10,8 @@ permissions:
 jobs:
   build:
     runs-on: windows-latest
+    env:
+      DESKTOP_API_BASE_URL: ${{ secrets.DESKTOP_API_BASE_URL }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -47,6 +49,44 @@ jobs:
           if (Test-Path (Join-Path $zipOut $zipName)) { Remove-Item (Join-Path $zipOut $zipName) -Force }
 
           # On zippe le dossier de publication. Le code d’application gère un éventuel dossier enveloppe.
+          Compress-Archive -Path (Join-Path $outDir '*') -DestinationPath (Join-Path $zipOut $zipName) -Force
+
+      - name: Inject production API URL in appsettings
+        shell: pwsh
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:DESKTOP_API_BASE_URL)) {
+            throw "Secret DESKTOP_API_BASE_URL manquant. Configure-le avec l'URL Render (ex: https://smartbuilding-0kbk.onrender.com/)."
+          }
+
+          $outDir = "${{ github.workspace }}\artifacts\publish"
+          $settingsPath = Join-Path $outDir "appsettings.json"
+          if (!(Test-Path $settingsPath)) {
+            throw "Fichier appsettings.json introuvable dans le package publié."
+          }
+
+          $baseUrl = $env:DESKTOP_API_BASE_URL.Trim()
+          if (-not $baseUrl.EndsWith("/")) { $baseUrl = "$baseUrl/" }
+
+          $json = Get-Content $settingsPath -Raw | ConvertFrom-Json
+          if ($null -eq $json.Api) {
+            $json | Add-Member -MemberType NoteProperty -Name "Api" -Value ([PSCustomObject]@{})
+          }
+          $json.Api.BaseUrl = $baseUrl
+
+          $json | ConvertTo-Json -Depth 20 | Set-Content $settingsPath -Encoding UTF8
+          Write-Host "API de production injectée: $baseUrl"
+
+      - name: Repackage desktop artifact after config injection
+        shell: pwsh
+        run: |
+          $version = "${{ steps.ver.outputs.version }}"
+          $outDir = "${{ github.workspace }}\artifacts\publish"
+          $zipOut = "${{ github.workspace }}\artifacts"
+          $zipName = "smartbuilding-desktop-win-x64-v$version.zip"
+
+          if (Test-Path (Join-Path $zipOut $zipName)) {
+            Remove-Item (Join-Path $zipOut $zipName) -Force
+          }
           Compress-Archive -Path (Join-Path $outDir '*') -DestinationPath (Join-Path $zipOut $zipName) -Force
 
       - name: Create GitHub Release

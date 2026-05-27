@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using SmartBuilding.Domain.Entities.Auth;
 using SmartBuilding.Domain.Entities.Building;
-using SmartBuilding.Domain.Enums;
 using SmartBuilding.Infrastructure.Persistence;
 using SmartBuilding.Shared.Constants;
 
@@ -13,20 +12,6 @@ public static class DatabaseSeeder
     {
         await context.Database.EnsureCreatedAsync();
         await DatabaseSchemaUpgrader.UpgradeAsync(context);
-
-        if (!await context.Users.AnyAsync())
-        {
-            context.Users.Add(new User
-            {
-                Username = "admin",
-                Email = "admin@smartbuilding.local",
-                FullName = "Administrateur SB",
-                Role = UserRole.Administrateur,
-                PasswordHash = AuthService.HashPassword("Admin@2026"),
-                IsActive = true,
-                IsSynced = true
-            });
-        }
 
         if (!await context.Permissions.AnyAsync())
         {
@@ -57,19 +42,15 @@ public static class DatabaseSeeder
 
         if (!await context.BuildingInfos.AnyAsync())
         {
-            var building = new BuildingInfo { TotalFloors = 8, IsSynced = true };
-            BuildingInfoDefaults.ApplyKinshasaDefaults(building);
+            var building = new BuildingInfo
+            {
+                Name = "Smart Building",
+                IsSynced = false
+            };
             context.BuildingInfos.Add(building);
         }
 
         await context.SaveChangesAsync();
-
-        var existingBuilding = await context.BuildingInfos.FirstOrDefaultAsync();
-        if (existingBuilding is not null && BuildingInfoDefaults.NeedsKinshasaNormalization(existingBuilding))
-        {
-            BuildingInfoDefaults.ApplyKinshasaDefaults(existingBuilding);
-            await context.SaveChangesAsync();
-        }
 
         // Données de démo uniquement si explicitement demandé (évite de repeupler après une purge).
         if (string.Equals(Environment.GetEnvironmentVariable("SMARTBUILDING_DEMO_DATA"), "true", StringComparison.OrdinalIgnoreCase))
