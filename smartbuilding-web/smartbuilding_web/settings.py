@@ -73,17 +73,31 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "smartbuilding_web.wsgi.application"
 
-_database_url = os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR / 'db.sqlite3'}")
+_database_url = (os.getenv("DATABASE_URL") or "").strip()
+if not _database_url:
+    _database_url = f"sqlite:///{BASE_DIR / 'db.sqlite3'}"
+elif _database_url.startswith("postgres://"):
+    # Render fournit souvent postgres:// au lieu de postgresql://
+    _database_url = "postgresql://" + _database_url[len("postgres://") :]
+
 if _database_url.startswith("postgresql://"):
     from urllib.parse import parse_qs, urlparse
 
     parsed = urlparse(_database_url)
     if not parsed.hostname or not parsed.path:
-        raise ValueError("DATABASE_URL PostgreSQL invalide")
+        raise ImproperlyConfigured(
+            "DATABASE_URL PostgreSQL invalide. Vérifiez host et nom de base (/dimplomate)."
+        )
 
-    db_name = parsed.path.lstrip("/")
+    db_name = parsed.path.lstrip("/").split("?")[0]
     query = parse_qs(parsed.query)
     conn_max_age = int(query.get("conn_max_age", ["60"])[0])
+
+    pg_options: dict[str, str] = {}
+    host = parsed.hostname or ""
+    # Render Postgres (interne ou externe) : SSL requis
+    if host.startswith("dpg-") or "render.com" in host:
+        pg_options["sslmode"] = os.getenv("DATABASE_SSLMODE", "require")
 
     DATABASES = {
         "default": {
@@ -91,9 +105,10 @@ if _database_url.startswith("postgresql://"):
             "NAME": db_name,
             "USER": parsed.username or "",
             "PASSWORD": parsed.password or "",
-            "HOST": parsed.hostname,
+            "HOST": host,
             "PORT": str(parsed.port or 5432),
             "CONN_MAX_AGE": conn_max_age,
+            "OPTIONS": pg_options,
         }
     }
 else:
