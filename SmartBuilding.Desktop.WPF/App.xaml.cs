@@ -47,7 +47,18 @@ public partial class App : System.Windows.Application
             splash.UpdateProgress(5, "Vérification des mises à jour...");
             await PumpUiAsync();
 
-            if (await AppAutoUpdater.CheckAndApplyIfNeededAsync(splash.UpdateProgress))
+            if (await AppAutoUpdater.CheckAndApplyIfNeededAsync(
+                    splash.UpdateProgress,
+                    confirmUpdateAsync: async (currentVersion, latestTag) =>
+                    {
+                        var result = MessageBox.Show(
+                            $"Une nouvelle version est disponible.\n\nVersion actuelle: {currentVersion}\nNouvelle version: {latestTag}\n\nInstaller maintenant ?",
+                            "Mise à jour disponible",
+                            MessageBoxButton.YesNo,
+                            MessageBoxImage.Information);
+                        await Task.CompletedTask;
+                        return result == MessageBoxResult.Yes;
+                    }))
             {
                 Shutdown(0);
                 return;

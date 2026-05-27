@@ -107,7 +107,10 @@ public static class AppAutoUpdater
         File.Copy(sourceFile, destFile, overwrite);
     }
 
-    public static async Task<bool> CheckAndApplyIfNeededAsync(Action<double, string> reportProgress, CancellationToken ct = default)
+    public static async Task<bool> CheckAndApplyIfNeededAsync(
+        Action<double, string> reportProgress,
+        Func<string, string, Task<bool>> confirmUpdateAsync,
+        CancellationToken ct = default)
     {
         try
         {
@@ -136,6 +139,9 @@ public static class AppAutoUpdater
                 return false;
 
             reportProgress(25, $"Mise à jour disponible: {latest.TagName}");
+            var shouldApply = await confirmUpdateAsync(localVersion, latest.TagName);
+            if (!shouldApply)
+                return false;
 
             // Sélection de l’asset zip correspondant au desktop win-x64.
             var asset = SelectUpdateZip(latest);
