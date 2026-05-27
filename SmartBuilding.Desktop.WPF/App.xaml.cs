@@ -44,24 +44,34 @@ public partial class App : System.Windows.Application
 
         try
         {
-            splash.UpdateProgress(5, "Vérification des mises à jour...");
-            await PumpUiAsync();
-
-            if (await AppAutoUpdater.CheckAndApplyIfNeededAsync(
-                    splash.UpdateProgress,
-                    confirmUpdateAsync: async (currentVersion, latestTag) =>
-                    {
-                        var result = MessageBox.Show(
-                            $"Une nouvelle version est disponible.\n\nVersion actuelle: {currentVersion}\nNouvelle version: {latestTag}\n\nInstaller maintenant ?",
-                            "Mise à jour disponible",
-                            MessageBoxButton.YesNo,
-                            MessageBoxImage.Information);
-                        await Task.CompletedTask;
-                        return result == MessageBoxResult.Yes;
-                    }))
+            // Sécurité démarrage: la MAJ auto au boot est désactivée par défaut
+            // pour éviter les fermetures silencieuses de l'app.
+            // Active-la explicitement via SMARTBUILDING_STARTUP_UPDATE=true.
+            var startupUpdateEnabled = string.Equals(
+                Environment.GetEnvironmentVariable("SMARTBUILDING_STARTUP_UPDATE"),
+                "true",
+                StringComparison.OrdinalIgnoreCase);
+            if (startupUpdateEnabled)
             {
-                Shutdown(0);
-                return;
+                splash.UpdateProgress(5, "Vérification des mises à jour...");
+                await PumpUiAsync();
+
+                if (await AppAutoUpdater.CheckAndApplyIfNeededAsync(
+                        splash.UpdateProgress,
+                        confirmUpdateAsync: async (currentVersion, latestTag) =>
+                        {
+                            var result = MessageBox.Show(
+                                $"Une nouvelle version est disponible.\n\nVersion actuelle: {currentVersion}\nNouvelle version: {latestTag}\n\nInstaller maintenant ?",
+                                "Mise à jour disponible",
+                                MessageBoxButton.YesNo,
+                                MessageBoxImage.Information);
+                            await Task.CompletedTask;
+                            return result == MessageBoxResult.Yes;
+                        }))
+                {
+                    Shutdown(0);
+                    return;
+                }
             }
 
             var splashStarted = Environment.TickCount64;
