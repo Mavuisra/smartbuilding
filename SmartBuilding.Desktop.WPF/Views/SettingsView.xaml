@@ -359,16 +359,19 @@
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
                                     <Grid.RowDefinitions>
-                                        <RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/>
+                                        <RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/>
                                     </Grid.RowDefinitions>
                                     <TextBlock Grid.Row="0" Text="Version" FontSize="11" Foreground="{StaticResource SbmsTextMutedBrush}"/>
                                     <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding AppVersion}" FontWeight="SemiBold" FontSize="11"/>
                                     <TextBlock Grid.Row="1" Text="Base de données" FontSize="11" Foreground="{StaticResource SbmsTextMutedBrush}"/>
                                     <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding DatabaseLabel}" FontWeight="SemiBold" FontSize="11"/>
-                                    <TextBlock Grid.Row="2" Text="Espace utilisé" FontSize="11" Foreground="{StaticResource SbmsTextMutedBrush}"/>
-                                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding StorageLabel}" FontWeight="SemiBold" FontSize="11"/>
-                                    <TextBlock Grid.Row="3" Text="Environnement" FontSize="11" Foreground="{StaticResource SbmsTextMutedBrush}"/>
-                                    <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding EnvironmentName}" FontWeight="SemiBold" FontSize="11"/>
+                                    <TextBlock Grid.Row="2" Text="Emplacement" FontSize="11" Foreground="{StaticResource SbmsTextMutedBrush}" VerticalAlignment="Top"/>
+                                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding DatabasePathDisplay}" FontWeight="SemiBold" FontSize="10"
+                                               TextWrapping="Wrap"/>
+                                    <TextBlock Grid.Row="3" Text="Espace utilisé" FontSize="11" Foreground="{StaticResource SbmsTextMutedBrush}"/>
+                                    <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding StorageLabel}" FontWeight="SemiBold" FontSize="11"/>
+                                    <TextBlock Grid.Row="4" Text="Environnement" FontSize="11" Foreground="{StaticResource SbmsTextMutedBrush}"/>
+                                    <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding EnvironmentName}" FontWeight="SemiBold" FontSize="11"/>
                                 </Grid>
                                 <Button Content="Voir les détails système" Style="{StaticResource MaterialDesignFlatButton}"
                                         Foreground="#2D6A4F" HorizontalAlignment="Left" Padding="0" Margin="0,8,0,0"

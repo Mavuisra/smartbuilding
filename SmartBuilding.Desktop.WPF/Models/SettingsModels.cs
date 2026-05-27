@@ -18,6 +18,8 @@ public sealed class SettingsPageData
     public DateTime? LastSyncAt { get; init; }
     public string SyncStatusLabel { get; init; } = "—";
     public long DatabaseSizeBytes { get; init; }
+    public string DatabaseFilePath { get; init; } = string.Empty;
+    public string DatabaseDataDirectory { get; init; } = string.Empty;
     public string AppVersion { get; init; } = "v1.0.0";
     public string EnvironmentName { get; init; } = "Développement";
     public bool NotifyEmail { get; init; } = true;

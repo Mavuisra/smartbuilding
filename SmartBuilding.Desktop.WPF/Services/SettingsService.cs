@@ -50,6 +50,7 @@ public class SettingsService
 
         var prefs = LoadNotificationPrefs();
         var dbPath = DesktopSqlitePaths.GetDatabaseFilePath();
+        var dbDir = DesktopSqlitePaths.DataDirectory;
         var dbSize = File.Exists(dbPath) ? new FileInfo(dbPath).Length : 0L;
 
         var env = _configuration["ASPNETCORE_ENVIRONMENT"]
@@ -92,6 +93,8 @@ public class SettingsService
                 ? (DateTime.UtcNow - lastSync.Value).TotalHours < 24 ? "À jour" : "En retard"
                 : "Jamais",
             DatabaseSizeBytes = dbSize,
+            DatabaseFilePath = dbPath,
+            DatabaseDataDirectory = dbDir,
             AppVersion = $"v{typeof(SettingsService).Assembly.GetName().Version?.ToString(3) ?? "1.0.0"}",
             EnvironmentName = env,
             NotifyEmail = prefs.NotifyEmail,

@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Windows;
@@ -13,6 +14,7 @@ using SmartBuilding.Domain.Entities.Building;
 using SmartBuilding.Desktop.WPF.Models;
 using SmartBuilding.Desktop.WPF.Services;
 using SmartBuilding.Desktop.WPF.Views;
+using SmartBuilding.Infrastructure.Persistence;
 
 namespace SmartBuilding.Desktop.WPF.ViewModels;
 
@@ -63,7 +65,11 @@ public partial class SettingsViewModel : BaseViewModel
     [ObservableProperty] private string _activeSessionsLabel = "1";
     [ObservableProperty] private string _authorizedDevicesLabel = "1";
     [ObservableProperty] private string _appVersion = "v1.0.0";
-    [ObservableProperty] private string _databaseLabel = "SQLite locale";
+    [ObservableProperty] private string _databaseLabel = "SQLite (données utilisateur)";
+    [ObservableProperty] private string _databasePathDisplay = "—";
+    [ObservableProperty] private string _databaseDataDirectoryDisplay = "—";
+    [ObservableProperty] private string _databasePersistenceMessage =
+        "Vos données sont stockées hors du dossier d'installation. Les mises à jour de SBMS ne suppriment pas ce fichier. Ne supprimez pas ce dossier.";
     [ObservableProperty] private string _storageLabel = "—";
     [ObservableProperty] private string _environmentName = "Développement";
     [ObservableProperty] private string _updateCurrentVersion = "v—";
@@ -223,6 +229,9 @@ public partial class SettingsViewModel : BaseViewModel
             AuthorizedDevicesLabel = data.AuthorizedDevices.ToString();
             AppVersion = data.AppVersion;
             EnvironmentName = data.EnvironmentName;
+            DatabaseLabel = "SQLite (données utilisateur)";
+            DatabasePathDisplay = data.DatabaseFilePath;
+            DatabaseDataDirectoryDisplay = data.DatabaseDataDirectory;
             StorageLabel = FormatBytes(data.DatabaseSizeBytes);
 
             UsersSparkline = BuildSparkline([data.ActiveUsers], "#8B5CF6");
@@ -598,6 +607,20 @@ public partial class SettingsViewModel : BaseViewModel
     }
 
     [RelayCommand]
+    private void OpenDatabaseFolder()
+    {
+        var dir = DesktopSqlitePaths.DataDirectory;
+        if (!Directory.Exists(dir))
+            Directory.CreateDirectory(dir);
+
+        Process.Start(new ProcessStartInfo
+        {
+            FileName = dir,
+            UseShellExecute = true
+        });
+    }
+
+    [RelayCommand]
     private void ChangeLogo()
     {
         var dialog = new OpenFileDialog
@@ -647,7 +670,7 @@ public partial class SettingsViewModel : BaseViewModel
         CategoryTitle = item?.Label ?? "Paramètres";
         CategoryDescription = categoryId switch
         {
-            "general" => "Nom, devise, langue et logo de l'entreprise",
+            "general" => "Nom, devise, langue, logo et emplacement des données locales",
             "buildings" => "Coordonnées bailleur sur les quittances PDF (Kinshasa, Gombe)",
             "utilisateurs" => "Comptes, rôles et activité des utilisateurs",
             "permissions" => "Droits d'accès par rôle et module",
@@ -660,7 +683,7 @@ public partial class SettingsViewModel : BaseViewModel
             "appearance" => "Thème clair/sombre, couleurs et affichage global",
             "logs" => "Journal système et événements récents",
             "integrations" => "Services connectés et API",
-            "about" => "Version, base de données et environnement",
+            "about" => "Version, emplacement de la base et environnement",
             _ => "Configuration du système SBMS"
         };
     }
