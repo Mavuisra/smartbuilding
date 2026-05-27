@@ -100,8 +100,8 @@ public static class AppAutoUpdater
         {
             FileName = applierExe,
             Arguments = $"{ApplyFlag} \"{installDir}\" \"{stagingDir}\" \"{exeName}\"",
-            UseShellExecute = false,
-            CreateNoWindow = true
+            WorkingDirectory = Path.GetDirectoryName(applierExe) ?? stagingDir,
+            UseShellExecute = true
         });
 
         reportProgress?.Invoke(100, "Mise à jour téléchargée. Fermeture de l'application...");
@@ -142,7 +142,7 @@ public static class AppAutoUpdater
                 var relative = Path.GetRelativePath(stagingRoot, sourceFile);
                 var destFile = Path.Combine(installDir, relative);
                 Directory.CreateDirectory(Path.GetDirectoryName(destFile)!);
-                CopyFileWithRetry(sourceFile, destFile, overwrite: true, retries: 8, delayMs: 200);
+                CopyFileWithRetry(sourceFile, destFile, overwrite: true, retries: 30, delayMs: 250);
             }
 
             // Redémarrage sur la version installée.
@@ -269,8 +269,8 @@ public static class AppAutoUpdater
             {
                 FileName = applierExe,
                 Arguments = $"{ApplyFlag} \"{installDir}\" \"{stagingDir}\" \"{exeName}\"",
-                UseShellExecute = false,
-                CreateNoWindow = true
+                WorkingDirectory = Path.GetDirectoryName(applierExe) ?? stagingDir,
+                UseShellExecute = true
             });
 
             // L’applier redémarre le programme, on coupe l’instance courante.
@@ -440,12 +440,32 @@ public static class AppAutoUpdater
 
     private static string GetEntryExeName()
     {
-        var location = Assembly.GetEntryAssembly()?.Location;
-        if (!string.IsNullOrWhiteSpace(location))
-            return Path.GetFileName(location);
+        var processPath = Environment.ProcessPath;
+        if (IsRunnableExe(processPath))
+            return Path.GetFileName(processPath!);
+
+        var mainModulePath = Process.GetCurrentProcess().MainModule?.FileName;
+        if (IsRunnableExe(mainModulePath))
+            return Path.GetFileName(mainModulePath!);
+
+        var assemblyName = Assembly.GetEntryAssembly()?.GetName().Name;
+        if (!string.IsNullOrWhiteSpace(assemblyName))
+            return $"{assemblyName}.exe";
 
         // fallback raisonnable
         return "SmartBuilding.Desktop.WPF.exe";
+    }
+
+    private static bool IsRunnableExe(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return false;
+
+        var fileName = Path.GetFileName(path);
+        if (string.Equals(fileName, "dotnet.exe", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        return string.Equals(Path.GetExtension(path), ".exe", StringComparison.OrdinalIgnoreCase);
     }
 
     private static string? FindExeInDirectory(string dir, string exeName)
