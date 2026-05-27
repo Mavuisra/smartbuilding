@@ -12,6 +12,7 @@ jobs:
     runs-on: windows-latest
     env:
       DESKTOP_API_BASE_URL: ${{ secrets.DESKTOP_API_BASE_URL }}
+      DESKTOP_API_BASE_URL_VAR: ${{ vars.DESKTOP_API_BASE_URL }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -54,20 +55,30 @@ jobs:
       - name: Inject production API URL in appsettings
         shell: pwsh
         run: |
-          if ([string]::IsNullOrWhiteSpace($env:DESKTOP_API_BASE_URL)) {
-            throw "Secret DESKTOP_API_BASE_URL manquant. Configure-le avec l'URL Render (ex: https://smartbuilding-0kbk.onrender.com/)."
-          }
-
           $outDir = "${{ github.workspace }}\artifacts\publish"
           $settingsPath = Join-Path $outDir "appsettings.json"
           if (!(Test-Path $settingsPath)) {
             throw "Fichier appsettings.json introuvable dans le package publié."
           }
 
-          $baseUrl = $env:DESKTOP_API_BASE_URL.Trim()
+          $json = Get-Content $settingsPath -Raw | ConvertFrom-Json
+          $baseUrl = $env:DESKTOP_API_BASE_URL
+          if ([string]::IsNullOrWhiteSpace($baseUrl)) {
+            $baseUrl = $env:DESKTOP_API_BASE_URL_VAR
+          }
+          if ([string]::IsNullOrWhiteSpace($baseUrl) -and $null -ne $json.Api -and $null -ne $json.Api.BaseUrl) {
+            $candidate = "$($json.Api.BaseUrl)".Trim()
+            if ($candidate -and $candidate -notmatch "localhost|127\.0\.0\.1") {
+              $baseUrl = $candidate
+            }
+          }
+          if ([string]::IsNullOrWhiteSpace($baseUrl)) {
+            throw "DESKTOP_API_BASE_URL absent. Configure soit le secret Actions DESKTOP_API_BASE_URL, soit la variable repo DESKTOP_API_BASE_URL (URL Render)."
+          }
+
+          $baseUrl = $baseUrl.Trim()
           if (-not $baseUrl.EndsWith("/")) { $baseUrl = "$baseUrl/" }
 
-          $json = Get-Content $settingsPath -Raw | ConvertFrom-Json
           if ($null -eq $json.Api) {
             $json | Add-Member -MemberType NoteProperty -Name "Api" -Value ([PSCustomObject]@{})
           }
