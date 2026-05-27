@@ -66,6 +66,15 @@ public partial class SettingsViewModel : BaseViewModel
     [ObservableProperty] private string _databaseLabel = "SQLite locale";
     [ObservableProperty] private string _storageLabel = "—";
     [ObservableProperty] private string _environmentName = "Développement";
+    [ObservableProperty] private string _updateCurrentVersion = "v—";
+    [ObservableProperty] private string _updateLatestVersion = "v—";
+    [ObservableProperty] private string _updateStatus = "Aucune vérification récente.";
+    [ObservableProperty] private string _updateLastChecked = "Jamais";
+    [ObservableProperty] private bool _isUpdateAvailable;
+    [ObservableProperty] private bool _isCheckingUpdate;
+    [ObservableProperty] private bool _isInstallingUpdate;
+
+    private AppAutoUpdater.AvailableUpdate? _availableUpdate;
 
     [ObservableProperty] private ISeries[] _usersSparkline = [];
     [ObservableProperty] private ISeries[] _rolesSparkline = [];
@@ -238,6 +247,9 @@ public partial class SettingsViewModel : BaseViewModel
             EmailAccountsDisplay = data.EmailAccountsCount.ToString();
             DocumentsCountDisplay = data.DocumentsCount.ToString();
             ApiBaseUrl = data.ApiBaseUrl;
+            UpdateCurrentVersion = AppAutoUpdater.GetCurrentVersionLabel();
+            if (string.IsNullOrWhiteSpace(UpdateLatestVersion) || UpdateLatestVersion == "v—")
+                UpdateLatestVersion = UpdateCurrentVersion;
             SelectedAccentColor = data.AccentColorHex;
             SelectedSidebarColor = data.SidebarColorHex;
             SelectedSecondaryColor = data.SecondaryColorHex;
@@ -487,6 +499,79 @@ public partial class SettingsViewModel : BaseViewModel
 
     private decimal ParseUsdRateOrDefault() =>
         TryParseUsdRate(out var rate) ? rate : 2850m;
+
+    [RelayCommand]
+    private async Task CheckForUpdatesAsync()
+    {
+        if (IsCheckingUpdate || IsInstallingUpdate)
+            return;
+
+        IsCheckingUpdate = true;
+        ErrorMessage = null;
+        try
+        {
+            UpdateStatus = "Vérification en cours...";
+            var update = await AppAutoUpdater.CheckForAvailableUpdateAsync();
+            UpdateLastChecked = DateTime.Now.ToString("dd/MM/yyyy HH:mm");
+
+            if (update is null)
+            {
+                _availableUpdate = null;
+                IsUpdateAvailable = false;
+                UpdateLatestVersion = UpdateCurrentVersion;
+                UpdateStatus = "Application déjà à jour.";
+                return;
+            }
+
+            _availableUpdate = update;
+            IsUpdateAvailable = true;
+            UpdateCurrentVersion = update.CurrentVersion;
+            UpdateLatestVersion = update.LatestTag;
+            UpdateStatus = "Nouvelle version disponible.";
+        }
+        catch (Exception ex)
+        {
+            IsUpdateAvailable = false;
+            UpdateStatus = "Échec de vérification.";
+            ErrorMessage = ex.Message;
+        }
+        finally
+        {
+            IsCheckingUpdate = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task DownloadAndInstallUpdateAsync()
+    {
+        if (_availableUpdate is null || IsInstallingUpdate)
+            return;
+
+        var result = MessageBox.Show(
+            $"Installer la mise à jour {_availableUpdate.LatestTag} maintenant ?\n\nL'application va redémarrer.",
+            "Mise à jour disponible",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Question);
+
+        if (result != MessageBoxResult.Yes)
+            return;
+
+        IsInstallingUpdate = true;
+        ErrorMessage = null;
+        try
+        {
+            UpdateStatus = "Téléchargement...";
+            await AppAutoUpdater.DownloadAndApplyUpdateAsync(
+                _availableUpdate,
+                (p, s) => UpdateStatus = $"{s} ({Math.Round(p)}%)");
+        }
+        catch (Exception ex)
+        {
+            UpdateStatus = "Installation échouée.";
+            ErrorMessage = ex.Message;
+            IsInstallingUpdate = false;
+        }
+    }
 
     [RelayCommand]
     private void ChangeLogo()

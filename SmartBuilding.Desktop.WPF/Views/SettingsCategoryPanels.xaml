@@ -370,8 +370,47 @@
                     <TextBlock Grid.Column="1" Text="{Binding SyncKpiLabel}" FontWeight="Bold" Foreground="#2D6A4F"/>
                 </Grid>
                 <TextBlock Text="{Binding SyncKpiSub}" Foreground="{StaticResource SbmsTextMutedBrush}" Margin="0,0,0,16"/>
-                <Button Content="Ouvrir la synchronisation" Command="{Binding OpenModuleCommand}" CommandParameter="synchronisation"
-                        Style="{StaticResource SettingsSaveButton}" HorizontalAlignment="Left"/>
+
+                <Border Background="#EEF6FF" BorderBrush="#D7E8FF" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="Mise à jour de l'application" FontWeight="SemiBold" FontSize="12"/>
+                            <TextBlock Text="{Binding UpdateStatus}" FontSize="11" Foreground="{StaticResource SbmsTextMutedBrush}" Margin="0,4,0,0"/>
+                            <TextBlock FontSize="11" Margin="0,4,0,0">
+                                <Run Text="Version actuelle : "/>
+                                <Run Text="{Binding UpdateCurrentVersion}" FontWeight="SemiBold"/>
+                                <Run Text="  |  Dernière version : "/>
+                                <Run Text="{Binding UpdateLatestVersion}" FontWeight="SemiBold"/>
+                            </TextBlock>
+                            <TextBlock FontSize="10" Foreground="{StaticResource SbmsTextMutedBrush}">
+                                <Run Text="Dernière vérification : "/>
+                                <Run Text="{Binding UpdateLastChecked}"/>
+                            </TextBlock>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                            <Button Content="Vérifier"
+                                    Command="{Binding CheckForUpdatesCommand}"
+                                    Style="{StaticResource MaterialDesignOutlinedButton}"
+                                    BorderBrush="#2D6A4F" Foreground="#2D6A4F" Margin="0,0,8,0"
+                                    IsEnabled="{Binding IsCheckingUpdate, Converter={StaticResource InverseBoolConverter}}"/>
+                            <Button Content="Télécharger et installer"
+                                    Command="{Binding DownloadAndInstallUpdateCommand}"
+                                    Style="{StaticResource SettingsSaveButton}"
+                                    IsEnabled="{Binding IsUpdateAvailable}"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="Ouvrir la synchronisation" Command="{Binding OpenModuleCommand}" CommandParameter="synchronisation"
+                            Style="{StaticResource MaterialDesignOutlinedButton}" BorderBrush="#2D6A4F" Foreground="#2D6A4F" Margin="0,0,8,0"/>
+                    <Button Content="Synchroniser maintenant" Command="{Binding OpenModuleCommand}" CommandParameter="synchronisation"
+                            Style="{StaticResource SettingsSaveButton}"/>
+                </StackPanel>
             </StackPanel>
         </Border>
 

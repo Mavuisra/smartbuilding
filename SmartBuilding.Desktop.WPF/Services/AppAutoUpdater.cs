@@ -23,6 +23,79 @@ public static class AppAutoUpdater
     private static readonly TimeSpan HttpTimeout = TimeSpan.FromSeconds(20);
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
+    public sealed record AvailableUpdate(string CurrentVersion, string LatestTag, string DownloadUrl);
+
+    public static string GetCurrentVersionLabel()
+    {
+        var current = GetLocalNormalizedVersion();
+        return string.IsNullOrWhiteSpace(current) ? "v—" : $"v{current}";
+    }
+
+    public static async Task<AvailableUpdate?> CheckForAvailableUpdateAsync(CancellationToken ct = default)
+    {
+        var currentVersion = GetLocalNormalizedVersion();
+        using var http = new HttpClient { Timeout = HttpTimeout };
+        http.DefaultRequestHeaders.UserAgent.ParseAdd("SmartBuilding-AutoUpdater");
+        http.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
+
+        var latest = await GetLatestReleaseAsync(http, ct);
+        if (latest is null || string.IsNullOrWhiteSpace(latest.TagName))
+            return null;
+
+        var remoteVersion = NormalizeVersion(latest.TagName);
+        if (string.Equals(remoteVersion, currentVersion, StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        var asset = SelectUpdateZip(latest);
+        if (asset is null || string.IsNullOrWhiteSpace(asset.DownloadUrl))
+            return null;
+
+        return new AvailableUpdate(
+            CurrentVersion: $"v{currentVersion}",
+            LatestTag: latest.TagName,
+            DownloadUrl: asset.DownloadUrl);
+    }
+
+    public static async Task<bool> DownloadAndApplyUpdateAsync(
+        AvailableUpdate update,
+        Action<double, string>? reportProgress = null,
+        CancellationToken ct = default)
+    {
+        var installDir = AppContext.BaseDirectory;
+        var exeName = GetEntryExeName();
+        reportProgress?.Invoke(10, "Téléchargement de la mise à jour...");
+
+        using var http = new HttpClient { Timeout = HttpTimeout };
+        http.DefaultRequestHeaders.UserAgent.ParseAdd("SmartBuilding-AutoUpdater");
+        http.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
+
+        var updateRoot = Path.Combine(Path.GetTempPath(), "SmartBuilding", "updates", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(updateRoot);
+
+        var zipPath = Path.Combine(updateRoot, "update.zip");
+        await DownloadFileAsync(http, update.DownloadUrl, zipPath, ct);
+
+        reportProgress?.Invoke(55, "Extraction du package...");
+        var stagingDir = Path.Combine(updateRoot, "staging");
+        ZipFile.ExtractToDirectory(zipPath, stagingDir);
+
+        var applierExe = FindExeInDirectory(stagingDir, exeName);
+        if (string.IsNullOrWhiteSpace(applierExe))
+            throw new FileNotFoundException("EXE d’appliquer introuvable dans le staging.", exeName);
+
+        reportProgress?.Invoke(85, "Redémarrage pour appliquer...");
+        Process.Start(new ProcessStartInfo
+        {
+            FileName = applierExe,
+            Arguments = $"{ApplyFlag} \"{installDir}\" \"{stagingDir}\" \"{exeName}\"",
+            UseShellExecute = false,
+            CreateNoWindow = true
+        });
+
+        System.Windows.Application.Current?.Dispatcher.Invoke(() => System.Windows.Application.Current.Shutdown());
+        return true;
+    }
+
     public static bool TryApplyUpdateIfRequested(string[] args)
     {
         var idx = Array.IndexOf(args, ApplyFlag);
