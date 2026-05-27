@@ -1,7 +1,4 @@
-from datetime import datetime
-
 from django.utils import timezone
-from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import AccessToken
@@ -9,7 +6,12 @@ from rest_framework_simplejwt.tokens import AccessToken
 from api.models import ServerSyncEvent, User
 from api.permissions import IsExecutive
 from api.responses import api_fail, api_ok
-from api.services.dashboard import get_executive_summary
+from api.serializers import (
+    LoginSerializer,
+    SyncPullQuerySerializer,
+    SyncPushRequestSerializer,
+)
+from api.services.dashboard import get_executive_overview, get_executive_summary, get_sync_health
 from api.sync import apply_push, get_changes_since, is_syncable
 
 
@@ -24,10 +26,16 @@ class LoginView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        username = request.data.get("username") or request.data.get("Username")
-        password = request.data.get("password") or request.data.get("Password")
-        if not username or not password:
-            return api_fail("Identifiants requis.", status=400)
+        serializer = LoginSerializer(
+            data={
+                "username": request.data.get("username") or request.data.get("Username"),
+                "password": request.data.get("password") or request.data.get("Password"),
+            }
+        )
+        if not serializer.is_valid():
+            return api_fail("Identifiants requis.", errors=serializer.errors, status=400)
+        username = serializer.validated_data["username"]
+        password = serializer.validated_data["password"]
 
         try:
             user = User.objects.get(username=username, is_active=True, deleted_at__isnull=True)
@@ -60,11 +68,24 @@ class SyncPushView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        entity_type = request.data.get("entityType") or request.data.get("EntityType")
-        entities = request.data.get("entities") or request.data.get("Entities") or []
+        serializer = SyncPushRequestSerializer(
+            data={
+                "entityType": request.data.get("entityType")
+                or request.data.get("EntityType"),
+                "entities": request.data.get("entities")
+                or request.data.get("Entities")
+                or [],
+            }
+        )
+        if not serializer.is_valid():
+            return api_fail(
+                "Payload de synchronisation invalide.",
+                errors=serializer.errors,
+                status=400,
+            )
+        entity_type = serializer.validated_data["entityType"]
+        entities = serializer.validated_data["entities"]
 
-        if not entity_type:
-            return api_fail("entityType requis.", status=400)
         if not is_syncable(entity_type):
             return api_fail(f"Type de sync inconnu : {entity_type}", status=400)
 
@@ -96,18 +117,17 @@ class SyncPullView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        entity_type = request.query_params.get("entityType")
-        since_raw = request.query_params.get("since")
-
-        if not entity_type or not since_raw:
-            return api_fail("entityType et since sont requis.", status=400)
+        serializer = SyncPullQuerySerializer(data=request.query_params)
+        if not serializer.is_valid():
+            return api_fail(
+                "Paramètres de synchronisation invalides.",
+                errors=serializer.errors,
+                status=400,
+            )
+        entity_type = serializer.validated_data["entityType"]
+        since = serializer.validated_data["since"]
         if not is_syncable(entity_type):
             return api_fail(f"Type de sync inconnu : {entity_type}", status=400)
-
-        try:
-            since = datetime.fromisoformat(since_raw.replace("Z", "+00:00"))
-        except ValueError:
-            return api_fail("Format since invalide (ISO8601 attendu).", status=400)
 
         entities = get_changes_since(entity_type, since)
         ServerSyncEvent.objects.create(
@@ -131,6 +151,20 @@ class DashboardSummaryView(APIView):
 
     def get(self, request):
         return api_ok(get_executive_summary())
+
+
+class SyncStatusView(APIView):
+    permission_classes = [IsExecutive]
+
+    def get(self, request):
+        return api_ok(get_sync_health())
+
+
+class ExecutiveOverviewView(APIView):
+    permission_classes = [IsExecutive]
+
+    def get(self, request):
+        return api_ok(get_executive_overview())
 
 
 class ExecutiveTenantsView(APIView):

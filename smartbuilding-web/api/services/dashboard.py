@@ -149,3 +149,35 @@ def get_executive_summary() -> dict:
             {"label": "Dépenses (mois)", "value": _fc(expenses_month)},
         ],
     }
+
+
+def get_sync_health(window_hours: int = 24) -> dict:
+    since = timezone.now() - timedelta(hours=window_hours)
+    events = ServerSyncEvent.objects.filter(created_at__gte=since)
+
+    total = events.count()
+    successful = events.filter(success=True).count()
+    failed = total - successful
+    push_events = events.filter(direction="push").count()
+    pull_events = events.filter(direction="pull").count()
+    records_synced = events.aggregate(t=Sum("records_count"))["t"] or 0
+    last_sync = events.order_by("-created_at").first()
+
+    return {
+        "windowHours": window_hours,
+        "totalEvents": total,
+        "successfulEvents": successful,
+        "failedEvents": failed,
+        "successRate": round((successful / total) * 100, 1) if total else 100.0,
+        "pushEvents": push_events,
+        "pullEvents": pull_events,
+        "recordsSynced": records_synced,
+        "lastSyncAt": last_sync.created_at.isoformat() if last_sync else None,
+    }
+
+
+def get_executive_overview() -> dict:
+    return {
+        "summary": get_executive_summary(),
+        "syncHealth": get_sync_health(),
+    }
