@@ -196,6 +196,23 @@ def materialize_finance(data: dict):
     obj.save()
 
 
+def _employee_matricule(data: dict) -> str:
+    """Desktop SBMS envoie Matricule (pas EmployeeNumber)."""
+    return (
+        pick(data, "Matricule", "matricule", "EmployeeNumber", "employeeNumber") or ""
+    ).strip()
+
+
+def _employee_full_name(data: dict) -> str:
+    """Desktop SBMS envoie FirstName + LastName (pas FullName)."""
+    full = pick(data, "FullName", "fullName") or pick(data, "Name", "name") or ""
+    if str(full).strip():
+        return str(full).strip()
+    first = (pick(data, "FirstName", "firstName") or "").strip()
+    last = (pick(data, "LastName", "lastName") or "").strip()
+    return f"{first} {last}".strip()
+
+
 @register("Employees")
 def materialize_employee(data: dict):
     uid = pick(data, "Id", "id")
@@ -203,14 +220,17 @@ def materialize_employee(data: dict):
         return
     obj, _ = Employee.objects.get_or_create(id=uid)
     map_base_fields(obj, data)
-    obj.employee_number = pick(data, "EmployeeNumber", "employeeNumber") or ""
-    obj.full_name = pick(data, "FullName", "fullName") or pick(data, "Name", "name") or ""
+    obj.employee_number = _employee_matricule(data)
+    obj.full_name = _employee_full_name(data)
     obj.position = pick(data, "Position", "position") or ""
     obj.department = pick(data, "Department", "department") or ""
     obj.email = pick(data, "Email", "email") or ""
     obj.phone = pick(data, "Phone", "phone") or ""
     obj.is_active = parse_bool(pick(data, "IsActive", "isActive"), True)
-    obj.monthly_salary = parse_decimal(pick(data, "MonthlySalary", "monthlySalary"), 0)
+    obj.monthly_salary = parse_decimal(
+        pick(data, "BaseSalary", "baseSalary", "MonthlySalary", "monthlySalary"),
+        0,
+    )
     obj.save()
 
 

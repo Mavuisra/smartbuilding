@@ -324,8 +324,8 @@ class ExecutiveModuleDataView(APIView):
     def _personnel(self):
         rows = [
             {
-                "Matricule": e.employee_number or "—",
-                "Nom": e.full_name,
+                "Matricule": (e.employee_number or "").strip() or "—",
+                "Nom": (e.full_name or "").strip() or "—",
                 "Poste": e.position or "—",
                 "Département": e.department or "—",
                 "Téléphone": e.phone or "—",
@@ -414,7 +414,7 @@ class ExecutiveModuleDataView(APIView):
     def _presence(self):
         rows = [
             {
-                "Employé": e.full_name,
+                "Employé": (e.full_name or "").strip() or "—",
                 "Département": e.department or "—",
                 "Poste": e.position or "—",
                 "Statut présence": "Présent/actif" if e.is_active else "Absent/inactif",
