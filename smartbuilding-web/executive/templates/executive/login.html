@@ -1,23 +1,194 @@
 {% extends "executive/base.html" %}
 {% block title %}Connexion — Portail PDG{% endblock %}
+{% block extra_head %}
+<style>
+  .sb-login-shell {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    background: #f8fafc;
+  }
+  .sb-login-hero {
+    position: relative;
+    background:
+      linear-gradient(160deg, rgba(10, 22, 40, .82), rgba(10, 22, 40, .35)),
+      url("https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1400&q=80") center/cover no-repeat;
+    color: #fff;
+    padding: 42px 36px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+  }
+  .sb-login-brand {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 28px;
+  }
+  .sb-login-badge {
+    width: 52px;
+    height: 52px;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,.35);
+    background: rgba(255,255,255,.18);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    color: #6ee7b7;
+  }
+  .sb-login-brand-title {
+    font-size: 28px;
+    font-weight: 800;
+    line-height: 1.1;
+  }
+  .sb-login-brand-sub {
+    color: #dbeafe;
+    font-size: .9rem;
+  }
+  .sb-login-hero-title {
+    font-size: 2rem;
+    font-weight: 600;
+    margin: 0;
+    line-height: 1.2;
+  }
+  .sb-login-hero-title em {
+    color: #6ee7b7;
+    font-style: normal;
+    font-weight: 800;
+  }
+
+  .sb-login-form-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: #f8fafc;
+  }
+  .sb-login-card {
+    width: 100%;
+    max-width: 460px;
+    border-radius: 14px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, .08);
+    background: #fff;
+    padding: 26px;
+  }
+  .sb-login-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    margin: 0 auto 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #d1fae5, #ecfdf5);
+    color: #2d6a4f;
+    font-size: 1.4rem;
+  }
+  .sb-login-title {
+    font-size: 1.7rem;
+    font-weight: 800;
+    text-align: center;
+    margin: 0;
+    color: #0f172a;
+  }
+  .sb-login-subtitle {
+    text-align: center;
+    color: #64748b;
+    margin: 4px 0 16px;
+    font-size: .95rem;
+  }
+  .sb-label {
+    font-size: .82rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 6px;
+  }
+  .sb-input {
+    border-radius: 10px;
+    border: 1px solid #dbe2ea;
+    padding: .62rem .85rem;
+    background: #fff;
+    color: #0f172a;
+  }
+  .sb-input:focus {
+    border-color: #2d6a4f;
+    box-shadow: 0 0 0 .18rem rgba(45, 106, 79, .14);
+  }
+  .sb-login-btn {
+    border: 0;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #2d6a4f, #1f4f3a);
+    color: #fff;
+    font-weight: 700;
+    padding: .68rem 1rem;
+  }
+  .sb-login-btn:hover { background: linear-gradient(135deg, #255640, #1a4130); }
+  .sb-login-footer {
+    margin-top: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: .75rem;
+    color: #94a3b8;
+  }
+  .sb-offline-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #64748b;
+  }
+  .sb-offline-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #2d6a4f;
+  }
+  @media (max-width: 992px) {
+    .sb-login-shell { grid-template-columns: 1fr; }
+    .sb-login-hero { min-height: 240px; }
+  }
+</style>
+{% endblock %}
 {% block body %}
-<div class="container d-flex align-items-center justify-content-center" style="min-height:100vh">
-  <div class="card shadow-sm p-4" style="max-width:420px;width:100%;border-radius:16px">
-    <h1 class="h4 text-center mb-1">Smart Building</h1>
-    <p class="text-center text-muted mb-4">Portail PDG — vue consolidée</p>
-    <div id="error" class="alert alert-danger d-none"></div>
-    <form id="login-form">
-      <div class="mb-3">
-        <label class="form-label">Utilisateur</label>
-        <input type="text" class="form-control" id="username" value="pdg" required>
+<div class="sb-login-shell">
+  <section class="sb-login-hero">
+    <div class="sb-login-brand">
+      <div class="sb-login-badge">SB</div>
+      <div>
+        <div class="sb-login-brand-title">SBMS</div>
+        <div class="sb-login-brand-sub">Smart Building Management System</div>
       </div>
-      <div class="mb-3">
-        <label class="form-label">Mot de passe</label>
-        <input type="password" class="form-control" id="password" value="Pdg@2026" required>
+    </div>
+    <p class="sb-login-hero-title">Gérez votre bâtiment en toute <em>simplicité</em></p>
+  </section>
+
+  <section class="sb-login-form-wrap">
+    <div class="sb-login-card">
+      <div class="sb-login-icon">🏢</div>
+      <h1 class="sb-login-title">Bienvenue !</h1>
+      <p class="sb-login-subtitle">Connectez-vous pour continuer</p>
+
+      <div id="error" class="alert alert-danger d-none"></div>
+      <form id="login-form">
+        <div class="mb-3">
+          <label class="sb-label" for="username">Nom d'utilisateur</label>
+          <input type="text" class="form-control sb-input" id="username" value="admin" required>
+        </div>
+        <div class="mb-3">
+          <label class="sb-label" for="password">Mot de passe</label>
+          <input type="password" class="form-control sb-input" id="password" value="admin" required>
+        </div>
+        <button type="submit" class="btn sb-login-btn w-100">Se connecter →</button>
+      </form>
+
+      <div class="sb-login-footer">
+        <span>Version web SBMS</span>
+        <span class="sb-offline-pill"><span class="sb-offline-dot"></span>Mode hors ligne prêt</span>
       </div>
-      <button type="submit" class="btn btn-primary w-100">Se connecter</button>
-    </form>
-  </div>
+    </div>
+  </section>
 </div>
 {% endblock %}
 {% block scripts %}
