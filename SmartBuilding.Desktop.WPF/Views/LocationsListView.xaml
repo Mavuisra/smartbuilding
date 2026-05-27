@@ -384,21 +384,37 @@
         <Grid Grid.RowSpan="3">
             <!-- Local -->
             <Border Background="#80000000" Visibility="{Binding IsPremiseFormOpen, Converter={StaticResource BoolToVisibilityConverter}}">
-                <Border Background="White" CornerRadius="12" Padding="24" MaxWidth="460" VerticalAlignment="Center" HorizontalAlignment="Center">
+                <Border Style="{StaticResource LocationsBwFormCard}" MaxWidth="640" Padding="0"
+                        VerticalAlignment="Center" HorizontalAlignment="Center">
                     <StackPanel>
-                        <TextBlock Text="{Binding PremiseFormTitle}" FontSize="18" FontWeight="Bold" Foreground="#111827" Margin="0,0,0,16"/>
-                        <TextBox materialDesign:HintAssist.Hint="Code" Text="{Binding FormCode, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"
-                                 IsReadOnly="{Binding IsEditMode}"/>
-                        <TextBox materialDesign:HintAssist.Hint="Nom *" Text="{Binding FormName, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
-                        <TextBox materialDesign:HintAssist.Hint="Bâtiment" Text="{Binding FormBuilding, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
-                        <TextBox materialDesign:HintAssist.Hint="Étage" Text="{Binding FormFloor, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
-                        <TextBox materialDesign:HintAssist.Hint="Type" Text="{Binding FormType, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
-                        <TextBox materialDesign:HintAssist.Hint="Loyer mensuel (FC)" Text="{Binding FormRentText, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
-                        <TextBlock Text="{Binding FormError}" Foreground="#DC2626" FontSize="12" Margin="0,0,0,8"
-                                   Visibility="{Binding FormError, Converter={StaticResource NullToVisibilityConverter}}"/>
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                            <Button Content="Annuler" Command="{Binding ClosePremiseFormCommand}" Style="{StaticResource LocationsToolbarButton}" Margin="0,0,8,0"/>
-                            <Button Content="Enregistrer" Command="{Binding SavePremiseFormCommand}" Style="{StaticResource LocationsPrimaryButton}"/>
+                        <Border Style="{StaticResource LocationsBwFormHeader}">
+                            <TextBlock Text="{Binding PremiseFormTitle}" FontSize="18" FontWeight="Bold" Foreground="White"/>
+                        </Border>
+                        <StackPanel Margin="20,16,20,18">
+                            <UniformGrid Columns="2" Margin="0,0,0,8">
+                                <TextBox Margin="0,0,8,8" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                         materialDesign:HintAssist.Hint="Code" Text="{Binding FormCode, UpdateSourceTrigger=PropertyChanged}"
+                                         IsReadOnly="{Binding IsEditMode}"/>
+                                <TextBox Margin="8,0,0,8" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                         materialDesign:HintAssist.Hint="Nom *" Text="{Binding FormName, UpdateSourceTrigger=PropertyChanged}"/>
+                                <TextBox Margin="0,0,8,8" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                         materialDesign:HintAssist.Hint="Bâtiment" Text="{Binding FormBuilding, UpdateSourceTrigger=PropertyChanged}"/>
+                                <TextBox Margin="8,0,0,8" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                         materialDesign:HintAssist.Hint="Étage" Text="{Binding FormFloor, UpdateSourceTrigger=PropertyChanged}"/>
+                                <TextBox Margin="0,0,8,8" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                         materialDesign:HintAssist.Hint="Type" Text="{Binding FormType, UpdateSourceTrigger=PropertyChanged}"/>
+                                <TextBox Margin="8,0,0,8" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                         materialDesign:HintAssist.Hint="Loyer mensuel" Text="{Binding FormRentText, UpdateSourceTrigger=PropertyChanged}"/>
+                            </UniformGrid>
+                            <TextBlock Text="{Binding FormError}" Foreground="#DC2626" FontSize="12" Margin="0,0,0,8"
+                                       Visibility="{Binding FormError, Converter={StaticResource NullToVisibilityConverter}}"/>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                <Button Content="Annuler" Command="{Binding ClosePremiseFormCommand}"
+                                        Style="{StaticResource MaterialDesignOutlinedButton}" Foreground="#111827" BorderBrush="#111827"
+                                        Padding="18,9" Margin="0,0,10,0"/>
+                                <Button Content="Enregistrer" Command="{Binding SavePremiseFormCommand}"
+                                        Style="{StaticResource SbmsLoginPrimaryButton}" Padding="22,10"/>
+                            </StackPanel>
                         </StackPanel>
                     </StackPanel>
                 </Border>

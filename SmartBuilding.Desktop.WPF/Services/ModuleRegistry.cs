@@ -60,7 +60,7 @@ public static class ModuleRegistry
                 {
                     yield return new ShellNavExpandableModuleItem(module,
                     [
-                        new ShellNavChildItem("locations-create", "Nouveau contrat"),
+                        new ShellNavChildItem("locations-create", "Créer locataire & local"),
                         new ShellNavChildItem("locations-list", "Liste des locaux"),
                         new ShellNavChildItem("locations-rent-pay", "Paiement de loyer")
                     ]);

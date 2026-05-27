@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              xmlns:conv="clr-namespace:SmartBuilding.Desktop.WPF.Converters"
-             Background="{StaticResource SbmsPageBackgroundBrush}">
+             Background="#F5F7FB">
     <UserControl.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -18,69 +18,92 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
-        <Border Grid.Row="0" Background="White" Padding="20,14" BorderBrush="#E8EFED" BorderThickness="0,0,0,1">
+        <Border Grid.Row="0" Background="White" Padding="20,14" BorderBrush="#111827" BorderThickness="0,0,0,2">
             <DockPanel>
                 <Button DockPanel.Dock="Left" Command="{Binding GoBackCommand}" Style="{StaticResource LocationsToolbarButton}" Margin="0,0,16,0">
                     <StackPanel Orientation="Horizontal">
                         <materialDesign:PackIcon Kind="ArrowLeft" Margin="0,0,6,0"/>
-                        <TextBlock Text="Retour aux locations"/>
+                        <TextBlock Text="Retour" Foreground="#111827"/>
                     </StackPanel>
                 </Button>
                 <StackPanel>
-                    <TextBlock Text="{Binding Breadcrumb}" FontSize="11" Foreground="{StaticResource SbmsTextMutedBrush}"/>
-                    <TextBlock Text="{Binding PageTitle}" FontSize="22" FontWeight="Bold" Foreground="#1B3D3B"/>
+                    <TextBlock Text="{Binding Breadcrumb}" FontSize="11" Foreground="#6B7280"/>
+                    <TextBlock Text="{Binding PageTitle}" FontSize="22" FontWeight="Bold" Foreground="#111827"/>
                 </StackPanel>
             </DockPanel>
         </Border>
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="24,16">
-            <Border Background="White" CornerRadius="12" BorderBrush="#E8EFED" BorderThickness="1"
-                    Padding="32,28" MaxWidth="800" HorizontalAlignment="Center">
+            <Border Style="{StaticResource LocationsBwFormCard}" MaxWidth="960" HorizontalAlignment="Stretch" Margin="0,0,0,24">
                 <StackPanel>
-                    <TextBlock Text="Fiche locataire" FontSize="16" FontWeight="SemiBold" Foreground="#1B3D3B" Margin="0,0,0,20"/>
-                    <Border Background="#FEF2F2" BorderBrush="#FECACA" BorderThickness="1" CornerRadius="8" Padding="12,8" Margin="0,0,0,16"
+                    <Border Style="{StaticResource LocationsBwFormHeader}">
+                        <StackPanel>
+                            <TextBlock Text="Fiche locataire" FontSize="18" FontWeight="Bold" Foreground="White"/>
+                            <TextBlock Text="Saisie horizontale — champs essentiels à gauche, compléments à droite"
+                                       Foreground="#D1D5DB" FontSize="12" Margin="0,4,0,0"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Background="#FEF2F2" BorderBrush="#111827" BorderThickness="1" CornerRadius="6"
+                            Padding="12,8" Margin="16,14,16,0"
                             Visibility="{Binding FormError, Converter={StaticResource NullToVisibilityConverter}}">
                         <TextBlock Text="{Binding FormError}" Foreground="#DC2626" TextWrapping="Wrap"/>
                     </Border>
-                    <Grid>
+
+                    <Grid Margin="16,14,16,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="16"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0" Margin="0,0,12,0">
-                            <TextBox Margin="0,0,0,12" Style="{StaticResource MaterialDesignOutlinedTextBox}" IsReadOnly="True"
-                                     materialDesign:HintAssist.Hint="N° dossier" Text="{Binding FormDossier}"/>
-                            <TextBox Margin="0,0,0,12" Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                     materialDesign:HintAssist.Hint="Nom complet *" Text="{Binding FormName, UpdateSourceTrigger=PropertyChanged}"/>
-                            <TextBox Margin="0,0,0,12" Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                     materialDesign:HintAssist.Hint="Téléphone *" Text="{Binding FormPhone, UpdateSourceTrigger=PropertyChanged}"/>
-                            <TextBox Margin="0,0,0,12" Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                     materialDesign:HintAssist.Hint="Email" Text="{Binding FormEmail, UpdateSourceTrigger=PropertyChanged}"/>
-                            <TextBox Margin="0,0,0,12" Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                     materialDesign:HintAssist.Hint="Entreprise" Text="{Binding FormCompany, UpdateSourceTrigger=PropertyChanged}"/>
-                            <ComboBox Style="{StaticResource MaterialDesignOutlinedComboBox}" materialDesign:HintAssist.Hint="Statut location"
-                                      ItemsSource="{Binding TenantStatusChoices}" SelectedItem="{Binding FormStatus}"/>
-                        </StackPanel>
-                        <StackPanel Grid.Column="1">
-                            <TextBox Margin="0,0,0,12" Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                     materialDesign:HintAssist.Hint="Adresse" Text="{Binding FormAddress, UpdateSourceTrigger=PropertyChanged}"/>
-                            <TextBox Margin="0,0,0,12" Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                     materialDesign:HintAssist.Hint="Nationalité" Text="{Binding FormNationality, UpdateSourceTrigger=PropertyChanged}"/>
-                            <TextBox Margin="0,0,0,12" Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                     materialDesign:HintAssist.Hint="Profession" Text="{Binding FormProfession, UpdateSourceTrigger=PropertyChanged}"/>
-                            <TextBox Margin="0,0,0,12" Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                     materialDesign:HintAssist.Hint="Contact urgence (nom)" Text="{Binding FormEmergencyName, UpdateSourceTrigger=PropertyChanged}"/>
-                            <TextBox Margin="0,0,0,12" Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                     materialDesign:HintAssist.Hint="Contact urgence (tél.)" Text="{Binding FormEmergencyPhone, UpdateSourceTrigger=PropertyChanged}"/>
-                            <TextBox Style="{StaticResource MaterialDesignOutlinedTextBox}" AcceptsReturn="True" MinHeight="80"
-                                     materialDesign:HintAssist.Hint="Remarques administratives" Text="{Binding FormNotes, UpdateSourceTrigger=PropertyChanged}"/>
-                        </StackPanel>
+
+                        <Border Grid.Column="0" Style="{StaticResource LocationsBwFormSection}">
+                            <StackPanel>
+                                <TextBlock Text="IDENTITÉ" Style="{StaticResource LocationsBwFormSectionTitle}" Margin="0,0,0,10"/>
+                                <UniformGrid Columns="2">
+                                    <TextBox Margin="0,0,6,8" Style="{StaticResource MaterialDesignOutlinedTextBox}" IsReadOnly="True"
+                                             materialDesign:HintAssist.Hint="N° dossier" Text="{Binding FormDossier}"/>
+                                    <TextBox Margin="6,0,0,8" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                             materialDesign:HintAssist.Hint="Nom complet *" Text="{Binding FormName, UpdateSourceTrigger=PropertyChanged}"/>
+                                    <TextBox Margin="0,0,6,8" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                             materialDesign:HintAssist.Hint="Téléphone *" Text="{Binding FormPhone, UpdateSourceTrigger=PropertyChanged}"/>
+                                    <TextBox Margin="6,0,0,8" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                             materialDesign:HintAssist.Hint="Email" Text="{Binding FormEmail, UpdateSourceTrigger=PropertyChanged}"/>
+                                </UniformGrid>
+                                <TextBox Margin="0,0,0,8" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                         materialDesign:HintAssist.Hint="Entreprise" Text="{Binding FormCompany, UpdateSourceTrigger=PropertyChanged}"/>
+                                <ComboBox Style="{StaticResource MaterialDesignOutlinedComboBox}" materialDesign:HintAssist.Hint="Statut location"
+                                          ItemsSource="{Binding TenantStatusChoices}" SelectedItem="{Binding FormStatus}"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Column="2" Style="{StaticResource LocationsBwFormSection}">
+                            <StackPanel>
+                                <TextBlock Text="COORDONNÉES &amp; SUITE" Style="{StaticResource LocationsBwFormSectionTitle}" Margin="0,0,0,10"/>
+                                <UniformGrid Columns="2">
+                                    <TextBox Margin="0,0,6,8" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                             materialDesign:HintAssist.Hint="Adresse" Text="{Binding FormAddress, UpdateSourceTrigger=PropertyChanged}"/>
+                                    <TextBox Margin="6,0,0,8" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                             materialDesign:HintAssist.Hint="Nationalité" Text="{Binding FormNationality, UpdateSourceTrigger=PropertyChanged}"/>
+                                    <TextBox Margin="0,0,6,8" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                             materialDesign:HintAssist.Hint="Profession" Text="{Binding FormProfession, UpdateSourceTrigger=PropertyChanged}"/>
+                                    <TextBox Margin="6,0,0,8" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                             materialDesign:HintAssist.Hint="Urgence (nom)" Text="{Binding FormEmergencyName, UpdateSourceTrigger=PropertyChanged}"/>
+                                </UniformGrid>
+                                <TextBox Margin="0,0,0,8" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                         materialDesign:HintAssist.Hint="Urgence (tél.)" Text="{Binding FormEmergencyPhone, UpdateSourceTrigger=PropertyChanged}"/>
+                                <TextBox Style="{StaticResource MaterialDesignOutlinedTextBox}" AcceptsReturn="True" MinHeight="72"
+                                         materialDesign:HintAssist.Hint="Remarques" Text="{Binding FormNotes, UpdateSourceTrigger=PropertyChanged}"/>
+                            </StackPanel>
+                        </Border>
                     </Grid>
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,24,0,0">
-                        <Button Command="{Binding GoBackCommand}" Style="{StaticResource MaterialDesignOutlinedButton}" Padding="24,12" Margin="0,0,12,0" Content="Annuler"/>
-                        <Button Command="{Binding SaveCommand}" Style="{StaticResource SbmsLoginPrimaryButton}" Padding="28,12">
+
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="16,16,16,16">
+                        <Button Command="{Binding GoBackCommand}" Style="{StaticResource MaterialDesignOutlinedButton}"
+                                Padding="22,10" Margin="0,0,10,0" Content="Annuler" Foreground="#111827" BorderBrush="#111827"/>
+                        <Button Command="{Binding SaveCommand}" Style="{StaticResource SbmsLoginPrimaryButton}" Padding="28,11">
                             <StackPanel Orientation="Horizontal">
                                 <materialDesign:PackIcon Kind="AccountCheck" Margin="0,0,8,0"/>
-                                <TextBlock Text="Enregistrer le locataire"/>
+                                <TextBlock Text="Enregistrer le locataire" FontWeight="Bold"/>
                             </StackPanel>
                         </Button>
                     </StackPanel>
@@ -89,6 +112,6 @@
         </ScrollViewer>
         <ProgressBar Grid.Row="1" IsIndeterminate="True" Height="3" VerticalAlignment="Top"
                      Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibilityConverter}}"
-                     Foreground="{StaticResource SbmsAccentGreenBrush}"/>
+                     Foreground="#2D6A4F"/>
     </Grid>
 </UserControl>

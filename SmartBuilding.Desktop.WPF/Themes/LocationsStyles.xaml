@@ -201,4 +201,52 @@
         <Setter Property="TextWrapping" Value="Wrap"/>
     </Style>
 
+    <!-- Formulaire horizontal noir & blanc (création rapide, modales Local) -->
+    <Style x:Key="LocationsBwFormCard" TargetType="Border">
+        <Setter Property="Background" Value="White"/>
+        <Setter Property="BorderBrush" Value="#111827"/>
+        <Setter Property="BorderThickness" Value="2"/>
+        <Setter Property="CornerRadius" Value="12"/>
+        <Setter Property="Margin" Value="0,0,0,14"/>
+        <Setter Property="Effect">
+            <Setter.Value>
+                <DropShadowEffect BlurRadius="18" ShadowDepth="2" Opacity="0.12" Color="#000000"/>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="LocationsBwFormHeader" TargetType="Border">
+        <Setter Property="Background" Value="#111827"/>
+        <Setter Property="CornerRadius" Value="10,10,0,0"/>
+        <Setter Property="Padding" Value="16,12"/>
+    </Style>
+
+    <Style x:Key="LocationsBwFormSection" TargetType="Border">
+        <Setter Property="Background" Value="White"/>
+        <Setter Property="BorderBrush" Value="#D1D5DB"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="Padding" Value="14,12"/>
+    </Style>
+
+    <Style x:Key="LocationsBwFormSectionTitle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="FontWeight" Value="Bold"/>
+        <Setter Property="Foreground" Value="#111827"/>
+    </Style>
+
+    <Style x:Key="LocationsBwFormSubtitle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="Foreground" Value="#6B7280"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+    </Style>
+
+    <Style x:Key="LocationsBwFormResetButton" TargetType="Button" BasedOn="{StaticResource MaterialDesignOutlinedButton}">
+        <Setter Property="Foreground" Value="White"/>
+        <Setter Property="BorderBrush" Value="#9CA3AF"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Padding" Value="12,6"/>
+        <Setter Property="Cursor" Value="Hand"/>
+    </Style>
+
 </ResourceDictionary>

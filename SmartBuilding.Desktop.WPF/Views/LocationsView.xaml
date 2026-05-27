@@ -32,8 +32,8 @@
                 </Grid.ColumnDefinitions>
 
                 <StackPanel>
-                    <TextBlock Text="Nouveau contrat de location" FontSize="24" FontWeight="Bold" Foreground="#111827"/>
-                    <TextBlock Text="Locations  ›  Contrats  ›  Nouveau contrat" FontSize="12" Foreground="#7A8699" Margin="0,4,0,0"/>
+                    <TextBlock Text="Local" FontSize="24" FontWeight="Bold" Foreground="#111827"/>
+                    <TextBlock Text="Création locataire + local, puis assistant contrat" FontSize="12" Foreground="#6B7280" Margin="0,4,0,0"/>
                 </StackPanel>
 
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
@@ -73,6 +73,100 @@
                 </Grid.ColumnDefinitions>
 
                 <StackPanel Grid.Column="0" Margin="0,0,16,0">
+                    <!-- Création rapide : horizontal noir & blanc -->
+                    <Border Style="{StaticResource LocationsBwFormCard}">
+                        <StackPanel>
+                            <Border Style="{StaticResource LocationsBwFormHeader}">
+                                <DockPanel>
+                                    <Button DockPanel.Dock="Right" Command="{Binding ResetQuickCreateCommand}"
+                                            Style="{StaticResource LocationsBwFormResetButton}">
+                                        <TextBlock Text="Réinitialiser"/>
+                                    </Button>
+                                    <StackPanel>
+                                        <TextBlock Text="Création rapide" FontSize="17" FontWeight="Bold" Foreground="White"/>
+                                        <TextBlock Text="Locataire et local côte à côte — enregistrement immédiat"
+                                                   Style="{StaticResource LocationsBwFormSubtitle}" Foreground="#D1D5DB" Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                </DockPanel>
+                            </Border>
+
+                            <Grid Margin="14,14,14,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="12"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <Border Grid.Column="0" Style="{StaticResource LocationsBwFormSection}">
+                                    <StackPanel>
+                                        <TextBlock Text="LOCATAIRE" Style="{StaticResource LocationsBwFormSectionTitle}" Margin="0,0,0,2"/>
+                                        <TextBlock Text="Personne ou société qui loue" Style="{StaticResource LocationsBwFormSubtitle}" Margin="0,0,0,10"/>
+                                        <UniformGrid Columns="2">
+                                            <TextBox Margin="0,0,6,8" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                                     materialDesign:HintAssist.Hint="N° dossier"
+                                                     Text="{Binding FormQuickDossier, UpdateSourceTrigger=PropertyChanged}"/>
+                                            <TextBox Margin="6,0,0,8" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                                     materialDesign:HintAssist.Hint="Nom complet *"
+                                                     Text="{Binding FormQuickTenantName, UpdateSourceTrigger=PropertyChanged}"/>
+                                            <TextBox Margin="0,0,6,8" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                                     materialDesign:HintAssist.Hint="Téléphone *"
+                                                     Text="{Binding FormQuickTenantPhone, UpdateSourceTrigger=PropertyChanged}"/>
+                                            <TextBox Margin="6,0,0,8" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                                     materialDesign:HintAssist.Hint="Email"
+                                                     Text="{Binding FormQuickTenantEmail, UpdateSourceTrigger=PropertyChanged}"/>
+                                        </UniformGrid>
+                                        <TextBox Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                                 materialDesign:HintAssist.Hint="Entreprise"
+                                                 Text="{Binding FormQuickTenantCompany, UpdateSourceTrigger=PropertyChanged}"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Grid.Column="2" Style="{StaticResource LocationsBwFormSection}">
+                                    <StackPanel>
+                                        <TextBlock Text="LOCAL" Style="{StaticResource LocationsBwFormSectionTitle}" Margin="0,0,0,2"/>
+                                        <TextBlock Text="Espace à louer" Style="{StaticResource LocationsBwFormSubtitle}" Margin="0,0,0,10"/>
+                                        <UniformGrid Columns="2">
+                                            <TextBox Margin="0,0,6,8" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                                     materialDesign:HintAssist.Hint="Code *"
+                                                     Text="{Binding FormCode, UpdateSourceTrigger=PropertyChanged}"/>
+                                            <TextBox Margin="6,0,0,8" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                                     materialDesign:HintAssist.Hint="Nom du local *"
+                                                     Text="{Binding FormName, UpdateSourceTrigger=PropertyChanged}"/>
+                                            <ComboBox Margin="0,0,6,8" Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                                                      ItemsSource="{Binding Buildings}" SelectedItem="{Binding FormBuilding}"
+                                                      materialDesign:HintAssist.Hint="Bâtiment"/>
+                                            <TextBox Margin="6,0,0,8" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                                     materialDesign:HintAssist.Hint="Étage"
+                                                     Text="{Binding FormFloor, UpdateSourceTrigger=PropertyChanged}"/>
+                                            <ComboBox Margin="0,0,6,8" Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                                                      ItemsSource="{Binding ContractTypes}" SelectedItem="{Binding FormType}"
+                                                      materialDesign:HintAssist.Hint="Type"/>
+                                            <TextBox Margin="6,0,0,8" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                                     materialDesign:HintAssist.Hint="Surface m²"
+                                                     Text="{Binding FormAreaText, UpdateSourceTrigger=PropertyChanged}"/>
+                                        </UniformGrid>
+                                        <TextBox Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                                 materialDesign:HintAssist.Hint="Loyer mensuel (devise paramétrée)"
+                                                 Text="{Binding FormRentText, UpdateSourceTrigger=PropertyChanged}"/>
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+
+                            <DockPanel Margin="14,12,14,14">
+                                <Button DockPanel.Dock="Right" Command="{Binding SaveQuickCreateCommand}"
+                                        Style="{StaticResource SbmsLoginPrimaryButton}" Padding="22,11" Cursor="Hand">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="CheckBold" Margin="0,0,8,0"/>
+                                        <TextBlock Text="Créer locataire + local" FontWeight="Bold"/>
+                                    </StackPanel>
+                                </Button>
+                                <TextBlock Text="{Binding StatusMessage}" VerticalAlignment="Center" Foreground="#111827" FontSize="12"
+                                           TextWrapping="Wrap"
+                                           Visibility="{Binding StatusMessage, Converter={StaticResource NullToVisibilityConverter}}"/>
+                            </DockPanel>
+                        </StackPanel>
+                    </Border>
+
                     <Border Background="White" BorderBrush="#E5EAF2" BorderThickness="1" CornerRadius="16" Padding="18" Margin="0,0,0,14">
                         <ItemsControl ItemsSource="{Binding WizardSteps}">
                             <ItemsControl.ItemsPanel>
@@ -559,23 +653,27 @@
 
         <ProgressBar Grid.Row="1" IsIndeterminate="True" Height="3" VerticalAlignment="Top"
                      Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibilityConverter}}"
-                     Foreground="#0B63F6"/>
+                     Foreground="#2D6A4F"/>
 
         <Grid Grid.Row="0" Grid.RowSpan="2" Visibility="{Binding IsAddFormOpen, Converter={StaticResource BoolToVisibilityConverter}}">
-            <Border Background="#800F172A"/>
-            <Border Background="White" CornerRadius="12" MaxWidth="560" MaxHeight="560"
-                    VerticalAlignment="Center" HorizontalAlignment="Center" Margin="24" Padding="28,24">
+            <Border Background="#80000000"/>
+            <Border Style="{StaticResource LocationsBwFormCard}" MaxWidth="720" MaxHeight="520"
+                    VerticalAlignment="Center" HorizontalAlignment="Center" Margin="24" Padding="0">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel>
-                        <DockPanel Margin="0,0,0,20">
-                            <Button DockPanel.Dock="Right" Command="{Binding CancelAddFormCommand}" Style="{StaticResource MaterialDesignIconButton}">
-                                <materialDesign:PackIcon Kind="Close"/>
-                            </Button>
-                            <StackPanel>
-                                <TextBlock Text="Nouvel espace" FontSize="22" FontWeight="Bold" Foreground="#172033"/>
-                                <TextBlock Text="Ajoutez un appartement, bureau ou local disponible" Foreground="#7A8699" FontSize="13" Margin="0,4,0,0"/>
-                            </StackPanel>
-                        </DockPanel>
+                        <Border Style="{StaticResource LocationsBwFormHeader}">
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Command="{Binding CancelAddFormCommand}"
+                                        Style="{StaticResource LocationsBwFormResetButton}">
+                                    <materialDesign:PackIcon Kind="Close" Foreground="White"/>
+                                </Button>
+                                <StackPanel>
+                                    <TextBlock Text="Nouvel espace" FontSize="20" FontWeight="Bold" Foreground="White"/>
+                                    <TextBlock Text="Bureau, appartement ou local disponible" Foreground="#D1D5DB" FontSize="12" Margin="0,4,0,0"/>
+                                </StackPanel>
+                            </DockPanel>
+                        </Border>
+                        <StackPanel Margin="20,16,20,20">
                         <Border Background="#FEF2F2" BorderBrush="#FECACA" BorderThickness="1" CornerRadius="8"
                                 Padding="12,8" Margin="0,0,0,16"
                                 Visibility="{Binding FormError, Converter={StaticResource NullToVisibilityConverter}}">
@@ -609,13 +707,14 @@
                         </Grid>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
                             <Button Command="{Binding CancelAddFormCommand}" Style="{StaticResource MaterialDesignOutlinedButton}"
-                                    Padding="20,10" Margin="0,0,10,0" Content="Annuler"/>
+                                    Padding="20,10" Margin="0,0,10,0" Content="Annuler" Foreground="#111827" BorderBrush="#111827"/>
                             <Button Command="{Binding SavePremiseCommand}" Style="{StaticResource SbmsLoginPrimaryButton}" Padding="24,10">
                                 <StackPanel Orientation="Horizontal">
                                     <materialDesign:PackIcon Kind="ContentSaveOutline" Margin="0,0,8,0"/>
                                     <TextBlock Text="Enregistrer"/>
                                 </StackPanel>
                             </Button>
+                        </StackPanel>
                         </StackPanel>
                     </StackPanel>
                 </ScrollViewer>
