@@ -16,6 +16,15 @@ ALLOWED_HOSTS = [
     if h.strip()
 ]
 
+# Render fournit automatiquement le hostname du service déployé.
+_render_host = os.getenv("RENDER_EXTERNAL_HOSTNAME", "").strip()
+if _render_host and _render_host not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(_render_host)
+
+# Tous les sous-domaines *.onrender.com (évite DisallowedHost après rename URL).
+if ".onrender.com" not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(".onrender.com")
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -116,6 +125,14 @@ CORS_ALLOWED_ORIGINS = [
     ).split(",")
     if o.strip()
 ]
+
+_render_url = os.getenv("RENDER_EXTERNAL_URL", "").strip().rstrip("/")
+if _render_url and _render_url not in CORS_ALLOWED_ORIGINS:
+    CORS_ALLOWED_ORIGINS.append(_render_url)
+
+CSRF_TRUSTED_ORIGINS = list(CORS_ALLOWED_ORIGINS)
+if _render_url and _render_url not in CSRF_TRUSTED_ORIGINS:
+    CSRF_TRUSTED_ORIGINS.append(_render_url)
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
