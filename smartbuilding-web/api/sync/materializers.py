@@ -10,6 +10,7 @@ from api.models import (
     Premise,
     RentPayment,
     Supplier,
+    SyncedEntityStore,
     Tenant,
     User,
     Visitor,
@@ -232,6 +233,22 @@ def materialize_employee(data: dict):
         0,
     )
     obj.save()
+
+
+def repair_employees_from_sync_store() -> int:
+    """Réapplique le mapping pour les employés dont matricule/nom sont vides."""
+    repaired = 0
+    for store in SyncedEntityStore.objects.filter(entity_type="Employees"):
+        if not store.json_data:
+            continue
+        emp = Employee.objects.filter(id=store.id, deleted_at__isnull=True).first()
+        if emp is None:
+            continue
+        if (emp.employee_number or "").strip() and (emp.full_name or "").strip():
+            continue
+        materialize_employee(store.json_data)
+        repaired += 1
+    return repaired
 
 
 @register("Suppliers")

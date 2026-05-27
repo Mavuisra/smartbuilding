@@ -24,6 +24,7 @@ from api.models import (
 )
 from api.permissions import IsExecutive
 from api.responses import api_fail, api_ok
+from api.sync.materializers import repair_employees_from_sync_store
 from api.serializers import (
     LoginSerializer,
     SyncPullQuerySerializer,
@@ -322,6 +323,7 @@ class ExecutiveModuleDataView(APIView):
         return api_ok(handler())
 
     def _personnel(self):
+        repair_employees_from_sync_store()
         rows = [
             {
                 "Matricule": (e.employee_number or "").strip() or "—",
@@ -412,6 +414,7 @@ class ExecutiveModuleDataView(APIView):
         )
 
     def _presence(self):
+        repair_employees_from_sync_store()
         rows = [
             {
                 "Employé": (e.full_name or "").strip() or "—",
