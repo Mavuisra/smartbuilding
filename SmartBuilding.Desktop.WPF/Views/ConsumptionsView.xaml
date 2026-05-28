@@ -488,6 +488,8 @@
                 <StackPanel>
                     <TextBlock Text="Nouvelle consommation" FontSize="18" FontWeight="Bold" Foreground="#1B3D3B" Margin="0,0,0,16"/>
                     <ComboBox ItemsSource="{Binding ConsumptionTypes}" SelectedItem="{Binding FormType}" Style="{StaticResource ConsumptionsFilterCombo}" Margin="0,0,0,8"/>
+                    <TextBox materialDesign:HintAssist.Hint="Nouveau type de dépense (si absent du select)"
+                             Text="{Binding FormNewType, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
                     <TextBox materialDesign:HintAssist.Hint="Poste / source de dépense" Text="{Binding FormEquipment, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
                     <TextBox materialDesign:HintAssist.Hint="Montant (USD)" Text="{Binding FormCostText, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
                     <ComboBox ItemsSource="{Binding PeriodTypes}" SelectedItem="{Binding FormPeriodType}" Style="{StaticResource ConsumptionsFilterCombo}" Margin="0,0,0,8"/>

@@ -63,6 +63,7 @@
       </div>
       <div class="d-flex align-items-center gap-2">
         <input class="sb-topbar-search" placeholder="Rechercher (contrat, locataire, paiement...)" />
+        <button class="btn btn-sm btn-outline-dark" id="notif-btn">Notifications <span class="badge text-bg-danger" id="notif-count">0</span></button>
         <button class="btn btn-sm btn-primary" id="refresh-btn">Synchronisation</button>
         <button class="btn btn-sm btn-outline-secondary" id="logout-btn">Déconnexion</button>
       </div>
@@ -118,6 +119,14 @@
         </div>
       </div>
 
+      <div class="sb-card p-3 mb-3">
+        <div class="sb-card-header">
+          <h2 class="sb-card-title">Notifications importantes</h2>
+          <span class="sb-pill" id="notif-pill">0 non lues</span>
+        </div>
+        <div id="important-notifications"></div>
+      </div>
+
       <div class="section-grid">
         <div class="sb-card p-3">
           <div class="sb-card-header">
@@ -171,11 +180,11 @@ async function apiGet(path) {
   return json.data;
 }
 
-function kpiCard(label, value, trend = '', icon = '●', trendClass = '') {
+function kpiCard(label, value, trend = '', iconClass = 'bi bi-circle-fill', trendClass = '') {
   return `<div class="col-lg-2 col-md-4 col-6">
     <div class="sb-card p-3 kpi-card">
       <div class="kpi-header">
-        <div class="kpi-icon" style="background:#dff5e8;color:#2d6a4f">${icon}</div>
+        <div class="kpi-icon" style="background:#dff5e8;color:#027566"><i class="${iconClass}"></i></div>
         <div class="kpi-trend ${trendClass}">${trend || ''}</div>
       </div>
       <div class="text-muted small">${label}</div>
@@ -185,7 +194,7 @@ function kpiCard(label, value, trend = '', icon = '●', trendClass = '') {
   </div>`;
 }
 
-function fmtMoney(v) { return Number(v || 0).toLocaleString('fr-FR') + ' FC'; }
+function fmtMoney(v) { return '$ ' + Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 function fmtDate(iso) { return new Date(iso).toLocaleString('fr-FR'); }
 
 function renderRevenueChart(series) {
@@ -197,7 +206,7 @@ function renderRevenueChart(series) {
       labels: series.map(x => x.label),
       datasets: [{
         data: series.map(x => x.value),
-        borderColor: '#2d6a4f',
+        borderColor: '#027566',
         backgroundColor: 'rgba(45,106,79,.14)',
         tension: .35,
         fill: true,
@@ -224,7 +233,7 @@ function renderOccupancyChart(rate) {
       labels: ['Occupés', 'Disponibles'],
       datasets: [{
         data: [rate, Math.max(0, 100-rate)],
-        backgroundColor: ['#2d6a4f', '#dff5e8'],
+        backgroundColor: ['#027566', '#dff5e8'],
         borderWidth: 0
       }]
     },
@@ -240,15 +249,17 @@ async function loadDashboard() {
     const sync = overview.syncHealth;
     const validations = overview.pendingValidations || [];
     const activities = overview.recentActivities || [];
+    const notifications = overview.notifications || [];
+    const unreadNotifications = overview.unreadNotifications || 0;
     const presence = overview.presence || { activeEmployees: 0, totalEmployees: 0, rate: 0 };
 
     document.getElementById('kpi-row').innerHTML = [
-      kpiCard('Revenus ce mois', fmtMoney(s.rentCollected), '-18.4%', '₣', 'text-danger'),
-      kpiCard('Bâtiments occupés', `${s.occupiedPremises} / ${s.totalPremises}`, `${Number(s.occupancyRate || 0).toFixed(0)}%`, '🏢', 'text-success'),
-      kpiCard('Contrats actifs', s.activeLeases || 0, '+12', '📄', 'text-success'),
-      kpiCard('Paiements reçus', fmtMoney(s.rentCollected), '+22.6%', '💸', 'text-success'),
-      kpiCard('Paiements en retard', fmtMoney(s.rentLateAmount), String(s.latePayments || 0), '⚠', 'text-danger'),
-      kpiCard('Employés présents', `${presence.activeEmployees} / ${presence.totalEmployees}`, `${Number(presence.rate || 0).toFixed(0)}%`, '👥', 'text-success'),
+      kpiCard('Revenus ce mois', fmtMoney(s.rentCollected), '-18.4%', 'bi bi-currency-dollar', 'text-danger'),
+      kpiCard('Bâtiments occupés', `${s.occupiedPremises} / ${s.totalPremises}`, `${Number(s.occupancyRate || 0).toFixed(0)}%`, 'bi bi-buildings', 'text-success'),
+      kpiCard('Contrats actifs', s.activeLeases || 0, '+12', 'bi bi-file-earmark-text', 'text-success'),
+      kpiCard('Paiements reçus', fmtMoney(s.rentCollected), '+22.6%', 'bi bi-cash-coin', 'text-success'),
+      kpiCard('Paiements en retard', fmtMoney(s.rentLateAmount), String(s.latePayments || 0), 'bi bi-exclamation-triangle', 'text-danger'),
+      kpiCard('Employés présents', `${presence.activeEmployees} / ${presence.totalEmployees}`, `${Number(presence.rate || 0).toFixed(0)}%`, 'bi bi-people', 'text-success'),
     ].join('');
 
     renderRevenueChart(s.revenueChart || []);
@@ -271,6 +282,15 @@ async function loadDashboard() {
         <div class="fw-semibold small">${a.text}</div>
         <div class="text-muted" style="font-size:.75rem">${a.category} • ${fmtDate(a.timestamp)}</div>
       </div>`).join('') || '<div class="text-muted">Aucune activité</div>';
+
+    document.getElementById('notif-count').textContent = unreadNotifications;
+    document.getElementById('notif-pill').textContent = `${unreadNotifications} non lues`;
+    document.getElementById('important-notifications').innerHTML = notifications.slice(0, 10).map(n => `
+      <div class="activity-item">
+        <div class="fw-semibold small">${n.title}</div>
+        <div class="small">${n.message}</div>
+        <div class="text-muted" style="font-size:.75rem">${n.source} • ${fmtDate(n.timestamp)} • ${n.severity}</div>
+      </div>`).join('') || '<div class="text-muted">Aucune notification importante</div>';
 
     document.getElementById('alerts').innerHTML = (s.alerts || []).map(a =>
       `<div class="alert alert-${a.severity === 'Error' ? 'danger' : a.severity === 'Warning' ? 'warning' : 'success'} py-2 mb-2">
@@ -295,6 +315,14 @@ async function loadDashboard() {
 }
 
 document.getElementById('refresh-btn').addEventListener('click', loadDashboard);
+document.getElementById('notif-btn').addEventListener('click', async () => {
+  try {
+    await apiGet('/api/executive/notifications/?markRead=true');
+    await loadDashboard();
+  } catch (e) {
+    console.error(e);
+  }
+});
 loadDashboard();
 </script>
 {% endblock %}

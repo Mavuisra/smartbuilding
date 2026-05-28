@@ -6,6 +6,7 @@ from django.utils import timezone
 
 from api.models import (
     Employee,
+    ExecutiveNotification,
     FinancialTransaction,
     Incident,
     LeaseContract,
@@ -17,7 +18,7 @@ from api.models import (
 
 
 def _fc(amount) -> str:
-    return f"{amount:,.0f} FC".replace(",", " ")
+    return f"$ {amount:,.2f}"
 
 
 def get_executive_summary() -> dict:
@@ -244,11 +245,30 @@ def get_executive_overview() -> dict:
         )
     recent_activities.sort(key=lambda x: x["timestamp"], reverse=True)
 
+    notifications = list(
+        ExecutiveNotification.objects.all()
+        .order_by("-created_at")
+        .values("id", "title", "message", "severity", "source", "created_at")[:20]
+    )
+    unread_count = ExecutiveNotification.objects.filter(is_read=False).count()
+
     return {
         "summary": summary,
         "syncHealth": get_sync_health(),
         "pendingValidations": validations,
         "recentActivities": recent_activities[:10],
+        "notifications": [
+            {
+                "id": n["id"],
+                "title": n["title"],
+                "message": n["message"],
+                "severity": n["severity"],
+                "source": n["source"] or "Système",
+                "timestamp": n["created_at"].isoformat(),
+            }
+            for n in notifications
+        ],
+        "unreadNotifications": unread_count,
         "presence": {
             "activeEmployees": active_employees,
             "totalEmployees": total_employees,

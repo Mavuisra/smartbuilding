@@ -48,6 +48,7 @@
         <Setter Property="Padding" Value="12"/>
         <Setter Property="Margin" Value="0,0,12,12"/>
         <Setter Property="Width" Value="200"/>
+        <Setter Property="Height" Value="220"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Style.Triggers>
             <DataTrigger Binding="{Binding IsSelected}" Value="True">

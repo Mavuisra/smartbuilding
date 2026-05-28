@@ -75,9 +75,9 @@ public class FinancesService
 
         var cashPosition = await _financeLedger.GetCashPositionAsync(cancellationToken);
 
-        var pending = monthTx.Count(t => t.Status is "En attente" or "En retard" or "En attente validation PDG");
+        var pending = monthTx.Count(t => t.Status is "En attente" or "En retard" or "En attente validation PDG" or "Impayé");
         var pendingAmount = monthTx
-            .Where(t => t.Status is "En attente" or "En retard" or "En attente validation PDG")
+            .Where(t => t.Status is "En attente" or "En retard" or "En attente validation PDG" or "Impayé")
             .Sum(t => t.Amount);
 
         var maintenance = monthTx
@@ -241,6 +241,31 @@ public class FinancesService
         {
             return ex.Message;
         }
+    }
+
+    public async Task<string> ApprovePendingInvoiceAsync(
+        Guid transactionId,
+        string approvedBy,
+        CancellationToken cancellationToken = default)
+    {
+        var tx = await _db.FinancialTransactions.FirstOrDefaultAsync(t => t.Id == transactionId, cancellationToken);
+        if (tx is null)
+            return "Facture introuvable.";
+
+        var isInvoice = tx.Category.Contains("Facture", StringComparison.OrdinalIgnoreCase);
+        if (!isInvoice)
+            return "Cette transaction n'est pas une facture.";
+
+        if (tx.Status is not ("En attente" or "En retard" or "En attente validation PDG" or "Impayé"))
+            return "Cette facture est déjà validée.";
+
+        tx.Status = "Payé";
+        tx.UpdatedAt = DateTime.UtcNow;
+        if (!string.IsNullOrWhiteSpace(approvedBy))
+            tx.RecordedBy = approvedBy.Trim();
+
+        await _db.SaveChangesAsync(cancellationToken);
+        return string.Empty;
     }
 
     private static FinanceTransactionItem Map(FinancialTransaction t)
@@ -424,6 +449,7 @@ public class FinancesService
         "En attente" => "#FEF3C7",
         "En attente validation PDG" => "#FEF3C7",
         "En retard" => "#FEE2E2",
+        "Impayé" => "#FEE2E2",
         _ => "#DCFCE7"
     };
 
@@ -432,6 +458,7 @@ public class FinancesService
         "En attente" => "#B45309",
         "En attente validation PDG" => "#B45309",
         "En retard" => "#DC2626",
+        "Impayé" => "#DC2626",
         _ => "#166534"
     };
 

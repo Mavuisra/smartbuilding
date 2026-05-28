@@ -147,12 +147,6 @@
                 <Border Grid.Row="1" Background="White" CornerRadius="8" BorderBrush="#E8EFED" BorderThickness="1"
                         Padding="10,8" Margin="0,0,0,8">
                     <WrapPanel>
-                        <Button Command="{Binding OpenAddExpenseCommand}" Style="{StaticResource FinancesExpenseButton}">
-                            <StackPanel Orientation="Horizontal">
-                                <materialDesign:PackIcon Kind="Minus" Margin="0,0,6,0"/>
-                                <TextBlock Text="Ajouter dépense"/>
-                            </StackPanel>
-                        </Button>
                         <Button Command="{Binding CollectRentCommand}" Style="{StaticResource FinancesRentButton}">
                             <StackPanel Orientation="Horizontal">
                                 <materialDesign:PackIcon Kind="CashRegister" Margin="0,0,6,0"/>
@@ -265,43 +259,46 @@
                                 </ScrollViewer>
                             </Border>
 
-                            <DataGrid ItemsSource="{Binding Transactions}" Style="{StaticResource FinancesDataGrid}"
-                                      materialDesign:DataGridAssist.CellPadding="8,4" MinHeight="200">
-                                <DataGrid.Columns>
-                                    <DataGridTextColumn Header="RÉFÉRENCE" Binding="{Binding Reference}" Width="100"/>
-                                    <DataGridTextColumn Header="DATE" Binding="{Binding DateDisplay}" Width="90"/>
-                                    <DataGridTemplateColumn Header="TYPE" Width="90">
-                                        <DataGridTemplateColumn.CellTemplate>
-                                            <DataTemplate>
-                                                <Border CornerRadius="8" Padding="6,2" Background="{Binding TypeBadgeBackground}">
-                                                    <TextBlock Text="{Binding TypeLabel}" Foreground="{Binding TypeBadgeForeground}" FontSize="10" FontWeight="SemiBold"/>
-                                                </Border>
-                                            </DataTemplate>
-                                        </DataGridTemplateColumn.CellTemplate>
-                                    </DataGridTemplateColumn>
-                                    <DataGridTextColumn Header="CATÉGORIE" Binding="{Binding Category}" Width="100"/>
-                                    <DataGridTextColumn Header="DESCRIPTION" Binding="{Binding Description}" Width="*"/>
-                                    <DataGridTextColumn Header="SOURCE" Binding="{Binding Source}" Width="90"/>
-                                    <DataGridTextColumn Header="MODE" Binding="{Binding PaymentMethod}" Width="90"/>
-                                    <DataGridTemplateColumn Header="MONTANT" Width="120">
-                                        <DataGridTemplateColumn.CellTemplate>
-                                            <DataTemplate>
-                                                <TextBlock Text="{Binding AmountDisplay}" Foreground="{Binding AmountColor}" FontWeight="SemiBold"/>
-                                            </DataTemplate>
-                                        </DataGridTemplateColumn.CellTemplate>
-                                    </DataGridTemplateColumn>
-                                    <DataGridTemplateColumn Header="STATUT" Width="90">
-                                        <DataGridTemplateColumn.CellTemplate>
-                                            <DataTemplate>
-                                                <Border CornerRadius="8" Padding="6,2" Background="{Binding StatusBadgeBackground}">
-                                                    <TextBlock Text="{Binding StatusLabel}" Foreground="{Binding StatusBadgeForeground}" FontSize="10" FontWeight="SemiBold"/>
-                                                </Border>
-                                            </DataTemplate>
-                                        </DataGridTemplateColumn.CellTemplate>
-                                    </DataGridTemplateColumn>
-                                    <DataGridTextColumn Header="UTILISATEUR" Binding="{Binding RecordedBy}" Width="110"/>
-                                </DataGrid.Columns>
-                            </DataGrid>
+                            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                                <DataGrid ItemsSource="{Binding Transactions}" Style="{StaticResource FinancesDataGrid}"
+                                          materialDesign:DataGridAssist.CellPadding="8,4" MinHeight="200" MinWidth="1260"
+                                          HorizontalScrollBarVisibility="Auto">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="RÉFÉRENCE" Binding="{Binding Reference}" Width="120"/>
+                                        <DataGridTextColumn Header="DATE" Binding="{Binding DateDisplay}" Width="95"/>
+                                        <DataGridTemplateColumn Header="TYPE" Width="100">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <Border CornerRadius="8" Padding="6,2" Background="{Binding TypeBadgeBackground}">
+                                                        <TextBlock Text="{Binding TypeLabel}" Foreground="{Binding TypeBadgeForeground}" FontSize="10" FontWeight="SemiBold"/>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                        <DataGridTextColumn Header="CATÉGORIE" Binding="{Binding Category}" Width="120"/>
+                                        <DataGridTextColumn Header="DESCRIPTION" Binding="{Binding Description}" Width="300"/>
+                                        <DataGridTextColumn Header="SOURCE" Binding="{Binding Source}" Width="110"/>
+                                        <DataGridTextColumn Header="MODE" Binding="{Binding PaymentMethod}" Width="110"/>
+                                        <DataGridTemplateColumn Header="MONTANT" Width="130">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding AmountDisplay}" Foreground="{Binding AmountColor}" FontWeight="Bold"/>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                        <DataGridTemplateColumn Header="STATUT" Width="150">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <Border CornerRadius="8" Padding="6,2" Background="{Binding StatusBadgeBackground}">
+                                                        <TextBlock Text="{Binding StatusLabel}" Foreground="{Binding StatusBadgeForeground}" FontSize="10" FontWeight="SemiBold"/>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                        <DataGridTextColumn Header="UTILISATEUR" Binding="{Binding RecordedBy}" Width="140"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </ScrollViewer>
 
                             <DockPanel DockPanel.Dock="Bottom" Margin="0,6,0,0">
                                 <TextBlock Text="{Binding PaginationText}" DockPanel.Dock="Left" VerticalAlignment="Center"
@@ -325,6 +322,64 @@
 
                     <!-- Panneau droit -->
                     <StackPanel Grid.Column="1">
+                        <Border Style="{StaticResource FinancesSidebarCard}">
+                            <StackPanel>
+                                <DockPanel Margin="0,0,0,10">
+                                    <TextBlock Text="Factures en attente" FontWeight="SemiBold" Foreground="#1B3D3B"/>
+                                    <Border DockPanel.Dock="Right" Background="#FFEDD5" CornerRadius="8" Padding="8,2">
+                                        <TextBlock Text="{Binding PendingInvoicesDisplay}" Foreground="#C2410C" FontWeight="Bold" FontSize="11"/>
+                                    </Border>
+                                </DockPanel>
+                                <ItemsControl ItemsSource="{Binding PendingInvoices}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border BorderBrush="#FED7AA" BorderThickness="1" CornerRadius="8" Background="#FFF7ED" Padding="8" Margin="0,0,0,8">
+                                                <StackPanel>
+                                                    <DockPanel>
+                                                        <TextBlock Text="{Binding Reference}" FontWeight="Bold" Foreground="#9A3412"/>
+                                                        <Border DockPanel.Dock="Right" CornerRadius="8" Padding="8,2">
+                                                            <Border.Style>
+                                                                <Style TargetType="Border">
+                                                                    <Setter Property="Background" Value="#FEF3C7"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding StatusLabel}" Value="Impayé">
+                                                                            <Setter Property="Background" Value="#FEE2E2"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </Border.Style>
+                                                            <TextBlock Text="{Binding StatusLabel}" FontSize="10" FontWeight="Bold">
+                                                                <TextBlock.Style>
+                                                                    <Style TargetType="TextBlock">
+                                                                        <Setter Property="Foreground" Value="#B45309"/>
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding StatusLabel}" Value="Impayé">
+                                                                                <Setter Property="Foreground" Value="#991B1B"/>
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </TextBlock.Style>
+                                                            </TextBlock>
+                                                        </Border>
+                                                    </DockPanel>
+                                                    <TextBlock Text="{Binding Description}" FontSize="11" Foreground="#7C2D12" TextWrapping="Wrap"/>
+                                                    <TextBlock Text="{Binding AmountDisplay}" FontWeight="SemiBold" Foreground="#C2410C" Margin="0,4,0,6"/>
+                                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                                        <Button Content="Voir" Command="{Binding DataContext.ViewPendingInvoiceCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                CommandParameter="{Binding}" Style="{StaticResource FinancesToolbarButton}" Padding="8,3" Margin="0,0,6,0"/>
+                                                        <Button Content="Valider" Command="{Binding DataContext.ValidatePendingInvoiceCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                CommandParameter="{Binding}" Style="{StaticResource FinancesPrimaryButton}" Padding="10,3"/>
+                                                    </StackPanel>
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <TextBlock Text="Aucune facture en attente." Foreground="#94A3B8" FontSize="11"
+                                           Visibility="{Binding PendingInvoices.Count, Converter={StaticResource IntEqualsToVisibilityConverter}, ConverterParameter=0}"/>
+                            </StackPanel>
+                        </Border>
+
                         <Border Style="{StaticResource FinancesSidebarCard}">
                             <StackPanel>
                                 <TextBlock Text="Alertes financières" FontWeight="SemiBold" Foreground="#1B3D3B" Margin="0,0,0,10"/>
@@ -417,53 +472,6 @@
                 </Grid>
             </Grid>
         </ScrollViewer>
-
-        <!-- Modal transaction -->
-        <Border Grid.RowSpan="2" Background="#80000000"
-                Visibility="{Binding IsTransactionFormOpen, Converter={StaticResource BoolToVisibilityConverter}}">
-            <Border Background="White" CornerRadius="12" Padding="24" MaxWidth="440" VerticalAlignment="Center" HorizontalAlignment="Center">
-                <StackPanel>
-                    <TextBlock FontSize="18" FontWeight="Bold" Foreground="#1B3D3B" Margin="0,0,0,16">
-                        <TextBlock.Style>
-                            <Style TargetType="TextBlock">
-                                <Setter Property="Text" Value="Nouvelle dépense"/>
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsRevenueForm}" Value="True">
-                                        <Setter Property="Text" Value="Nouveau revenu"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </TextBlock.Style>
-                    </TextBlock>
-                    <ComboBox ItemsSource="{Binding RevenueCategories}" SelectedItem="{Binding FormCategory}"
-                              Style="{StaticResource FinancesFilterCombo}" Margin="0,0,0,8"
-                              Visibility="{Binding IsRevenueForm, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                    <ComboBox ItemsSource="{Binding ExpenseCategories}" SelectedItem="{Binding FormCategory}" Margin="0,0,0,8">
-                        <ComboBox.Style>
-                            <Style TargetType="ComboBox" BasedOn="{StaticResource FinancesFilterCombo}">
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsRevenueForm}" Value="True">
-                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </ComboBox.Style>
-                    </ComboBox>
-                    <TextBox materialDesign:HintAssist.Hint="Description *" Text="{Binding FormDescription, UpdateSourceTrigger=PropertyChanged}"
-                             Margin="0,0,0,8"/>
-                    <TextBox materialDesign:HintAssist.Hint="Montant (USD) *" Text="{Binding FormAmountText, UpdateSourceTrigger=PropertyChanged}"
-                             Margin="0,0,0,8"/>
-                    <ComboBox ItemsSource="{Binding PaymentMethods}" SelectedItem="{Binding FormPaymentMethod}"
-                              Style="{StaticResource FinancesFilterCombo}" Margin="0,0,0,8"/>
-                    <TextBlock Text="{Binding FormError}" Foreground="#DC2626" FontSize="12" Margin="0,0,0,8"
-                               Visibility="{Binding FormError, Converter={StaticResource NullToVisibilityConverter}}"/>
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                        <Button Content="Annuler" Command="{Binding CloseTransactionFormCommand}" Style="{StaticResource FinancesToolbarButton}" Margin="0,0,8,0"/>
-                        <Button Content="Enregistrer" Command="{Binding SaveTransactionCommand}" Style="{StaticResource FinancesPrimaryButton}"/>
-                    </StackPanel>
-                </StackPanel>
-            </Border>
-        </Border>
 
         <ProgressBar Grid.Row="1" IsIndeterminate="True" Height="3" VerticalAlignment="Top"
                      Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibilityConverter}}"

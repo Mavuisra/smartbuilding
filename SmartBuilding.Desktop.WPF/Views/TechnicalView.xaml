@@ -90,7 +90,8 @@
             </Grid>
         </Border>
 
-        <Border Grid.Row="1" Background="White" Padding="12,8,0,8" BorderBrush="#E8EFED" BorderThickness="0,0,0,1">
+        <Border Grid.Row="1" Background="White" Padding="12,10,12,10" BorderBrush="#E8EFED" BorderThickness="0,0,0,1" MinHeight="62">
+            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
             <ItemsControl ItemsSource="{Binding SectionTabs}" AlternationCount="99">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
@@ -101,7 +102,7 @@
                     <DataTemplate>
                         <Button Command="{Binding DataContext.SetSectionTabCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                 CommandParameter="{Binding (ItemsControl.AlternationIndex), RelativeSource={RelativeSource AncestorType=ContentPresenter}}"
-                                Content="{Binding}" Margin="0,0,4,0" Padding="16,10">
+                                Content="{Binding}">
                             <Button.Style>
                                 <Style TargetType="Button" BasedOn="{StaticResource TechnicalSectionTabButton}">
                                     <Style.Triggers>
@@ -115,6 +116,7 @@
                                             <Setter Property="Foreground" Value="#2D6A4F"/>
                                             <Setter Property="FontWeight" Value="SemiBold"/>
                                             <Setter Property="BorderBrush" Value="#2D6A4F"/>
+                                            <Setter Property="Background" Value="#E8F5EE"/>
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
@@ -123,6 +125,7 @@
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
+            </ScrollViewer>
         </Border>
 
         <Grid Grid.Row="2">

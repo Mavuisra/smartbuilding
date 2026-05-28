@@ -244,6 +244,52 @@
                                         </StackPanel>
                                     </DockPanel>
                                 </Border>
+                                <Border DockPanel.Dock="Top" Background="White" BorderBrush="#E2E8F0" BorderThickness="1"
+                                        CornerRadius="8" Padding="8" Margin="6,0,6,8" Height="520">
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                        <StackPanel>
+                                            <TextBlock Text="Connexion Gmail" FontWeight="SemiBold" FontSize="11" Foreground="#1B3D3B"/>
+                                            <TextBlock Text="{Binding EmailConfigStatus}" FontSize="10" Foreground="#64748B" Margin="0,2,0,8"/>
+                                            <TextBox materialDesign:HintAssist.Hint="Adresse Gmail"
+                                                     Text="{Binding EmailAddressInput, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,6"/>
+                                            <TextBox materialDesign:HintAssist.Hint="Mot de passe d'application Google"
+                                                     Text="{Binding EmailAppPasswordInput, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,6"/>
+                                            <Grid Margin="0,0,0,6">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="70"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBox materialDesign:HintAssist.Hint="Serveur IMAP"
+                                                         Text="{Binding ImapHostInput, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,6,0"/>
+                                                <TextBox Grid.Column="1" materialDesign:HintAssist.Hint="Port"
+                                                         Text="{Binding ImapPortInput, UpdateSourceTrigger=PropertyChanged}"/>
+                                            </Grid>
+                                            <Grid Margin="0,0,0,6">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="70"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBox materialDesign:HintAssist.Hint="Serveur SMTP"
+                                                         Text="{Binding SmtpHostInput, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,6,0"/>
+                                                <TextBox Grid.Column="1" materialDesign:HintAssist.Hint="Port"
+                                                         Text="{Binding SmtpPortInput, UpdateSourceTrigger=PropertyChanged}"/>
+                                            </Grid>
+                                            <CheckBox Content="SSL/TLS activé" IsChecked="{Binding UseSslInput}" Margin="0,0,0,6"/>
+                                            <TextBox materialDesign:HintAssist.Hint="Mots-clés filtres (optionnel, séparés par virgule)"
+                                                     Text="{Binding EmailFilterKeywordsInput, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Button Grid.Column="0" Content="Enregistrer" Command="{Binding SaveEmailConfigCommand}"
+                                                        Style="{StaticResource EmailsToolbarButton}" Margin="0,0,4,0"/>
+                                                <Button Grid.Column="1" Content="Tester + Sync" Command="{Binding TestEmailConfigCommand}"
+                                                        Style="{StaticResource EmailsPrimaryButton}" Margin="4,0,0,0"/>
+                                            </Grid>
+                                        </StackPanel>
+                                    </ScrollViewer>
+                                </Border>
                                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                                     <StackPanel>
                                         <TextBlock Text="Dossiers" FontWeight="SemiBold" FontSize="11" Foreground="#64748B" Margin="8,4,8,4"/>
@@ -597,23 +643,16 @@
         <Grid Grid.Row="3" Margin="12,4,12,8">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="220"/>
                         <ColumnDefinition Width="280"/>
                     </Grid.ColumnDefinitions>
                     <Border Grid.Column="0" Style="{StaticResource EmailsAnalyticsCard}" Margin="0,0,4,0">
                         <StackPanel>
-                            <TextBlock Text="Aperçu des communications" FontWeight="SemiBold" FontSize="12" Foreground="#1B3D3B" Margin="0,0,0,8"/>
-                            <lvc:CartesianChart Series="{Binding VolumeSeries}" Height="140"/>
-                        </StackPanel>
-                    </Border>
-                    <Border Grid.Column="1" Style="{StaticResource EmailsAnalyticsCard}" Margin="4,0">
-                        <StackPanel>
                             <TextBlock Text="Répartition par catégorie" FontWeight="SemiBold" FontSize="12" Foreground="#1B3D3B" Margin="0,0,0,8"/>
                             <lvc:PieChart Series="{Binding CategoryPieSeries}" Height="140"/>
                         </StackPanel>
                     </Border>
-                    <Border Grid.Column="2" Style="{StaticResource EmailsAnalyticsCard}" Margin="4,0">
+                    <Border Grid.Column="1" Style="{StaticResource EmailsAnalyticsCard}" Margin="4,0">
                         <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
                             <materialDesign:PackIcon Kind="ClockOutline" Width="32" Height="32" Foreground="#6D28D9" HorizontalAlignment="Center"/>
                             <TextBlock Text="Temps de réponse moyen" FontSize="11" Foreground="{StaticResource SbmsTextMutedBrush}"
@@ -622,7 +661,7 @@
                             <TextBlock Text="{Binding AverageResponseTrend}" FontSize="10" Foreground="#6D28D9" HorizontalAlignment="Center"/>
                         </StackPanel>
                     </Border>
-                    <Border Grid.Column="3" Style="{StaticResource EmailsSidebarCard}" Margin="4,0,0,0">
+                    <Border Grid.Column="2" Style="{StaticResource EmailsSidebarCard}" Margin="4,0,0,0">
                         <StackPanel>
                             <TextBlock Text="Synchronisation" FontWeight="SemiBold" FontSize="12" Foreground="#1B3D3B"/>
                             <TextBlock Text="{Binding AccountEmail}" FontWeight="SemiBold" FontSize="11" Foreground="#2563EB" Margin="0,8,0,0"/>

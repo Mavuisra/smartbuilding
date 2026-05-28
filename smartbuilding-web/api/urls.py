@@ -5,6 +5,7 @@ from api.views import (
     ExecutiveOverviewView,
     ExecutiveIncidentsView,
     ExecutiveModuleDataView,
+    ExecutiveNotificationsView,
     ExecutiveSyncLogView,
     ExecutiveTenantsView,
     ExpenseValidationActionView,
@@ -38,6 +39,8 @@ urlpatterns = [
     path("executive/sync-logs", ExecutiveSyncLogView.as_view()),
     path("executive/modules/<slug:slug>/", ExecutiveModuleDataView.as_view(), name="executive-module-data"),
     path("executive/modules/<slug:slug>", ExecutiveModuleDataView.as_view()),
+    path("executive/notifications/", ExecutiveNotificationsView.as_view(), name="executive-notifications"),
+    path("executive/notifications", ExecutiveNotificationsView.as_view()),
     path("executive/validations/expenses/<uuid:expense_id>/<str:action>/", ExpenseValidationActionView.as_view(), name="expense-validation-action"),
     path("executive/validations/expenses/<uuid:expense_id>/<str:action>", ExpenseValidationActionView.as_view()),
 ]

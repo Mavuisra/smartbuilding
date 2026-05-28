@@ -33,6 +33,7 @@ public partial class SuppliersViewModel
     [ObservableProperty] private DateTime _invoiceDueDate = DateTime.Today.AddDays(30);
     [ObservableProperty] private string _invoiceDescription = "Facture prestation";
     [ObservableProperty] private string _invoiceCategory = "Maintenance";
+    [ObservableProperty] private string _invoiceNewCategory = string.Empty;
     [ObservableProperty] private string _invoiceAmountText = "0";
     [ObservableProperty] private bool _invoiceIsPaid = true;
     [ObservableProperty] private string? _invoiceError;
@@ -45,6 +46,10 @@ public partial class SuppliersViewModel
 
     public ObservableCollection<SupplierListItem> SupplierChoices { get; } = [];
     public ObservableCollection<string> ContractStatuses { get; } = ["Actif", "En attente", "Expiré"];
+    public ObservableCollection<string> InvoiceCategories { get; } =
+    [
+        "Maintenance", "Énergie", "Sécurité", "Internet", "Fournitures", "Service", "Autre"
+    ];
 
     [RelayCommand]
     private void OpenContractForm()
@@ -111,6 +116,7 @@ public partial class SuppliersViewModel
         InvoiceDueDate = DateTime.Today.AddDays(30);
         InvoiceDescription = "Facture prestation";
         InvoiceCategory = "Maintenance";
+        InvoiceNewCategory = string.Empty;
         InvoiceAmountText = "0";
         InvoiceIsPaid = true;
         InvoiceError = null;
@@ -124,6 +130,15 @@ public partial class SuppliersViewModel
     private async Task SaveInvoiceAsync()
     {
         InvoiceError = null;
+        var normalizedNewCategory = InvoiceNewCategory?.Trim() ?? string.Empty;
+        if (!string.IsNullOrWhiteSpace(normalizedNewCategory))
+        {
+            if (!InvoiceCategories.Any(c => string.Equals(c, normalizedNewCategory, StringComparison.OrdinalIgnoreCase)))
+                InvoiceCategories.Add(normalizedNewCategory);
+            InvoiceCategory = InvoiceCategories.First(c => string.Equals(c, normalizedNewCategory, StringComparison.OrdinalIgnoreCase));
+            InvoiceNewCategory = string.Empty;
+        }
+
         var amount = ParseAmount(InvoiceAmountText);
         IsBusy = true;
         try

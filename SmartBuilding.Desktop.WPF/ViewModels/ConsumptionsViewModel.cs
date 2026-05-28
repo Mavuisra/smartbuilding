@@ -70,6 +70,7 @@ public partial class ConsumptionsViewModel : BaseViewModel
     [ObservableProperty] private string _savingsDisplay = "—";
 
     [ObservableProperty] private string _formType = "Électricité";
+    [ObservableProperty] private string _formNewType = string.Empty;
     [ObservableProperty] private string _formEquipment = string.Empty;
     [ObservableProperty] private string _formCostText = "0";
     [ObservableProperty] private string _formPeriodType = "Mensuel";
@@ -176,6 +177,7 @@ public partial class ConsumptionsViewModel : BaseViewModel
     private void OpenAddForm()
     {
         FormType = "Électricité";
+        FormNewType = string.Empty;
         FormEquipment = "Compteur principal Tour SBMS";
         FormCostText = "0";
         FormPeriodType = "Mensuel";
@@ -189,6 +191,15 @@ public partial class ConsumptionsViewModel : BaseViewModel
     private async Task SaveRecordAsync()
     {
         FormError = null;
+        var normalizedNewType = FormNewType?.Trim() ?? string.Empty;
+        if (!string.IsNullOrWhiteSpace(normalizedNewType))
+        {
+            if (!ConsumptionTypes.Any(t => string.Equals(t, normalizedNewType, StringComparison.OrdinalIgnoreCase)))
+                ConsumptionTypes.Add(normalizedNewType);
+            FormType = ConsumptionTypes.First(t => string.Equals(t, normalizedNewType, StringComparison.OrdinalIgnoreCase));
+            FormNewType = string.Empty;
+        }
+
         if (!decimal.TryParse(FormCostText.Replace(',', '.'), NumberStyles.Any, CultureInfo.InvariantCulture, out var cost))
         { FormError = "Montant invalide."; return; }
         if (cost <= 0)

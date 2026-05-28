@@ -545,8 +545,11 @@
                     <Grid Margin="0,0,0,8">
                         <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
                         <TextBox Grid.Column="0" Margin="0,0,8,0" materialDesign:HintAssist.Hint="Réf facture (auto si vide)" Text="{Binding InvoiceReference, UpdateSourceTrigger=PropertyChanged}"/>
-                        <TextBox Grid.Column="1" materialDesign:HintAssist.Hint="Catégorie" Text="{Binding InvoiceCategory, UpdateSourceTrigger=PropertyChanged}"/>
+                        <ComboBox Grid.Column="1" ItemsSource="{Binding InvoiceCategories}" SelectedItem="{Binding InvoiceCategory}"
+                                  Style="{StaticResource SuppliersFilterCombo}" />
                     </Grid>
+                    <TextBox materialDesign:HintAssist.Hint="Nouveau type de dépense (si absent du select)"
+                             Text="{Binding InvoiceNewCategory, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
                     <TextBox materialDesign:HintAssist.Hint="Description facture *" Text="{Binding InvoiceDescription, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
                     <TextBox materialDesign:HintAssist.Hint="Montant facture (USD) *" Text="{Binding InvoiceAmountText, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
                     <CheckBox Content="Facture déjà payée (soumettre validation PDG)" IsChecked="{Binding InvoiceIsPaid}" Margin="0,0,0,8"/>

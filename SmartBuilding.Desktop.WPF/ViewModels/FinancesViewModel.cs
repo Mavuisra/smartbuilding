@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LiveChartsCore;
@@ -45,8 +44,6 @@ public partial class FinancesViewModel : BaseViewModel
     [ObservableProperty] private int _pageSize = 10;
     [ObservableProperty] private int _filteredTotal;
     [ObservableProperty] private int _selectedMainTab;
-    [ObservableProperty] private bool _isTransactionFormOpen;
-    [ObservableProperty] private bool _isRevenueForm;
 
     [ObservableProperty] private string _monthlyRevenueDisplay = MoneyFormatter.ZeroDisplay;
     [ObservableProperty] private string _monthlyExpensesDisplay = MoneyFormatter.ZeroDisplay;
@@ -66,17 +63,12 @@ public partial class FinancesViewModel : BaseViewModel
     [ObservableProperty] private string _maintenanceDisplay = MoneyFormatter.ZeroDisplay;
     [ObservableProperty] private string _lateRentTotalDisplay = MoneyFormatter.ZeroDisplay;
 
-    [ObservableProperty] private string _formCategory = "Loyers";
-    [ObservableProperty] private string _formDescription = string.Empty;
-    [ObservableProperty] private string _formAmountText = "0";
-    [ObservableProperty] private string _formPaymentMethod = "Virement";
-    [ObservableProperty] private string? _formError;
-
     [ObservableProperty] private ISeries[] _revenueExpenseSeries = [];
     [ObservableProperty] private ISeries[] _expensePieSeries = [];
     [ObservableProperty] private ISeries[] _rentBarSeries = [];
 
     public ObservableCollection<FinanceTransactionItem> Transactions { get; } = [];
+    public ObservableCollection<FinanceTransactionItem> PendingInvoices { get; } = [];
     public ObservableCollection<FinanceAlertItem> Alerts { get; } = [];
     public ObservableCollection<FinanceTreasuryLine> TreasuryLines { get; } = [];
     public ObservableCollection<FinanceLateRentItem> LateRents { get; } = [];
@@ -85,17 +77,10 @@ public partial class FinancesViewModel : BaseViewModel
     public ObservableCollection<string> CategoryFilters { get; } = [AllCategories];
     public ObservableCollection<string> SourceFilters { get; } = [AllSources];
     public ObservableCollection<string> StatusFilters { get; } =
-        [AllStatuses, "Payé", "En attente", "En retard", "En attente validation PDG"];
+        [AllStatuses, "Payé", "En attente", "En retard", "Impayé", "En attente validation PDG"];
     public ObservableCollection<int> PageSizeOptions { get; } = [10, 20, 50];
     public ObservableCollection<string> MainTabs { get; } =
         ["Toutes", "Revenus", "Dépenses", "Loyers", "Factures", "Remboursements"];
-    public ObservableCollection<string> PaymentMethods { get; } =
-        ["Virement", "Espèces", "Mobile Money", "Chèque", "Carte bancaire"];
-    public ObservableCollection<string> RevenueCategories { get; } =
-        ["Services", "Autre revenu"];
-    public ObservableCollection<string> ExpenseCategories { get; } =
-        ["Maintenance", "Énergie", "Salaires", "Sécurité", "Internet", "Fournitures", "Facture", "Autre"];
-
     public FinancesViewModel(
         FinancesService financesService,
         ISyncService syncService,
@@ -150,6 +135,16 @@ public partial class FinancesViewModel : BaseViewModel
             LateRents.Clear();
             foreach (var r in data.LateRents) LateRents.Add(r);
 
+            PendingInvoices.Clear();
+            foreach (var invoice in data.Transactions
+                         .Where(t => t.Category.Contains("Facture", StringComparison.OrdinalIgnoreCase) &&
+                                     t.StatusLabel is "En attente" or "En retard" or "Impayé" or "En attente validation PDG")
+                         .OrderByDescending(t => t.TransactionDate)
+                         .Take(8))
+            {
+                PendingInvoices.Add(invoice);
+            }
+
             CategoryFilters.Clear();
             CategoryFilters.Add(AllCategories);
             foreach (var c in data.Categories) CategoryFilters.Add(c);
@@ -180,83 +175,6 @@ public partial class FinancesViewModel : BaseViewModel
     private async Task CollectRent() => await _shellNavigation.OpenRentFormAsync();
 
     [RelayCommand]
-    private void OpenAddRevenue()
-    {
-        IsRevenueForm = true;
-        FormCategory = "Services";
-        FormDescription = string.Empty;
-        FormAmountText = "0";
-        FormPaymentMethod = "Virement";
-        FormError = null;
-        IsTransactionFormOpen = true;
-    }
-
-    [RelayCommand]
-    private void OpenAddExpense()
-    {
-        IsRevenueForm = false;
-        FormCategory = "Maintenance";
-        FormDescription = string.Empty;
-        FormAmountText = "0";
-        FormPaymentMethod = "Virement";
-        FormError = null;
-        IsTransactionFormOpen = true;
-    }
-
-    [RelayCommand]
-    private void CloseTransactionForm() => IsTransactionFormOpen = false;
-
-    [RelayCommand]
-    private async Task SaveTransactionAsync()
-    {
-        FormError = null;
-        if (!decimal.TryParse(FormAmountText.Replace(',', '.'), NumberStyles.Any, CultureInfo.InvariantCulture, out var amount))
-            amount = 0;
-
-        IsBusy = true;
-        try
-        {
-            string error;
-            if (IsRevenueForm)
-            {
-                error = await _financesService.CreateTransactionAsync(
-                    TransactionType.Recette,
-                    FormCategory,
-                    FormDescription,
-                    amount,
-                    FormPaymentMethod,
-                    string.Empty,
-                    UserName);
-            }
-            else
-            {
-                error = await _financesService.CreatePendingExpenseForPdgApprovalAsync(
-                    FormCategory,
-                    FormDescription,
-                    amount,
-                    string.Empty,
-                    UserName);
-            }
-
-            if (!string.IsNullOrEmpty(error))
-            {
-                FormError = error;
-                return;
-            }
-
-            IsTransactionFormOpen = false;
-            StatusMessage = IsRevenueForm
-                ? "Revenu enregistré."
-                : "Sortie de caisse soumise au PDG pour approbation.";
-            await LoadAsync();
-        }
-        finally
-        {
-            IsBusy = false;
-        }
-    }
-
-    [RelayCommand]
     private async Task SyncAsync()
     {
         IsBusy = true;
@@ -280,6 +198,43 @@ public partial class FinancesViewModel : BaseViewModel
     {
         var path = FinancesExportService.ExportCsv(_allTransactions);
         StatusMessage = $"Export CSV : {path}";
+    }
+
+    [RelayCommand]
+    private void ViewPendingInvoice(FinanceTransactionItem? invoice)
+    {
+        if (invoice is null)
+            return;
+
+        SelectedMainTab = 4;
+        FilterStatus = AllStatuses;
+        TableSearchQuery = invoice.Reference;
+        StatusMessage = $"Facture {invoice.Reference} affichée pour contrôle.";
+    }
+
+    [RelayCommand]
+    private async Task ValidatePendingInvoiceAsync(FinanceTransactionItem? invoice)
+    {
+        if (invoice is null)
+            return;
+
+        IsBusy = true;
+        try
+        {
+            var error = await _financesService.ApprovePendingInvoiceAsync(invoice.Id, UserName);
+            if (!string.IsNullOrWhiteSpace(error))
+            {
+                StatusMessage = error;
+                return;
+            }
+
+            StatusMessage = $"Facture {invoice.Reference} validée.";
+            await LoadAsync();
+        }
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
     [RelayCommand]
@@ -326,7 +281,9 @@ public partial class FinancesViewModel : BaseViewModel
 
         IEnumerable<FinanceTransactionItem> filtered = _allTransactions;
 
-        filtered = ApplyPeriodFilter(filtered, monthStart);
+        filtered = SelectedMainTab == 4
+            ? filtered
+            : ApplyPeriodFilter(filtered, monthStart);
         filtered = filtered.Where(MatchesTab);
         filtered = filtered.Where(t =>
             (FilterType == AllTypes || t.TypeLabel == FilterType) &&
@@ -431,12 +388,6 @@ public partial class FinancesViewModel : BaseViewModel
     }
 
     private static string Fc(decimal amount) => MoneyFormatter.Format(amount);
-
-    private static decimal ParseFc(string display)
-    {
-        var n = new string(display.Where(c => char.IsDigit(c) || c == ',' || c == '.').ToArray());
-        return decimal.TryParse(n.Replace(',', '.'), NumberStyles.Any, CultureInfo.InvariantCulture, out var v) ? v : 0;
-    }
 
     private static string GetInitials(string name)
     {

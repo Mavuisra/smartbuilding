@@ -1,4 +1,5 @@
 using System.IO;
+using System.Globalization;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
@@ -8,6 +9,9 @@ namespace SmartBuilding.Desktop.WPF.Services;
 
 public class LeaseContractPdfService
 {
+    private readonly string _navy = PdfThemeHelper.ResolveHeaderColor();
+    private readonly string _green = PdfThemeHelper.ResolveAccentColor();
+
     static LeaseContractPdfService()
     {
         QuestPDF.Settings.License = LicenseType.Community;
@@ -15,6 +19,7 @@ public class LeaseContractPdfService
 
     public string Generate(LeaseContract contract, string companyName = "SBMS")
     {
+        var culture = CultureInfo.GetCultureInfo("fr-FR");
         var folder = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "SBMS", "Contracts");
@@ -27,39 +32,65 @@ public class LeaseContractPdfService
             container.Page(page =>
             {
                 page.Size(PageSizes.A4);
-                page.Margin(40);
-                page.DefaultTextStyle(x => x.FontSize(10));
+                page.Margin(28);
+                page.DefaultTextStyle(x => x.FontSize(9).FontColor(_navy));
 
-                page.Header().Column(col =>
+                page.Content().Column(root =>
                 {
-                    col.Item().Text(companyName).Bold().FontSize(18).FontColor(Colors.Green.Darken3);
-                    col.Item().Text("Contrat de location").FontSize(14).SemiBold();
-                    col.Item().Text($"N° {contract.ContractNumber} — {contract.ContractType}");
-                });
+                    root.Item().Row(row =>
+                    {
+                        row.RelativeItem().Column(left =>
+                        {
+                            left.Item().Text("SBMS").Bold().FontSize(20).FontColor(_navy);
+                            left.Item().Text(companyName).FontSize(8).FontColor("#64748B");
+                        });
+                        row.RelativeItem(2).AlignCenter().Column(center =>
+                        {
+                            center.Item().Text("CONTRAT DE LOCATION").Bold().FontSize(14).FontColor(_navy);
+                            center.Item().Text("Document contractuel officiel").FontSize(8).FontColor("#64748B");
+                            center.Item().PaddingTop(6).AlignCenter().Background(_navy).PaddingVertical(4).PaddingHorizontal(10)
+                                .Text($"N° {contract.ContractNumber}").Bold().FontSize(9).FontColor(Colors.White);
+                        });
+                        row.RelativeItem().AlignRight().Background(PdfThemeHelper.GrayBg).Border(1).BorderColor(PdfThemeHelper.Border).Padding(8).Column(meta =>
+                        {
+                            PdfThemeHelper.MetaLine(meta, "Type", contract.ContractType);
+                            PdfThemeHelper.MetaLine(meta, "Statut", contract.Status.ToString());
+                            PdfThemeHelper.MetaLine(meta, "Émis le", DateTime.Now.ToString("dd/MM/yyyy HH:mm", culture));
+                        });
+                    });
 
-                page.Content().PaddingVertical(16).Column(col =>
-                {
-                    col.Item().Text("Parties").Bold().FontSize(12);
-                    col.Item().Text($"Locataire : {contract.Tenant.Name}");
-                    col.Item().Text($"Local : {contract.Premise.Code} — {contract.Premise.Name}");
-                    col.Item().Text($"Bâtiment : {contract.Premise.Building}");
-                    col.Item().PaddingTop(12).LineHorizontal(1);
-                    col.Item().PaddingTop(8).Text("Conditions financières").Bold();
-                    col.Item().Text($"Loyer mensuel : {contract.MonthlyRent:N2} FC");
-                    col.Item().Text($"Caution / garantie : {contract.Deposit:N2} FC");
-                    col.Item().Text($"Période : {contract.StartDate:dd/MM/yyyy} → {contract.EndDate:dd/MM/yyyy}");
-                    col.Item().Text($"Statut : {contract.Status}");
+                    root.Item().PaddingTop(12).Row(row =>
+                    {
+                        row.RelativeItem().Element(c => PdfThemeHelper.SectionBox(c, "PARTIES", _navy, col =>
+                        {
+                            PdfThemeHelper.InfoLine(col, "Locataire", contract.Tenant.Name);
+                            PdfThemeHelper.InfoLine(col, "Local", $"{contract.Premise.Code} — {contract.Premise.Name}");
+                            PdfThemeHelper.InfoLine(col, "Bâtiment", contract.Premise.Building);
+                        }));
+                        row.ConstantItem(12);
+                        row.RelativeItem().Element(c => PdfThemeHelper.SectionBox(c, "CONDITIONS FINANCIÈRES", _navy, col =>
+                        {
+                            PdfThemeHelper.InfoLine(col, "Loyer mensuel", $"{contract.MonthlyRent:N2} FC");
+                            PdfThemeHelper.InfoLine(col, "Caution / garantie", $"{contract.Deposit:N2} FC");
+                            PdfThemeHelper.InfoLine(col, "Période", $"{contract.StartDate:dd/MM/yyyy} → {contract.EndDate:dd/MM/yyyy}");
+                            col.Item().PaddingTop(6).Background(PdfThemeHelper.NavyLight).Padding(8).Text($"Statut : {contract.Status}")
+                                .Bold().FontColor(_green);
+                        }));
+                    });
+
                     if (!string.IsNullOrWhiteSpace(contract.Clauses))
                     {
-                        col.Item().PaddingTop(12).Text("Clauses").Bold();
-                        col.Item().Text(contract.Clauses);
+                        root.Item().PaddingTop(12).Element(c => PdfThemeHelper.SectionBox(c, "CLAUSES", _navy, col =>
+                        {
+                            col.Item().Text(contract.Clauses).FontSize(9).LineHeight(1.35f);
+                        }));
                     }
-                });
 
-                page.Footer().AlignCenter().Text(t =>
-                {
-                    t.Span("Document généré par SBMS — ");
-                    t.Span(DateTime.Now.ToString("dd/MM/yyyy HH:mm"));
+                    root.Item().PaddingTop(14).AlignCenter().Text(t =>
+                    {
+                        t.Span("Document généré par SBMS — ").FontSize(7).FontColor("#94A3B8");
+                        t.Span(DateTime.Now.ToString("dd/MM/yyyy HH:mm")).FontSize(7).FontColor("#94A3B8");
+                    });
                 });
             });
         }).GeneratePdf(path);

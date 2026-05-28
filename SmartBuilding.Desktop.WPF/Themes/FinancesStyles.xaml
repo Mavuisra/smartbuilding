@@ -33,8 +33,40 @@
     </Style>
     <Style x:Key="FinancesFilterCombo" TargetType="ComboBox" BasedOn="{StaticResource LocationsFilterCombo}"/>
     <Style x:Key="FinancesFilterSearch" TargetType="TextBox" BasedOn="{StaticResource LocationsFilterSearch}"/>
-    <Style x:Key="FinancesMainTabButton" TargetType="Button" BasedOn="{StaticResource LocationsMainTabButton}"/>
-    <Style x:Key="FinancesDataGrid" TargetType="DataGrid" BasedOn="{StaticResource LocationsDataGrid}"/>
+    <Style x:Key="FinancesMainTabButton" TargetType="Button" BasedOn="{StaticResource LocationsMainTabButton}">
+        <Setter Property="MinHeight" Value="40"/>
+        <Setter Property="Padding" Value="16,9"/>
+        <Setter Property="Margin" Value="0,0,6,0"/>
+        <Setter Property="Background" Value="#F8FAFC"/>
+        <Setter Property="BorderBrush" Value="#D1D5DB"/>
+        <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+    <Style x:Key="FinancesDataGrid" TargetType="DataGrid" BasedOn="{StaticResource LocationsDataGrid}">
+        <Setter Property="RowBackground" Value="#FFFFFF"/>
+        <Setter Property="AlternatingRowBackground" Value="#F8FAFC"/>
+        <Setter Property="GridLinesVisibility" Value="Horizontal"/>
+        <Setter Property="HorizontalGridLinesBrush" Value="#E2E8F0"/>
+        <Setter Property="HeadersVisibility" Value="Column"/>
+        <Setter Property="CanUserReorderColumns" Value="False"/>
+        <Setter Property="RowStyle">
+            <Setter.Value>
+                <Style TargetType="DataGridRow">
+                    <Setter Property="MinHeight" Value="34"/>
+                    <Setter Property="BorderBrush" Value="#E2E8F0"/>
+                    <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                    <Style.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Background" Value="#ECFDF5"/>
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter Property="Background" Value="#D1FAE5"/>
+                            <Setter Property="Foreground" Value="#065F46"/>
+                        </Trigger>
+                    </Style.Triggers>
+                </Style>
+            </Setter.Value>
+        </Setter>
+    </Style>
     <Style x:Key="FinancesAnalyticsCard" TargetType="Border" BasedOn="{StaticResource LocationsAnalyticsCard}"/>
     <Style x:Key="FinancesSidebarCard" TargetType="Border">
         <Setter Property="Background" Value="White"/>

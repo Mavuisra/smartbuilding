@@ -538,7 +538,7 @@
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
-                            <Button Grid.Column="0" Command="{Binding PreviousStepCommand}" Style="{StaticResource MaterialDesignOutlinedButton}" Padding="12,10" Margin="0,0,8,0"
+                            <Button Grid.Column="0" Command="{Binding PreviousStepCommand}" Style="{StaticResource LocationsToolbarButton}" Padding="14,10" Margin="0,0,8,0" MinWidth="150"
                                     IsEnabled="{Binding IsFirstStep, Converter={StaticResource InverseBoolConverter}}">
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                                     <materialDesign:PackIcon Kind="ArrowLeft" Width="14" Height="14" Margin="0,0,6,0"/>

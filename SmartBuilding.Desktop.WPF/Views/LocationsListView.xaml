@@ -64,11 +64,12 @@
         </Border>
 
         <!-- Onglets -->
-        <Border Grid.Row="1" Background="White" CornerRadius="14,14,0,0" BorderBrush="#E5EAF2" BorderThickness="1,1,1,0" Padding="12,8,12,0" Margin="0,0,0,0">
+        <Border Grid.Row="1" Background="White" CornerRadius="14,14,0,0" BorderBrush="#E5EAF2" BorderThickness="1,1,1,0" Padding="12,8,12,6" Margin="0,0,0,0" MinHeight="60">
+            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
             <ItemsControl ItemsSource="{Binding ListTabs}" AlternationCount="99">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
-                        <UniformGrid Rows="1" Columns="4"/>
+                        <StackPanel Orientation="Horizontal"/>
                     </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
@@ -89,6 +90,7 @@
                                             <Setter Property="Foreground" Value="#2D6A4F"/>
                                             <Setter Property="FontWeight" Value="SemiBold"/>
                                             <Setter Property="BorderBrush" Value="#2D6A4F"/>
+                                            <Setter Property="Background" Value="#E8F5EE"/>
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
@@ -97,6 +99,7 @@
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
+            </ScrollViewer>
         </Border>
 
         <!-- Tableaux (TabControl : un seul grille active → en-têtes stables entre onglets) -->

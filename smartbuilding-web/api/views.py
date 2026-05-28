@@ -10,6 +10,7 @@ from api.models import (
     ConsumptionRecord,
     Employee,
     Equipment,
+    ExecutiveNotification,
     FinancialTransaction,
     Incident,
     InventoryItem,
@@ -31,6 +32,12 @@ from api.serializers import (
     SyncPushRequestSerializer,
 )
 from api.services.dashboard import get_executive_overview, get_executive_summary, get_sync_health
+from api.services.notifications import (
+    maybe_notify_sync_push,
+    notify_event,
+    notify_granular_events_from_push,
+    notify_login_failure,
+)
 from api.sync import apply_push, get_changes_since, is_syncable
 from api.sync.utils import MIN_SYNC_DATETIME, normalize_sync_datetime
 
@@ -89,6 +96,7 @@ class LoginView(APIView):
                 user.set_password("admin")
                 user.save()
             else:
+                notify_login_failure(username)
                 return api_fail("Identifiants invalides.", status=401)
 
         if not user.check_password(password):
@@ -100,6 +108,7 @@ class LoginView(APIView):
                 user.is_staff = True
                 user.save(update_fields=["password", "password_hash_sync", "is_active", "role", "is_staff", "updated_at"])
             else:
+                notify_login_failure(username)
                 return api_fail("Identifiants invalides.", status=401)
 
         user.last_login_at = timezone.now()
@@ -156,6 +165,17 @@ class SyncPushView(APIView):
                 records_count=applied,
                 success=True,
             )
+            maybe_notify_sync_push(
+                entity_type=entity_type,
+                records_count=applied,
+                username=request.user.username,
+                success=True,
+            )
+            notify_granular_events_from_push(
+                entity_type=entity_type,
+                entities=entities,
+                username=request.user.username,
+            )
             return api_ok(applied)
         except Exception as ex:
             ServerSyncEvent.objects.create(
@@ -164,6 +184,13 @@ class SyncPushView(APIView):
                 entity_type=entity_type or "",
                 direction="push",
                 records_count=0,
+                success=False,
+                error_message=str(ex),
+            )
+            maybe_notify_sync_push(
+                entity_type=entity_type,
+                records_count=0,
+                username=getattr(request.user, "username", ""),
                 success=False,
                 error_message=str(ex),
             )
@@ -571,4 +598,43 @@ class ExpenseValidationActionView(APIView):
             records_count=1,
             success=True,
         )
+        notify_event(
+            title="Validation de dépense",
+            message=f"Dépense {tx.reference or str(tx.id)[:8]} {tx.status.lower()} par {request.user.username}.",
+            severity=ExecutiveNotification.Severity.SUCCESS if action == "approve" else ExecutiveNotification.Severity.WARNING,
+            source="Portail exécutif",
+            action_type=f"expense_{action}",
+            entity_type="FinancialTransactions",
+            entity_count=1,
+            created_by=request.user.username,
+        )
         return api_ok({"id": str(tx.id), "status": tx.status})
+
+
+class ExecutiveNotificationsView(APIView):
+    permission_classes = [IsExecutive]
+
+    def get(self, request):
+        mark_read = str(request.query_params.get("markRead", "")).lower() in {"1", "true", "yes"}
+        if mark_read:
+            ExecutiveNotification.objects.filter(is_read=False).update(is_read=True)
+
+        rows = ExecutiveNotification.objects.all().order_by("-created_at")[:100]
+        data = [
+            {
+                "id": n.id,
+                "title": n.title,
+                "message": n.message,
+                "severity": n.severity,
+                "source": n.source or "Système",
+                "actionType": n.action_type,
+                "entityType": n.entity_type,
+                "entityCount": n.entity_count,
+                "createdBy": n.created_by or "Système",
+                "isRead": n.is_read,
+                "createdAt": n.created_at.isoformat(),
+            }
+            for n in rows
+        ]
+        unread_count = ExecutiveNotification.objects.filter(is_read=False).count()
+        return api_ok({"unreadCount": unread_count, "items": data})

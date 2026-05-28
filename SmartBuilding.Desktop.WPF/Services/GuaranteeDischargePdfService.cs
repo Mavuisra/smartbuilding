@@ -11,9 +11,9 @@ namespace SmartBuilding.Desktop.WPF.Services;
 
 public class GuaranteeDischargePdfService
 {
-    private const string Border = "#CBD5E1";
-    private const string GrayBg = "#F8FAFC";
-    private const string NavyLight = "#E8EEF5";
+    private const string Border = PdfThemeHelper.Border;
+    private const string GrayBg = PdfThemeHelper.GrayBg;
+    private const string NavyLight = PdfThemeHelper.NavyLight;
 
     private string _navy = "#1B365D";
     private string _green = "#16A34A";
@@ -203,23 +203,10 @@ public class GuaranteeDischargePdfService
     }
 
     private void SectionBox(IContainer container, string title, Action<ColumnDescriptor> content)
-    {
-        container.Border(1).BorderColor(Border).Column(col =>
-        {
-            col.Item().Background(NavyLight).PaddingVertical(5).PaddingHorizontal(8)
-                .Text(title).Bold().FontSize(8).FontColor(_navy);
-            col.Item().Padding(10).Column(content);
-        });
-    }
+        => PdfThemeHelper.SectionBox(container, title, _navy, content);
 
     private static void InfoLine(ColumnDescriptor col, string label, string value)
-    {
-        col.Item().PaddingBottom(4).Text(t =>
-        {
-            t.Span($"{label} : ").FontSize(8).FontColor("#64748B");
-            t.Span(value).FontSize(9);
-        });
-    }
+        => PdfThemeHelper.InfoLine(col, label, value);
 
     private static string Display(string? value, string fallback = "—") =>
         string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();

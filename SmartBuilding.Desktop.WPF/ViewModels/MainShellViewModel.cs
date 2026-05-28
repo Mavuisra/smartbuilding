@@ -343,9 +343,7 @@ public partial class MainShellViewModel : BaseViewModel
 
         if (moduleId == "inventaire")
         {
-            CurrentViewModel = _inventoryViewModel;
-            await _inventoryViewModel.LoadCommand.ExecuteAsync(null);
-            await RefreshShellStatusAsync();
+            await ShowDashboardAsync();
             return;
         }
 

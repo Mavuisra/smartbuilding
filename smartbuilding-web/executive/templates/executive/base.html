@@ -5,12 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}SBMS — Portail PDG{% endblock %}</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
   <style>
     :root {
       --sb-bg: #f4fbf7;
       --sb-card: #ffffff;
-      --sb-primary: #2d6a4f;
-      --sb-primary-700: #1b3d3b;
+      --sb-primary: #027566;
+      --sb-primary-700: #027566;
       --sb-primary-soft: #dff5e8;
       --sb-black: #0f172a;
       --sb-text: #0f172a;
@@ -24,7 +25,7 @@
     }
     * { box-sizing: border-box; }
     body {
-      background: linear-gradient(180deg, #e9f8ef 0%, var(--sb-bg) 34%);
+      background: var(--sb-bg);
       color: var(--sb-text);
       min-height: 100vh;
       margin: 0;
@@ -40,7 +41,7 @@
       min-width: 0;
     }
     .navbar-sb {
-      background: linear-gradient(135deg, #0f172a 0%, #1b3d3b 52%, #2d6a4f 100%);
+      background: #027566;
       box-shadow: 0 8px 24px rgba(27, 61, 59, .25);
     }
     .sb-card {
@@ -87,7 +88,7 @@
     }
     .sb-sidebar {
       width: 250px;
-      background: linear-gradient(180deg, #0f172a 0%, #10231f 45%, #1b3d3b 100%);
+      background: #027566;
       color: #f8fafc;
       padding: 18px 14px;
       border-right: 1px solid rgba(255,255,255,.08);
@@ -107,7 +108,7 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      background: linear-gradient(135deg, #2d6a4f, #16a34a);
+      background: #027566;
       color: #fff;
       font-weight: 800;
     }
@@ -127,17 +128,17 @@
       font-size: .9rem;
       margin-bottom: 4px;
     }
-    .sb-nav-link:hover { background: rgba(45,106,79,.22); color: #fff; }
-    .sb-nav-link.active { background: rgba(22,163,74,.28); color: #fff; }
+    .sb-nav-link:hover { background: rgba(255,255,255,.18); color: #fff; }
+    .sb-nav-link.active { background: rgba(255,255,255,.28); color: #fff; }
     .text-info-emphasis { color: #dcfce7 !important; }
     .btn-primary,
     .btn-success {
-      --bs-btn-bg: #2d6a4f;
-      --bs-btn-border-color: #2d6a4f;
-      --bs-btn-hover-bg: #1b3d3b;
-      --bs-btn-hover-border-color: #1b3d3b;
-      --bs-btn-active-bg: #0f172a;
-      --bs-btn-active-border-color: #0f172a;
+      --bs-btn-bg: #027566;
+      --bs-btn-border-color: #027566;
+      --bs-btn-hover-bg: #027566;
+      --bs-btn-hover-border-color: #027566;
+      --bs-btn-active-bg: #027566;
+      --bs-btn-active-border-color: #027566;
       color: #fff;
       font-weight: 700;
     }

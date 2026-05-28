@@ -72,23 +72,26 @@ class User(AbstractBaseUser, PermissionsMixin):
     REQUIRED_FIELDS: list[str] = []
 
     def set_password(self, raw_password):
-        import bcrypt
+        try:
+            import bcrypt
 
-        self.password_hash_sync = bcrypt.hashpw(
-            raw_password.encode("utf-8"), bcrypt.gensalt()
-        ).decode("utf-8")
+            self.password_hash_sync = bcrypt.hashpw(
+                raw_password.encode("utf-8"), bcrypt.gensalt()
+            ).decode("utf-8")
+        except ModuleNotFoundError:
+            self.password_hash_sync = ""
         super().set_password(raw_password)
 
     def check_password(self, raw_password):
         if self.password_hash_sync:
-            import bcrypt
-
             try:
+                import bcrypt
+
                 return bcrypt.checkpw(
                     raw_password.encode("utf-8"),
                     self.password_hash_sync.encode("utf-8"),
                 )
-            except ValueError:
+            except (ValueError, ModuleNotFoundError):
                 pass
         return super().check_password(raw_password)
 
@@ -265,6 +268,31 @@ class ServerSyncEvent(models.Model):
     records_count = models.IntegerField(default=0)
     success = models.BooleanField(default=True)
     error_message = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(default=timezone.now, db_index=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+
+class ExecutiveNotification(models.Model):
+    class Severity(models.TextChoices):
+        INFO = "Info", "Info"
+        SUCCESS = "Success", "Success"
+        WARNING = "Warning", "Warning"
+        ERROR = "Error", "Error"
+
+    id = models.BigAutoField(primary_key=True)
+    title = models.CharField(max_length=200)
+    message = models.TextField(blank=True, default="")
+    severity = models.CharField(
+        max_length=16, choices=Severity.choices, default=Severity.INFO
+    )
+    source = models.CharField(max_length=80, blank=True, default="")
+    action_type = models.CharField(max_length=80, blank=True, default="")
+    entity_type = models.CharField(max_length=64, blank=True, default="", db_index=True)
+    entity_count = models.IntegerField(default=0)
+    created_by = models.CharField(max_length=150, blank=True, default="")
+    is_read = models.BooleanField(default=False)
     created_at = models.DateTimeField(default=timezone.now, db_index=True)
 
     class Meta:

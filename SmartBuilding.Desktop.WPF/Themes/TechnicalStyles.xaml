@@ -11,5 +11,13 @@
     <Style x:Key="TechnicalDataGrid" TargetType="DataGrid" BasedOn="{StaticResource FinancesDataGrid}"/>
     <Style x:Key="TechnicalAnalyticsCard" TargetType="Border" BasedOn="{StaticResource FinancesAnalyticsCard}"/>
     <Style x:Key="TechnicalCellText" TargetType="TextBlock" BasedOn="{StaticResource LocationsCellText}"/>
-    <Style x:Key="TechnicalSectionTabButton" TargetType="Button" BasedOn="{StaticResource FinancesMainTabButton}"/>
+    <Style x:Key="TechnicalSectionTabButton" TargetType="Button" BasedOn="{StaticResource FinancesMainTabButton}">
+        <Setter Property="MinHeight" Value="40"/>
+        <Setter Property="Padding" Value="18,10"/>
+        <Setter Property="Margin" Value="0,0,6,0"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Background" Value="#F8FAFC"/>
+        <Setter Property="BorderBrush" Value="#D1D5DB"/>
+        <Setter Property="BorderThickness" Value="1"/>
+    </Style>
 </ResourceDictionary>

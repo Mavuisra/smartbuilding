@@ -75,7 +75,24 @@ WSGI_APPLICATION = "smartbuilding_web.wsgi.application"
 
 
 def _resolve_database_url() -> str:
-    """Résout l'URL PostgreSQL (Render : variable sur le service WEB, pas seulement la base)."""
+    """
+    Résout la base selon le mode d'exécution :
+    - local  -> SQLite (par défaut)
+    - online -> PostgreSQL
+    Modes possibles via SBMS_DB_MODE: auto | sqlite | postgres
+    """
+    db_mode = os.getenv("SBMS_DB_MODE", "auto").strip().lower()
+    on_render = os.getenv("RENDER", "").lower() in ("1", "true", "yes")
+    # Important: en local, on force SQLite par défaut.
+    # PostgreSQL auto uniquement quand l'app tourne sur Render.
+    use_postgres = db_mode == "postgres" or (db_mode == "auto" and on_render)
+    if db_mode == "sqlite":
+        use_postgres = False
+
+    if not use_postgres:
+        return f"sqlite:///{BASE_DIR / 'db.sqlite3'}"
+
+    # Mode PostgreSQL (cloud / production)
     raw = (
         os.getenv("DATABASE_URL")
         or os.getenv("POSTGRES_URL")
@@ -94,8 +111,7 @@ def _resolve_database_url() -> str:
     if user and password and host and name:
         return f"postgresql://{user}:{password}@{host}:{port}/{name}"
 
-    on_render = os.getenv("RENDER", "").lower() in ("1", "true", "yes")
-    if on_render or os.getenv("SBMS_PRODUCTION", "").lower() in ("1", "true", "yes"):
+    if use_postgres:
         raise ImproperlyConfigured(
             "DATABASE_URL absente sur le service WEB Render. "
             "Dashboard Render → smartbuilding-web → Environment : collez l'URL interne "

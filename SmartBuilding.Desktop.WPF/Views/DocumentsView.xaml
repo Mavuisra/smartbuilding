@@ -407,20 +407,31 @@
                                             <Grid.RowDefinitions>
                                                 <RowDefinition Height="Auto"/>
                                                 <RowDefinition Height="*"/>
-                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="32"/>
                                             </Grid.RowDefinitions>
-                                            <DockPanel>
-                                                <Button DockPanel.Dock="Right" Style="{StaticResource MaterialDesignIconButton}" Width="24" Height="24"
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <materialDesign:PackIcon Kind="{Binding FileTypeIcon, Converter={StaticResource StringToPackIconKindConverter}}"
+                                                                         Width="34" Height="34" Foreground="#DC2626" HorizontalAlignment="Left"/>
+                                                <Border Grid.Column="1"
+                                                        Background="{Binding StatusBadgeBackground, Converter={StaticResource HexToBrushConverter}}"
+                                                        CornerRadius="5" Padding="6,2" Margin="8,4,0,0" HorizontalAlignment="Left" VerticalAlignment="Top">
+                                                    <TextBlock Text="{Binding TypeLabel}" FontSize="9" FontWeight="SemiBold"
+                                                               Foreground="{Binding StatusBadgeForeground, Converter={StaticResource HexToBrushConverter}}"/>
+                                                </Border>
+                                                <Button Grid.Column="2" Style="{StaticResource MaterialDesignIconButton}" Width="24" Height="24"
                                                         Command="{Binding DataContext.ToggleFavoriteCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                         CommandParameter="{Binding}">
                                                     <materialDesign:PackIcon Kind="Star" Foreground="#F59E0B"/>
                                                 </Button>
-                                                <materialDesign:PackIcon Kind="{Binding FileTypeIcon, Converter={StaticResource StringToPackIconKindConverter}}"
-                                                                         Width="40" Height="40" Foreground="#DC2626" HorizontalAlignment="Left"/>
-                                            </DockPanel>
+                                            </Grid>
                                             <StackPanel Grid.Row="1" Margin="0,8,0,0">
                                                 <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" FontSize="11"
-                                                           TextTrimming="CharacterEllipsis" TextWrapping="Wrap"/>
+                                                           TextTrimming="CharacterEllipsis" TextWrapping="Wrap" MaxHeight="32"/>
                                                 <TextBlock Text="{Binding SizeDisplay}" FontSize="10" Foreground="#94A3B8" Margin="0,2,0,0"/>
                                                 <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
                                                     <materialDesign:PackIcon Kind="{Binding CategoryIcon, Converter={StaticResource StringToPackIconKindConverter}}"
@@ -429,7 +440,7 @@
                                                 </StackPanel>
                                                 <TextBlock Text="{Binding DateDisplay}" FontSize="10" Foreground="#94A3B8" Margin="0,2,0,0"/>
                                             </StackPanel>
-                                            <WrapPanel Grid.Row="2" Margin="0,6,0,0">
+                                            <WrapPanel Grid.Row="2" Margin="0,6,0,0" VerticalAlignment="Bottom">
                                                 <ItemsControl ItemsSource="{Binding Tags}">
                                                     <ItemsControl.ItemsPanel>
                                                         <ItemsPanelTemplate>
@@ -457,15 +468,76 @@
                         <ListView ItemsSource="{Binding PagedDocuments}"
                                   Visibility="{Binding IsGridView, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}"
                                   SelectedItem="{Binding SelectedDocument}" BorderThickness="0">
+                            <ListView.ItemContainerStyle>
+                                <Style TargetType="ListViewItem">
+                                    <Setter Property="Padding" Value="6,4"/>
+                                    <Setter Property="Margin" Value="0,0,0,2"/>
+                                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                    <Setter Property="Background" Value="White"/>
+                                    <Setter Property="BorderBrush" Value="#E8EFED"/>
+                                    <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                                    <Style.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Background" Value="#F8FAFC"/>
+                                        </Trigger>
+                                        <Trigger Property="IsSelected" Value="True">
+                                            <Setter Property="Background" Value="#E8F5EE"/>
+                                            <Setter Property="BorderBrush" Value="#2D6A4F"/>
+                                            <Setter Property="BorderThickness" Value="1"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ListView.ItemContainerStyle>
                             <ListView.View>
                                 <GridView>
-                                    <GridViewColumn Header="Nom" Width="220" DisplayMemberBinding="{Binding FileName}"/>
-                                    <GridViewColumn Header="Type" Width="60" DisplayMemberBinding="{Binding FileType}"/>
+                                    <GridViewColumn Header="Nom" Width="240">
+                                        <GridViewColumn.CellTemplate>
+                                            <DataTemplate DataType="{x:Type models:DocumentListItem}">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <materialDesign:PackIcon Kind="{Binding FileTypeIcon, Converter={StaticResource StringToPackIconKindConverter}}"
+                                                                             Width="16" Height="16" Foreground="#DC2626" Margin="0,0,8,0"/>
+                                                    <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" FontSize="11"
+                                                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </GridViewColumn.CellTemplate>
+                                    </GridViewColumn>
+                                    <GridViewColumn Header="Type" Width="90">
+                                        <GridViewColumn.CellTemplate>
+                                            <DataTemplate DataType="{x:Type models:DocumentListItem}">
+                                                <Border Background="#F1F5F9" CornerRadius="5" Padding="6,2" HorizontalAlignment="Left">
+                                                    <TextBlock Text="{Binding FileType}" FontSize="10" FontWeight="SemiBold" Foreground="#334155"/>
+                                                </Border>
+                                            </DataTemplate>
+                                        </GridViewColumn.CellTemplate>
+                                    </GridViewColumn>
                                     <GridViewColumn Header="Taille" Width="80" DisplayMemberBinding="{Binding SizeDisplay}"/>
-                                    <GridViewColumn Header="Catégorie" Width="100" DisplayMemberBinding="{Binding CategoryLabel}"/>
+                                    <GridViewColumn Header="Catégorie" Width="130">
+                                        <GridViewColumn.CellTemplate>
+                                            <DataTemplate DataType="{x:Type models:DocumentListItem}">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <materialDesign:PackIcon Kind="{Binding CategoryIcon, Converter={StaticResource StringToPackIconKindConverter}}"
+                                                                             Width="14" Height="14"
+                                                                             Foreground="{Binding CategoryIconColor, Converter={StaticResource HexToBrushConverter}}"
+                                                                             Margin="0,0,6,0"/>
+                                                    <TextBlock Text="{Binding CategoryLabel}" FontSize="11" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </GridViewColumn.CellTemplate>
+                                    </GridViewColumn>
                                     <GridViewColumn Header="Bâtiment" Width="120" DisplayMemberBinding="{Binding Building}"/>
                                     <GridViewColumn Header="Date" Width="100" DisplayMemberBinding="{Binding DateDisplay}"/>
-                                    <GridViewColumn Header="Statut" Width="80" DisplayMemberBinding="{Binding Status}"/>
+                                    <GridViewColumn Header="Statut" Width="110">
+                                        <GridViewColumn.CellTemplate>
+                                            <DataTemplate DataType="{x:Type models:DocumentListItem}">
+                                                <Border Background="{Binding StatusBadgeBackground, Converter={StaticResource HexToBrushConverter}}"
+                                                        CornerRadius="5" Padding="6,2" HorizontalAlignment="Left">
+                                                    <TextBlock Text="{Binding Status}" FontSize="10" FontWeight="SemiBold"
+                                                               Foreground="{Binding StatusBadgeForeground, Converter={StaticResource HexToBrushConverter}}"/>
+                                                </Border>
+                                            </DataTemplate>
+                                        </GridViewColumn.CellTemplate>
+                                    </GridViewColumn>
                                 </GridView>
                             </ListView.View>
                         </ListView>
