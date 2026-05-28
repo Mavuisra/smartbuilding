@@ -49,7 +49,7 @@ public static class DependencyInjection
 
         services.AddHttpClient("SmartBuildingApi", client =>
         {
-            client.BaseAddress = new Uri(configuration["Api:BaseUrl"] ?? "https://localhost:7001/");
+            client.BaseAddress = new Uri(configuration["Api:BaseUrl"] ?? "https://smartbuilding-0kbk.onrender.com/");
             client.Timeout = TimeSpan.FromSeconds(30);
         });
 

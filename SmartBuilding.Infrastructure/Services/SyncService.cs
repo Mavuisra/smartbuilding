@@ -40,7 +40,7 @@ public class SyncService : ISyncService
     }
 
     public Task<bool> IsOnlineAsync(CancellationToken cancellationToken = default) =>
-        _network.CanReachApiAsync(_configuration["Api:BaseUrl"] ?? "https://localhost:7001", cancellationToken);
+        _network.CanReachApiAsync(_configuration["Api:BaseUrl"] ?? "https://smartbuilding-0kbk.onrender.com", cancellationToken);
 
     public async Task EnsureMetadataLoadedAsync(CancellationToken cancellationToken = default)
     {
