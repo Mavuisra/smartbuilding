@@ -35,7 +35,7 @@ public class ConsumptionsService
         var monthRecords = records.Where(r => r.PeriodEnd >= monthStart).ToList();
         var prevMonthRecords = records.Where(r => r.PeriodEnd >= prevMonthStart && r.PeriodEnd < monthStart).ToList();
 
-        var electricityQty = monthRecords.Where(r => r.Type == ConsumptionType.Electricite).Sum(r => r.Quantity);
+        var electricityCost = monthRecords.Where(r => r.Type == ConsumptionType.Electricite).Sum(r => r.Cost);
         var waterCost = monthRecords.Where(r => r.Type == ConsumptionType.Eau).Sum(r => r.Cost);
         var fuelCost = monthRecords.Where(r => r.Type is ConsumptionType.Carburant or ConsumptionType.GroupeElectrogene).Sum(r => r.Cost);
         var internetCost = monthRecords.Where(r => r.Type == ConsumptionType.Internet).Sum(r => r.Cost);
@@ -53,7 +53,7 @@ public class ConsumptionsService
             {
                 Label = m.ToString("MMM", Fr),
                 TotalCost = slice.Sum(r => r.Cost),
-                TotalQuantity = slice.Where(r => r.Type == ConsumptionType.Electricite).Sum(r => r.Quantity)
+                TotalQuantity = 0
             });
         }
 
@@ -101,7 +101,7 @@ public class ConsumptionsService
             RentCollectedTotal = cash.RentCollectedTotal,
             AvailableBalance = cash.AvailableBalance,
             TotalExpenses = cash.TotalExpenses,
-            ElectricityDisplay = $"{electricityQty:N0} kWh",
+            ElectricityDisplay = Fc(electricityCost),
             WaterBillDisplay = Fc(waterCost),
             FuelCostDisplay = Fc(fuelCost),
             InternetCostDisplay = Fc(internetCost),
@@ -126,17 +126,16 @@ public class ConsumptionsService
 
     public async Task<string> CreateRecordAsync(ConsumptionRecord record, CancellationToken cancellationToken = default)
     {
-        if (record.Quantity <= 0)
-            return "La valeur de consommation doit être positive.";
-        if (record.Cost < 0)
-            return "Le coût ne peut pas être négatif.";
+        if (record.Cost <= 0)
+            return "Le montant doit être supérieur à zéro.";
 
         record.Building = string.IsNullOrWhiteSpace(record.Building) ? "Tour SBMS" : record.Building.Trim();
         record.EquipmentSource = record.EquipmentSource?.Trim() ?? TypeLabel(record.Type);
         record.Responsible = string.IsNullOrWhiteSpace(record.Responsible) ? "Paul Ngoy" : record.Responsible.Trim();
         record.Status = string.IsNullOrWhiteSpace(record.Status) ? "Normal" : record.Status;
-        record.Unit = string.IsNullOrWhiteSpace(record.Unit) ? DefaultUnit(record.Type) : record.Unit;
-        record.Currency = string.IsNullOrWhiteSpace(record.Currency) ? MoneyFormatter.CurrencyCode : record.Currency;
+        record.Unit = "USD";
+        record.Currency = "USD";
+        record.Quantity = record.Cost;
         record.PeriodType = string.IsNullOrWhiteSpace(record.PeriodType) ? "Mensuel" : record.PeriodType;
         if (record.PeriodEnd == default)
             record.PeriodEnd = DateTime.Today;
@@ -188,7 +187,7 @@ public class ConsumptionsService
                 {
                     Label = new DateTime(g.Key.Year, g.Key.Month, 1).ToString("MMM yyyy", Fr),
                     CostDisplay = Fc(slice.Sum(x => x.Cost)),
-                    QuantityDisplay = $"{slice.Sum(x => x.Quantity):N1} {r.Unit}"
+                    QuantityDisplay = Fc(slice.Sum(x => x.Cost))
                 };
             })
             .ToList();
@@ -203,8 +202,8 @@ public class ConsumptionsService
             TypeLabel = typeLabel,
             TypeIconColor = TypeColor(r.Type),
             EquipmentSource = string.IsNullOrWhiteSpace(r.EquipmentSource) ? typeLabel : r.EquipmentSource,
-            QuantityDisplay = $"{r.Quantity:N2}",
-            Unit = r.Unit,
+            QuantityDisplay = Fc(r.Cost),
+            Unit = "USD",
             CostDisplay = Fc(r.Cost),
             VariationDisplay = $"{r.VariationPercent:+0.0;-0.0}%",
             VariationColor = varColor,
@@ -252,12 +251,12 @@ public class ConsumptionsService
             });
         }
 
-        if (fuelCost > 0 && monthRecords.Any(r => r.Type == ConsumptionType.Carburant && r.Quantity < 200))
+        if (fuelCost > 0 && monthRecords.Any(r => r.Type == ConsumptionType.Carburant && r.Cost < 200))
         {
             alerts.Add(new ConsumptionAlertItem
             {
                 Title = "Carburant faible",
-                Message = "Réserve diesel générateur sous le seuil recommandé",
+                Message = "Budget carburant générateur sous le seuil recommandé",
                 AccentColor = "#DC2626",
                 Background = "#FEE2E2"
             });
@@ -313,15 +312,6 @@ public class ConsumptionsService
         "Réseau technique" => ConsumptionType.ReseauTechnique,
         "Énergie" => ConsumptionType.Energie,
         _ => ConsumptionType.Electricite
-    };
-
-    private static string DefaultUnit(ConsumptionType type) => type switch
-    {
-        ConsumptionType.Eau => "m³",
-        ConsumptionType.Electricite or ConsumptionType.Eclairage or ConsumptionType.Climatisation or ConsumptionType.Energie => "kWh",
-        ConsumptionType.Carburant or ConsumptionType.GroupeElectrogene => "L",
-        ConsumptionType.Internet or ConsumptionType.ReseauTechnique => "GB",
-        _ => "kWh"
     };
 
     private static string TypeColor(ConsumptionType type) => type switch

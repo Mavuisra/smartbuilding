@@ -205,10 +205,14 @@ public partial class PersonnelViewModel
                 ParseDecimal(PayrollAdvancesText),
                 ParseDecimal(PayrollDeductionsText));
             PayrollNetPreview = MoneyFormatter.Format(calc.NetAmount);
+
+            var treasuryError = await _personnelService.ValidatePayrollAgainstTreasuryAsync(calc.NetAmount);
+            PayrollError = treasuryError;
         }
         catch
         {
             PayrollNetPreview = "—";
+            PayrollError = null;
         }
     }
 
@@ -227,6 +231,13 @@ public partial class PersonnelViewModel
                 ParseDecimal(PayrollPenaltiesText),
                 ParseDecimal(PayrollAdvancesText),
                 ParseDecimal(PayrollDeductionsText));
+
+            var treasuryError = await _personnelService.ValidatePayrollAgainstTreasuryAsync(calc.NetAmount);
+            if (!string.IsNullOrEmpty(treasuryError))
+            {
+                PayrollError = treasuryError;
+                return;
+            }
 
             var (error, payment) = await _personnelService.CreateSalaryPaymentAsync(
                 EditingEmployeeId, PayrollYear, PayrollMonth, calc, validate: false);

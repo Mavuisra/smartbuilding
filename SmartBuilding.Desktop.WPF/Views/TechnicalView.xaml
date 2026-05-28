@@ -234,13 +234,13 @@
                                 <TextBlock Text="Ajouter un équipement"/>
                             </StackPanel>
                         </Button>
-                        <Button Style="{StaticResource TechnicalToolbarButton}">
+                        <Button Command="{Binding OpenScheduleMaintenanceCommand}" Style="{StaticResource TechnicalToolbarButton}">
                             <StackPanel Orientation="Horizontal">
                                 <materialDesign:PackIcon Kind="CalendarPlus" Margin="0,0,6,0"/>
                                 <TextBlock Text="Planifier maintenance"/>
                             </StackPanel>
                         </Button>
-                        <Button Style="{StaticResource TechnicalToolbarButton}">
+                        <Button Command="{Binding OpenInterventionsHistoryCommand}" Style="{StaticResource TechnicalToolbarButton}">
                             <StackPanel Orientation="Horizontal">
                                 <materialDesign:PackIcon Kind="History" Margin="0,0,6,0"/>
                                 <TextBlock Text="Historique interventions"/>
@@ -252,10 +252,12 @@
                                 <TextBlock Text="Export Excel"/>
                             </StackPanel>
                         </Button>
-                        <Button Style="{StaticResource TechnicalToolbarButton}">
+                        <Button Command="{Binding ExportPdfCommand}" Style="{StaticResource TechnicalToolbarButton}"
+                                ToolTip="Exporter PDF">
                             <materialDesign:PackIcon Kind="FilePdfBox"/>
                         </Button>
-                        <Button Style="{StaticResource TechnicalToolbarButton}">
+                        <Button Command="{Binding PrintEquipmentCommand}" Style="{StaticResource TechnicalToolbarButton}"
+                                ToolTip="Imprimer la liste">
                             <materialDesign:PackIcon Kind="Printer"/>
                         </Button>
                         <Button Command="{Binding RefreshCommand}" Style="{StaticResource TechnicalToolbarButton}">
@@ -288,6 +290,12 @@
                             <DataGrid ItemsSource="{Binding Equipment}" SelectedItem="{Binding SelectedEquipment}"
                                       Style="{StaticResource TechnicalDataGrid}" materialDesign:DataGridAssist.CellPadding="8,4"
                                       MinHeight="220">
+                                <DataGrid.RowStyle>
+                                    <Style TargetType="DataGridRow" BasedOn="{StaticResource MaterialDesignDataGridRow}">
+                                        <Setter Property="Cursor" Value="Hand"/>
+                                        <EventSetter Event="MouseLeftButtonUp" Handler="EquipmentRow_MouseLeftButtonUp"/>
+                                    </Style>
+                                </DataGrid.RowStyle>
                                 <DataGrid.Columns>
                                     <DataGridTemplateColumn Header="ÉQUIPEMENT" Width="*">
                                         <DataGridTemplateColumn.CellTemplate>
@@ -430,7 +438,8 @@
                                 </StackPanel>
                             </ScrollViewer>
                             <Border Grid.Row="2" Padding="16,10,16,14" BorderBrush="#E8EFED" BorderThickness="0,1,0,0">
-                                <Button Style="{StaticResource SbmsLoginPrimaryButton}" HorizontalAlignment="Stretch" Padding="12,10">
+                                <Button Command="{Binding OpenEditEquipmentCommand}" Style="{StaticResource SbmsLoginPrimaryButton}"
+                                        HorizontalAlignment="Stretch" Padding="12,10">
                                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                                         <materialDesign:PackIcon Kind="PencilOutline" Margin="0,0,8,0"/>
                                         <TextBlock Text="Modifier les informations"/>
@@ -468,6 +477,106 @@
             <ContentControl Content="{Binding Incidents}" VerticalAlignment="Stretch" HorizontalAlignment="Stretch"
                             Visibility="{Binding SelectedSectionTab, Converter={StaticResource IntEqualsToVisibilityConverter}, ConverterParameter=1}"/>
         </Grid>
+
+        <!-- Planifier maintenance -->
+        <Border Grid.RowSpan="3" Background="#CC0F172A" Visibility="{Binding IsScheduleMaintenanceOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Border Background="White" CornerRadius="12" BorderBrush="#0F172A" BorderThickness="2"
+                    MaxWidth="560" VerticalAlignment="Center" HorizontalAlignment="Center" Padding="28" Margin="24">
+                <StackPanel>
+                    <TextBlock Text="Planifier une maintenance" FontSize="20" FontWeight="Bold" Foreground="#0F172A" Margin="0,0,0,4"/>
+                    <TextBlock Text="Intervention technique — enregistrement réel dans SBMS" FontSize="12" Foreground="#64748B" Margin="0,0,0,16"/>
+                    <TextBlock Text="Équipement *" FontSize="11" Foreground="#64748B" Margin="0,0,0,4"/>
+                    <ComboBox ItemsSource="{Binding ScheduleEquipmentChoices}" DisplayMemberPath="Name" SelectedValuePath="Id"
+                              SelectedValue="{Binding ScheduleEquipmentId}" Style="{StaticResource TechnicalFilterCombo}" Margin="0,0,0,10"/>
+                    <TextBlock Text="Date planifiée *" FontSize="11" Foreground="#64748B" Margin="0,0,0,4"/>
+                    <DatePicker SelectedDate="{Binding ScheduleDate}" Margin="0,0,0,10"/>
+                    <TextBlock Text="Type d'intervention" FontSize="11" Foreground="#64748B" Margin="0,0,0,4"/>
+                    <ComboBox ItemsSource="{Binding MaintenanceTypes}" SelectedItem="{Binding ScheduleMaintenanceType}"
+                              Style="{StaticResource TechnicalFilterCombo}" Margin="0,0,0,10"/>
+                    <TextBox materialDesign:HintAssist.Hint="Description / notes" Text="{Binding ScheduleDescription, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}" Margin="0,0,0,10"/>
+                    <TextBox materialDesign:HintAssist.Hint="Technicien responsable" Text="{Binding ScheduleTechnician, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}" Margin="0,0,0,10"/>
+                    <TextBlock Text="{Binding ScheduleError}" Foreground="#DC2626" FontSize="12" Margin="0,0,0,8"
+                               Visibility="{Binding ScheduleError, Converter={StaticResource NullToVisibilityConverter}}"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+                        <Button Content="Annuler" Command="{Binding CloseScheduleMaintenanceCommand}" Style="{StaticResource TechnicalToolbarButton}" Margin="0,0,8,0"/>
+                        <Button Content="Planifier" Command="{Binding SaveScheduleMaintenanceCommand}" Style="{StaticResource SbmsLoginPrimaryButton}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Border>
+
+        <!-- Historique interventions -->
+        <Border Grid.RowSpan="3" Background="#CC0F172A" Visibility="{Binding IsInterventionsHistoryOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Border Background="White" CornerRadius="12" BorderBrush="#0F172A" BorderThickness="2"
+                    MaxWidth="920" MaxHeight="640" VerticalAlignment="Center" HorizontalAlignment="Center" Padding="24" Margin="20">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <DockPanel Grid.Row="0" Margin="0,0,0,12">
+                        <Button DockPanel.Dock="Right" Command="{Binding CloseInterventionsHistoryCommand}" Style="{StaticResource MaterialDesignIconButton}">
+                            <materialDesign:PackIcon Kind="Close"/>
+                        </Button>
+                        <StackPanel>
+                            <TextBlock Text="Historique des interventions" FontSize="20" FontWeight="Bold" Foreground="#0F172A"/>
+                            <TextBlock Text="Maintenances planifiées et réalisées — clôture avec coût réel (soumis à la trésorerie)" FontSize="12" Foreground="#64748B"/>
+                        </StackPanel>
+                    </DockPanel>
+                    <DataGrid Grid.Row="1" ItemsSource="{Binding InterventionsHistory}" SelectedItem="{Binding SelectedHistoryRow}"
+                              Style="{StaticResource TechnicalDataGrid}" AutoGenerateColumns="False" MinHeight="280">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="DATE" Binding="{Binding DateDisplay}" Width="90"/>
+                            <DataGridTextColumn Header="CODE" Binding="{Binding EquipmentCode}" Width="100"/>
+                            <DataGridTextColumn Header="ÉQUIPEMENT" Binding="{Binding EquipmentName}" Width="*"/>
+                            <DataGridTextColumn Header="DESCRIPTION" Binding="{Binding Description}" Width="*"/>
+                            <DataGridTextColumn Header="TECHNICIEN" Binding="{Binding Technician}" Width="110"/>
+                            <DataGridTextColumn Header="COÛT" Binding="{Binding CostDisplay}" Width="90"/>
+                            <DataGridTemplateColumn Header="STATUT" Width="100">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Border CornerRadius="6" Padding="6,2" Background="{Binding StatusBadgeBackground}">
+                                            <TextBlock Text="{Binding StatusLabel}" Foreground="{Binding StatusBadgeForeground}" FontSize="10" FontWeight="SemiBold"/>
+                                        </Border>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                    <Border Grid.Row="2" Background="#F8FAFC" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,12,0,0">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Clôturer l'intervention sélectionnée — coût réel (USD) :" VerticalAlignment="Center" Margin="0,0,12,0" Foreground="#334155"/>
+                            <TextBox Width="120" Text="{Binding CompleteCostText, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource MaterialDesignOutlinedTextBox}"/>
+                            <Button Content="Marquer terminée" Command="{Binding CompleteSelectedInterventionCommand}" Style="{StaticResource SbmsLoginPrimaryButton}" Margin="12,0,0,0"/>
+                        </StackPanel>
+                    </Border>
+                    <TextBlock Grid.Row="3" Text="{Binding WorkflowError}" Foreground="#DC2626" Margin="0,8,0,0"
+                               Visibility="{Binding WorkflowError, Converter={StaticResource NullToVisibilityConverter}}"/>
+                </Grid>
+            </Border>
+        </Border>
+
+        <!-- Modifier équipement -->
+        <Border Grid.RowSpan="3" Background="#80000000" Visibility="{Binding IsEditEquipmentOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Border Background="White" CornerRadius="12" BorderBrush="#0F172A" BorderThickness="1" MaxWidth="440" VerticalAlignment="Center" HorizontalAlignment="Center" Padding="24">
+                <StackPanel>
+                    <TextBlock Text="Modifier l'équipement" FontSize="18" FontWeight="Bold" Foreground="#0F172A" Margin="0,0,0,12"/>
+                    <TextBox materialDesign:HintAssist.Hint="Nom *" Text="{Binding EditName, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
+                    <ComboBox ItemsSource="{Binding EquipmentCategories}" SelectedItem="{Binding EditCategory}" Style="{StaticResource TechnicalFilterCombo}" Margin="0,0,0,8"/>
+                    <TextBox materialDesign:HintAssist.Hint="Emplacement" Text="{Binding EditLocation, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
+                    <TextBox materialDesign:HintAssist.Hint="Marque" Text="{Binding EditBrand, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
+                    <TextBlock Text="{Binding EditError}" Foreground="#DC2626" FontSize="12"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+                        <Button Content="Annuler" Command="{Binding CloseEditEquipmentCommand}" Style="{StaticResource TechnicalToolbarButton}" Margin="0,0,8,0"/>
+                        <Button Content="Enregistrer" Command="{Binding SaveEditEquipmentCommand}" Style="{StaticResource SbmsLoginPrimaryButton}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Border>
 
         <!-- Modal ajout équipement -->
         <Border Grid.RowSpan="3" Background="#80000000" Visibility="{Binding IsAddFormOpen, Converter={StaticResource BoolToVisibilityConverter}}">

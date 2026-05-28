@@ -84,7 +84,8 @@ public partial class FinancesViewModel : BaseViewModel
     public ObservableCollection<string> TypeFilters { get; } = [AllTypes, "Revenu", "Dépense"];
     public ObservableCollection<string> CategoryFilters { get; } = [AllCategories];
     public ObservableCollection<string> SourceFilters { get; } = [AllSources];
-    public ObservableCollection<string> StatusFilters { get; } = [AllStatuses, "Payé", "En attente", "En retard"];
+    public ObservableCollection<string> StatusFilters { get; } =
+        [AllStatuses, "Payé", "En attente", "En retard", "En attente validation PDG"];
     public ObservableCollection<int> PageSizeOptions { get; } = [10, 20, 50];
     public ObservableCollection<string> MainTabs { get; } =
         ["Toutes", "Revenus", "Dépenses", "Loyers", "Factures", "Remboursements"];
@@ -215,14 +216,27 @@ public partial class FinancesViewModel : BaseViewModel
         IsBusy = true;
         try
         {
-            var error = await _financesService.CreateTransactionAsync(
-                IsRevenueForm ? TransactionType.Recette : TransactionType.Depense,
-                FormCategory,
-                FormDescription,
-                amount,
-                FormPaymentMethod,
-                string.Empty,
-                UserName);
+            string error;
+            if (IsRevenueForm)
+            {
+                error = await _financesService.CreateTransactionAsync(
+                    TransactionType.Recette,
+                    FormCategory,
+                    FormDescription,
+                    amount,
+                    FormPaymentMethod,
+                    string.Empty,
+                    UserName);
+            }
+            else
+            {
+                error = await _financesService.CreatePendingExpenseForPdgApprovalAsync(
+                    FormCategory,
+                    FormDescription,
+                    amount,
+                    string.Empty,
+                    UserName);
+            }
 
             if (!string.IsNullOrEmpty(error))
             {
@@ -231,7 +245,9 @@ public partial class FinancesViewModel : BaseViewModel
             }
 
             IsTransactionFormOpen = false;
-            StatusMessage = IsRevenueForm ? "Revenu enregistré." : "Dépense enregistrée.";
+            StatusMessage = IsRevenueForm
+                ? "Revenu enregistré."
+                : "Sortie de caisse soumise au PDG pour approbation.";
             await LoadAsync();
         }
         finally

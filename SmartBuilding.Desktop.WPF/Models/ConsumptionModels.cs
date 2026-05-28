@@ -8,7 +8,7 @@ public class ConsumptionPageData
     public decimal RentCollectedTotal { get; init; }
     public decimal AvailableBalance { get; init; }
     public decimal TotalExpenses { get; init; }
-    public string ElectricityDisplay { get; init; } = "0 kWh";
+    public string ElectricityDisplay { get; init; } = MoneyFormatter.ZeroDisplay;
     public string WaterBillDisplay { get; init; } = MoneyFormatter.ZeroDisplay;
     public string FuelCostDisplay { get; init; } = MoneyFormatter.ZeroDisplay;
     public string InternetCostDisplay { get; init; } = MoneyFormatter.ZeroDisplay;

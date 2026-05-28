@@ -44,11 +44,17 @@ public class FinancesService
             .Where(t => t.Type == TransactionType.Recette &&
                         IsGuaranteeCategory(t.Category))
             .Sum(t => t.Amount);
-        var expenses = monthTx.Where(t => t.Type == TransactionType.Depense).Sum(t => t.Amount);
+        var expenses = monthTx
+            .Where(t => t.Type == TransactionType.Depense &&
+                        t.Status != "En attente validation PDG")
+            .Sum(t => t.Amount);
         var prevRevenue = allRentPayments
             .Where(p => p.Year == prevMonthStart.Year && p.Month == prevMonthStart.Month)
             .Sum(p => p.AmountPaid);
-        var prevExpenses = prevMonthTx.Where(t => t.Type == TransactionType.Depense).Sum(t => t.Amount);
+        var prevExpenses = prevMonthTx
+            .Where(t => t.Type == TransactionType.Depense &&
+                        t.Status != "En attente validation PDG")
+            .Sum(t => t.Amount);
         var prevNet = prevRevenue - prevExpenses;
 
         var payments = await _db.RentPayments
@@ -69,9 +75,9 @@ public class FinancesService
 
         var cashPosition = await _financeLedger.GetCashPositionAsync(cancellationToken);
 
-        var pending = monthTx.Count(t => t.Status is "En attente" or "En retard");
+        var pending = monthTx.Count(t => t.Status is "En attente" or "En retard" or "En attente validation PDG");
         var pendingAmount = monthTx
-            .Where(t => t.Status is "En attente" or "En retard")
+            .Where(t => t.Status is "En attente" or "En retard" or "En attente validation PDG")
             .Sum(t => t.Amount);
 
         var maintenance = monthTx
@@ -185,6 +191,42 @@ public class FinancesService
         try
         {
             await _financeLedger.RecordExpenseAsync(
+                amount,
+                category,
+                description,
+                string.IsNullOrWhiteSpace(source) ? FinanceConstants.SourceFinances : source.Trim(),
+                string.IsNullOrWhiteSpace(recordedBy) ? FinanceConstants.RecordedByFinances : recordedBy,
+                relatedEntityId: null,
+                cancellationToken);
+            return string.Empty;
+        }
+        catch (InvalidOperationException ex)
+        {
+            return ex.Message;
+        }
+    }
+
+    public async Task<string> CreatePendingExpenseForPdgApprovalAsync(
+        string category,
+        string description,
+        decimal amount,
+        string source,
+        string recordedBy,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(category))
+            return "La catégorie est obligatoire.";
+        if (string.IsNullOrWhiteSpace(description))
+            return "La description est obligatoire.";
+        if (amount <= 0)
+            return "Le montant doit être supérieur à zéro.";
+
+        if (IsGuaranteeCategory(category))
+            return "Les cautions sont gérées dans Locations → Garanties.";
+
+        try
+        {
+            await _financeLedger.RecordExpensePendingPdgApprovalAsync(
                 amount,
                 category,
                 description,
@@ -380,6 +422,7 @@ public class FinancesService
     private static string StatusBg(string status) => status switch
     {
         "En attente" => "#FEF3C7",
+        "En attente validation PDG" => "#FEF3C7",
         "En retard" => "#FEE2E2",
         _ => "#DCFCE7"
     };
@@ -387,6 +430,7 @@ public class FinancesService
     private static string StatusFg(string status) => status switch
     {
         "En attente" => "#B45309",
+        "En attente validation PDG" => "#B45309",
         "En retard" => "#DC2626",
         _ => "#166534"
     };

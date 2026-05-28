@@ -1,0 +1,114 @@
+using System.Globalization;
+using System.IO;
+using QuestPDF.Fluent;
+using QuestPDF.Helpers;
+using QuestPDF.Infrastructure;
+using SmartBuilding.Desktop.WPF.Models;
+using BuildingInfoDefaults = SmartBuilding.Domain.Entities.Building.BuildingInfoDefaults;
+
+namespace SmartBuilding.Desktop.WPF.Services;
+
+public class TechnicalReportPdfService
+{
+    private const string Border = "#CBD5E1";
+    private const string NavyLight = "#E8EEF5";
+
+    private string _navy = "#1B365D";
+
+    static TechnicalReportPdfService()
+    {
+        QuestPDF.Settings.License = LicenseType.Community;
+    }
+
+    public string ExportEquipmentList(IEnumerable<TechnicalEquipmentItem> items, string title)
+    {
+        _navy = AppConfigurationService.Instance?.Current.PdfHeaderHex ?? "#1B365D";
+        var company = AppConfigurationService.Instance?.Current.CompanyName ?? BuildingInfoDefaults.CompanyName;
+        var culture = CultureInfo.GetCultureInfo("fr-FR");
+        var list = items.ToList();
+
+        var folder = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+            "SBMS", "Technique");
+        Directory.CreateDirectory(folder);
+
+        var path = Path.Combine(folder, $"equipements_{DateTime.Now:yyyyMMdd_HHmmss}.pdf");
+
+        Document.Create(container =>
+        {
+            container.Page(page =>
+            {
+                page.Size(PageSizes.A4.Landscape());
+                page.Margin(24);
+                page.DefaultTextStyle(x => x.FontSize(8).FontColor(_navy));
+
+                page.Content().Column(col =>
+                {
+                    col.Item().Row(row =>
+                    {
+                        row.RelativeItem().Column(left =>
+                        {
+                            left.Item().Text("SBMS").Bold().FontSize(18).FontColor(_navy);
+                            left.Item().Text(company).FontSize(8).FontColor("#64748B");
+                        });
+                        row.RelativeItem(2).AlignCenter().Text(title).Bold().FontSize(13).FontColor(_navy);
+                        row.RelativeItem().AlignRight().Text(DateTime.Now.ToString("dd/MM/yyyy HH:mm", culture))
+                            .FontSize(8).FontColor("#64748B");
+                    });
+
+                    col.Item().PaddingTop(12).Table(table =>
+                    {
+                        table.ColumnsDefinition(c =>
+                        {
+                            c.RelativeColumn(1.2f);
+                            c.RelativeColumn(2f);
+                            c.RelativeColumn(1.2f);
+                            c.RelativeColumn(1.5f);
+                            c.RelativeColumn(1f);
+                            c.RelativeColumn(1f);
+                            c.RelativeColumn(1f);
+                            c.RelativeColumn(1f);
+                        });
+
+                        void Header(string text)
+                        {
+                            table.Cell().Element(Th).Text(text).Bold().FontColor(Colors.White);
+                        }
+
+                        Header("Code");
+                        Header("Équipement");
+                        Header("Catégorie");
+                        Header("Emplacement");
+                        Header("Statut");
+                        Header("Dern. maint.");
+                        Header("Proch. maint.");
+                        Header("Coût");
+
+                        foreach (var e in list)
+                        {
+                            table.Cell().Element(Td).Text(e.Code);
+                            table.Cell().Element(Td).Text(e.Name);
+                            table.Cell().Element(Td).Text(e.Category);
+                            table.Cell().Element(Td).Text(e.Location);
+                            table.Cell().Element(Td).Text(e.StatusLabel);
+                            table.Cell().Element(Td).Text(e.LastMaintenanceDisplay);
+                            table.Cell().Element(Td).Text(e.NextMaintenanceDisplay);
+                            table.Cell().Element(Td).AlignRight().Text(e.MaintenanceCostDisplay);
+                        }
+                    });
+
+                    col.Item().PaddingTop(10).Text($"{list.Count} équipement(s) — rapport généré par SBMS Technique & Sécurité")
+                        .FontSize(7).FontColor("#94A3B8");
+                });
+            });
+        }).GeneratePdf(path);
+
+        return path;
+    }
+
+    private static IContainer Th(IContainer c) =>
+        c.Background("#1B365D").PaddingVertical(5).PaddingHorizontal(4);
+
+    private static IContainer Td(IContainer c) =>
+        c.BorderBottom(1).BorderColor(Border).PaddingVertical(4).PaddingHorizontal(4);
+}

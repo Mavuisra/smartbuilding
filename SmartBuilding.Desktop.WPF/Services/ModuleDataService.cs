@@ -123,10 +123,10 @@ public class ModuleDataService
             c.Type.ToString(),
             c.PeriodStart.ToString("dd/MM/yyyy"),
             c.PeriodEnd.ToString("dd/MM/yyyy"),
-            $"{c.Quantity:N2}",
             MoneyFormatter.Format(c.Cost),
-            c.Unit)).ToList();
-        return new(["Type", "Début", "Fin", "Quantité", "Coût", "Unité"], rows, rows.Count);
+            c.PeriodType,
+            c.EquipmentSource)).ToList();
+        return new(["Type", "Début", "Fin", "Montant", "Période", "Poste"], rows, rows.Count);
     }
 
     private async Task<ModuleDataResult> LoadIncidentsAsync(CancellationToken ct)

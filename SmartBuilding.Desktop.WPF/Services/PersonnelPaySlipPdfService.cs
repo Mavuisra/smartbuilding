@@ -1,88 +1,75 @@
+using System.Globalization;
 using System.IO;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
+using SmartBuilding.Domain.Entities.Building;
 using SmartBuilding.Domain.Entities.Personnel;
+using BuildingInfoDefaults = SmartBuilding.Domain.Entities.Building.BuildingInfoDefaults;
 
 namespace SmartBuilding.Desktop.WPF.Services;
 
+/// <summary>Fiche de paie — même charte graphique que le récapitulatif de contrat (structure RH).</summary>
 public class PersonnelPaySlipPdfService
 {
+    private const string Border = "#CBD5E1";
+    private const string GrayBg = "#F8FAFC";
+    private const string NavyLight = "#E8EEF5";
+
+    private string _navy = "#1B365D";
+    private string _green = "#16A34A";
+
     static PersonnelPaySlipPdfService()
     {
         QuestPDF.Settings.License = LicenseType.Community;
     }
 
-    public string Generate(SalaryPayment payment, Employee employee, string companyName = "SBMS Smart Building")
+    public string Generate(SalaryPayment payment, Employee employee, string? companyName = null)
     {
+        var building = AppConfigurationService.Instance is not null
+            ? AppConfigurationService.Instance.ToBuildingInfo()
+            : null;
+
+        var culture = CultureInfo.GetCultureInfo("fr-FR");
+        var company = string.IsNullOrWhiteSpace(companyName)
+            ? building?.Name ?? BuildingInfoDefaults.CompanyName
+            : companyName.Trim();
+
+        _navy = AppConfigurationService.Instance?.Current.PdfHeaderHex ?? "#1B365D";
+        _green = AppConfigurationService.Instance?.Current.PdfAccentHex ?? "#16A34A";
+
+        var net = payment.NetAmount > 0 ? payment.NetAmount : payment.Amount;
+        var gross = payment.GrossSalary > 0 ? payment.GrossSalary : payment.Amount;
+        var periodLabel = $"{culture.DateTimeFormat.GetMonthName(payment.Month)} {payment.Year}";
+
         var folder = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "SBMS", "PaySlips");
         Directory.CreateDirectory(folder);
 
-        var fileName = $"FichePaie_{employee.Matricule}_{payment.Year}{payment.Month:00}_{payment.Id:N}.pdf";
-        var path = Path.Combine(folder, fileName);
+        var path = Path.Combine(folder, $"FichePaie_{employee.Matricule}_{payment.Year}{payment.Month:00}_{payment.Id:N}.pdf");
 
         Document.Create(container =>
         {
             container.Page(page =>
             {
                 page.Size(PageSizes.A4);
-                page.Margin(40);
-                page.DefaultTextStyle(x => x.FontSize(10));
+                page.Margin(28);
+                page.DefaultTextStyle(x => x.FontSize(9).FontColor(_navy));
 
-                page.Header().Column(col =>
+                page.Content().Column(root =>
                 {
-                    col.Item().Text(companyName).Bold().FontSize(18).FontColor(Colors.Green.Darken3);
-                    col.Item().Text("Fiche de paie").FontSize(14).SemiBold();
-                    col.Item().Text($"Période : {payment.Month:00}/{payment.Year}").FontColor(Colors.Grey.Darken1);
-                });
-
-                page.Content().PaddingVertical(20).Column(col =>
-                {
-                    col.Item().Text("Informations employé").Bold().FontSize(12);
-                    col.Item().Text($"{employee.FirstName} {employee.LastName}");
-                    col.Item().Text($"Matricule : {employee.Matricule}");
-                    col.Item().Text($"Poste : {employee.Position} — {employee.Department}");
-                    col.Item().PaddingTop(12).LineHorizontal(1).LineColor(Colors.Grey.Lighten2);
-
-                    col.Item().PaddingTop(12).Table(table =>
+                    root.Item().Element(c => DrawHeader(c, company, employee, payment, periodLabel, culture));
+                    root.Item().PaddingTop(14).Row(row =>
                     {
-                        table.ColumnsDefinition(c =>
-                        {
-                            c.RelativeColumn(2);
-                            c.RelativeColumn(1);
-                        });
-
-                        void Row(string label, decimal value, bool bold = false)
-                        {
-                            table.Cell().Element(CellStyle).Text(label);
-                            var cell = table.Cell().Element(CellStyle).AlignRight().Text(MoneyFormatter.Format(value));
-                            if (bold) cell.Bold();
-                        }
-
-                        Row("Salaire brut", payment.GrossSalary > 0 ? payment.GrossSalary : payment.Amount);
-                        Row("Primes", payment.Bonuses);
-                        Row("Heures supplémentaires", payment.OvertimePay);
-                        Row("Pénalités", -payment.Penalties);
-                        Row("Avances", -payment.Advances);
-                        Row("Retenues / déductions", -payment.Deductions);
-                        table.Cell().Element(CellStyle).Text("Net à payer").Bold();
-                        table.Cell().Element(CellStyle).AlignRight()
-                            .Text(MoneyFormatter.Format(payment.NetAmount > 0 ? payment.NetAmount : payment.Amount)).Bold();
+                        row.RelativeItem().Element(c => DrawEmployeeBlock(c, employee, building));
+                        row.ConstantItem(12);
+                        row.RelativeItem().Element(c => DrawContractBlock(c, employee));
                     });
-
-                    col.Item().PaddingTop(24).Text($"Statut : {payment.Status}");
-                    col.Item().Text($"Date de paiement : {payment.PaymentDate:dd/MM/yyyy}");
-                    if (!string.IsNullOrWhiteSpace(payment.Notes))
-                        col.Item().Text($"Notes : {payment.Notes}");
-                });
-
-                page.Footer().AlignCenter().Text(text =>
-                {
-                    text.Span("Document généré par SBMS — ");
-                    text.Span(DateTime.Now.ToString("dd/MM/yyyy HH:mm"));
-                    text.Span(" — Signature RH : _________________________");
+                    root.Item().PaddingTop(12).Element(c => DrawPayrollBlock(c, payment, gross, net));
+                    root.Item().PaddingTop(12).Element(c => DrawPeriodBlock(c, payment, periodLabel, culture));
+                    root.Item().PaddingTop(14).Element(c => DrawSummaryBlock(c, employee, net, periodLabel));
+                    root.Item().PaddingTop(16).Element(c => DrawFooterSignature(c, company, culture));
                 });
             });
         }).GeneratePdf(path);
@@ -90,6 +77,196 @@ public class PersonnelPaySlipPdfService
         return path;
     }
 
-    private static IContainer CellStyle(IContainer container) =>
-        container.BorderBottom(1).BorderColor(Colors.Grey.Lighten3).PaddingVertical(6);
+    private void DrawHeader(
+        IContainer container,
+        string companyName,
+        Employee employee,
+        SalaryPayment payment,
+        string periodLabel,
+        CultureInfo culture)
+    {
+        container.Column(col =>
+        {
+            col.Item().Row(row =>
+            {
+                row.RelativeItem().Column(left =>
+                {
+                    left.Item().Text("SBMS").Bold().FontSize(20).FontColor(_navy);
+                    left.Item().Text(companyName).FontSize(8).FontColor("#64748B");
+                });
+                row.RelativeItem(2).AlignCenter().Column(center =>
+                {
+                    center.Item().Text("FICHE DE PAIE").Bold().FontSize(14).FontColor(_navy);
+                    center.Item().Text("Document officiel — ressources humaines").FontSize(8).FontColor("#64748B");
+                    center.Item().PaddingTop(6).AlignCenter()
+                        .Background(_navy).PaddingVertical(4).PaddingHorizontal(10)
+                        .Text(periodLabel.ToUpper(culture)).FontSize(9).Bold().FontColor(Colors.White);
+                });
+                row.RelativeItem().AlignRight().Background(GrayBg).Border(1).BorderColor(Border).Padding(8).Column(meta =>
+                {
+                    MetaLine(meta, "Matricule", employee.Matricule);
+                    MetaLine(meta, "Statut paie", payment.Status);
+                    MetaLine(meta, "Émis le", DateTime.Now.ToString("dd/MM/yyyy HH:mm", culture));
+                });
+            });
+        });
+    }
+
+    private static void MetaLine(ColumnDescriptor col, string label, string value)
+    {
+        col.Item().Text(t =>
+        {
+            t.Span($"{label} : ").FontSize(7).FontColor("#64748B");
+            t.Span(value).FontSize(8).SemiBold();
+        });
+    }
+
+    private void DrawEmployeeBlock(IContainer container, Employee employee, BuildingInfo? building)
+    {
+        SectionBox(container, "EMPLOYÉ", col =>
+        {
+            col.Item().Text($"{employee.FirstName} {employee.LastName}".Trim()).Bold().FontSize(11);
+            InfoLine(col, "Matricule", employee.Matricule);
+            InfoLine(col, "Poste", Display(employee.Position));
+            InfoLine(col, "Département", Display(employee.Department));
+            InfoLine(col, "Téléphone", Display(employee.Phone));
+            InfoLine(col, "Email", Display(employee.Email));
+            if (building is not null)
+                InfoLine(col, "Siège", $"{Display(building.Address)}, {Display(building.City)}");
+        });
+    }
+
+    private static void DrawContractBlock(IContainer container, Employee employee)
+    {
+        SectionBox(container, "CONTRAT DE TRAVAIL", col =>
+        {
+            InfoLine(col, "Type", Display(employee.ContractType));
+            InfoLine(col, "Date d'embauche", employee.HireDate.ToString("dd/MM/yyyy"));
+            InfoLine(col, "Fin de contrat", employee.ContractEndDate?.ToString("dd/MM/yyyy") ?? "—");
+            InfoLine(col, "Salaire de base", MoneyFormatter.Format(employee.BaseSalary));
+            InfoLine(col, "Statut", employee.IsActive ? "Actif" : "Inactif");
+        });
+    }
+
+    private void DrawPayrollBlock(IContainer container, SalaryPayment payment, decimal gross, decimal net)
+    {
+        SectionBox(container, "RÉMUNÉRATION", col =>
+        {
+            col.Item().Table(table =>
+            {
+                table.ColumnsDefinition(c =>
+                {
+                    c.RelativeColumn(2);
+                    c.RelativeColumn(3);
+                });
+
+                void Row(string label, decimal value, bool highlight = false)
+                {
+                    table.Cell().Element(Td).Text(label).FontSize(9).FontColor("#64748B");
+                    var cell = table.Cell().Element(Td).AlignRight();
+                    var text = MoneyFormatter.Format(Math.Abs(value));
+                    if (value < 0)
+                        text = $"- {text}";
+                    if (highlight)
+                        cell.Text(text).Bold().FontSize(10).FontColor(_navy);
+                    else
+                        cell.Text(text).FontSize(9);
+                }
+
+                Row("Salaire brut", gross);
+                Row("Primes", payment.Bonuses);
+                Row("Heures supplémentaires", payment.OvertimePay);
+                Row("Pénalités", -payment.Penalties);
+                Row("Avances sur salaire", -payment.Advances);
+                Row("Retenues / déductions", -payment.Deductions);
+                Row("NET À PAYER", net, highlight: true);
+            });
+        });
+    }
+
+    private static void DrawPeriodBlock(IContainer container, SalaryPayment payment, string periodLabel, CultureInfo culture)
+    {
+        SectionBox(container, "PÉRIODE & PAIEMENT", col =>
+        {
+            col.Item().Row(row =>
+            {
+                row.RelativeItem().Column(c =>
+                {
+                    InfoLine(c, "Période", periodLabel);
+                    InfoLine(c, "Date de paiement", payment.PaymentDate.ToString("dd MMMM yyyy", culture));
+                });
+                row.RelativeItem().Column(c =>
+                {
+                    InfoLine(c, "Heures sup. (qty)", payment.OvertimePay > 0 ? "Voir bulletin" : "—");
+                    InfoLine(c, "Notes", Display(payment.Notes));
+                });
+            });
+        });
+    }
+
+    private void DrawSummaryBlock(IContainer container, Employee employee, decimal net, string periodLabel)
+    {
+        var summary =
+            $"La présente fiche de paie atteste les éléments de rémunération dus à {employee.FirstName} {employee.LastName} " +
+            $"({employee.Matricule}) pour la période {periodLabel}. Le net à payer s'élève à {MoneyFormatter.Format(net)} " +
+            $"({FrenchAmountInWords.ToDollarsUs(net)}). Ce document est établi conformément aux données enregistrées dans SBMS " +
+            "et peut être imprimé, archivé ou remis à l'employé.";
+
+        container.Background(NavyLight).Border(1).BorderColor(Border).Padding(12).Column(col =>
+        {
+            col.Item().Text("RÉSUMÉ").Bold().FontSize(9).FontColor(_navy);
+            col.Item().PaddingTop(6).Text(summary).FontSize(9).LineHeight(1.4f).FontColor("#334155");
+        });
+    }
+
+    private void DrawFooterSignature(IContainer container, string companyName, CultureInfo culture)
+    {
+        container.Column(col =>
+        {
+            col.Item().Row(row =>
+            {
+                row.RelativeItem().Element(c => SectionBox(c, "SIGNATURE EMPLOYÉ", inner =>
+                {
+                    inner.Item().Height(45).Text("_________________________");
+                    inner.Item().Text("L'employé").FontSize(8);
+                }));
+                row.ConstantItem(16);
+                row.RelativeItem().Element(c => SectionBox(c, "SIGNATURE RH / EMPLOYEUR", inner =>
+                {
+                    inner.Item().Height(45).Text("_________________________");
+                    inner.Item().Text(companyName).FontSize(8).SemiBold();
+                }));
+            });
+            col.Item().PaddingTop(10).AlignCenter().Text(t =>
+            {
+                t.DefaultTextStyle(x => x.FontSize(7).FontColor("#94A3B8"));
+                t.Span("Document généré automatiquement par SBMS — ");
+                t.Span(DateTime.Now.ToString("dd/MM/yyyy HH:mm", culture)).Italic();
+            });
+        });
+    }
+
+    private static void SectionBox(IContainer container, string title, Action<ColumnDescriptor> content)
+    {
+        container.Border(1).BorderColor(Border).Column(col =>
+        {
+            col.Item().Background(NavyLight).PaddingVertical(4).PaddingHorizontal(6)
+                .Text(title).Bold().FontSize(7).FontColor("#1B365D");
+            col.Item().Padding(8).Column(content);
+        });
+    }
+
+    private static void InfoLine(ColumnDescriptor col, string label, string value)
+    {
+        col.Item().PaddingBottom(3).Text(t =>
+        {
+            t.Span($"{label} : ").FontSize(7).FontColor("#64748B");
+            t.Span(value).FontSize(8);
+        });
+    }
+
+    private static IContainer Td(IContainer c) => c.BorderBottom(1).BorderColor(Border).PaddingVertical(5).PaddingHorizontal(4);
+
+    private static string Display(string? value, string fallback = "—") =>
+        string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
 }

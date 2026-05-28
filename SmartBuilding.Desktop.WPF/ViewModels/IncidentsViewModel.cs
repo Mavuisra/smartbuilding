@@ -79,6 +79,8 @@ public partial class IncidentsViewModel : BaseViewModel
     public ObservableCollection<IncidentAlertItem> Alerts { get; } = [];
     public ObservableCollection<SecurityMonitorItem> Monitoring { get; } = [];
     public ObservableCollection<IncidentInsightLine> Insights { get; } = [];
+    public ObservableCollection<IncidentEquipmentOption> EquipmentOptions { get; } = [];
+    public ObservableCollection<IncidentTechnicianOption> TechnicianOptions { get; } = [];
     public ObservableCollection<string> TypeFilters { get; } = [AllTypes];
     public ObservableCollection<string> SeverityFilters { get; } = [AllSeverities, "Faible", "Moyen", "Élevé", "Critique"];
     public ObservableCollection<string> FormSeverityOptions { get; } = ["Faible", "Moyen", "Élevé", "Critique"];
@@ -138,6 +140,10 @@ public partial class IncidentsViewModel : BaseViewModel
 
             Monitoring.Clear();
             foreach (var m in data.Monitoring) Monitoring.Add(m);
+            EquipmentOptions.Clear();
+            foreach (var e in data.EquipmentOptions) EquipmentOptions.Add(e);
+            TechnicianOptions.Clear();
+            foreach (var t in data.TechnicianOptions) TechnicianOptions.Add(t);
 
             Insights.Clear();
             foreach (var i in data.Insights) Insights.Add(i);
@@ -157,7 +163,13 @@ public partial class IncidentsViewModel : BaseViewModel
             UpdateSyncStatus();
             CurrentPage = 1;
             ApplyFilters();
-            if (SelectedIncident is null || !_allIncidents.Any(i => i.Id == SelectedIncident.Id))
+            if (SelectedIncident is not null)
+            {
+                var selectedId = SelectedIncident.Id;
+                SelectedIncident = _allIncidents.FirstOrDefault(i => i.Id == selectedId)
+                    ?? Incidents.FirstOrDefault(i => i.Id == selectedId);
+            }
+            else
                 SelectedIncident = Incidents.FirstOrDefault();
         }
         finally { IsBusy = false; }
@@ -212,9 +224,6 @@ public partial class IncidentsViewModel : BaseViewModel
     }
 
     [RelayCommand] private async Task RefreshAsync() => await LoadAsync();
-
-    [RelayCommand]
-    private void ExportCsv() => StatusMessage = $"Export : {IncidentsExportService.ExportCsv(_allIncidents)}";
 
     [RelayCommand]
     private async Task SyncAsync()

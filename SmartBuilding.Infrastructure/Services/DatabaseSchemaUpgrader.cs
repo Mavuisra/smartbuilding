@@ -42,6 +42,9 @@ public static class DatabaseSchemaUpgrader
             await EnsureColumnAsync(connection, "FinancialTransactions", "PaymentMethod", "TEXT NOT NULL DEFAULT 'Virement'", cancellationToken);
             await EnsureColumnAsync(connection, "FinancialTransactions", "Status", "TEXT NOT NULL DEFAULT 'Payé'", cancellationToken);
             await EnsureColumnAsync(connection, "FinancialTransactions", "RecordedBy", "TEXT NOT NULL DEFAULT ''", cancellationToken);
+            await EnsureColumnAsync(connection, "FinancialTransactions", "RequiresPdgApproval", "INTEGER NOT NULL DEFAULT 0", cancellationToken);
+            await EnsureColumnAsync(connection, "FinancialTransactions", "ApprovedAt", "TEXT NULL", cancellationToken);
+            await EnsureColumnAsync(connection, "FinancialTransactions", "ApprovedBy", "TEXT NULL", cancellationToken);
 
             await EnsureColumnAsync(connection, "Equipment", "Brand", "TEXT NOT NULL DEFAULT ''", cancellationToken);
             await EnsureColumnAsync(connection, "Equipment", "Model", "TEXT NOT NULL DEFAULT ''", cancellationToken);

@@ -165,6 +165,9 @@ public partial class PersonnelService
         };
     }
 
+    public Task<string?> ValidatePayrollAgainstTreasuryAsync(decimal netAmount, CancellationToken cancellationToken = default) =>
+        _financeLedger.ValidateExpenseAsync(netAmount, cancellationToken);
+
     public async Task<(string Error, SalaryPayment? Payment)> CreateSalaryPaymentAsync(
         Guid employeeId,
         int year,
@@ -173,6 +176,13 @@ public partial class PersonnelService
         bool validate = false,
         CancellationToken cancellationToken = default)
     {
+        if (calc.NetAmount <= 0)
+            return ("Le net à payer doit être supérieur à zéro.", null);
+
+        var treasuryError = await _financeLedger.ValidateExpenseAsync(calc.NetAmount, cancellationToken);
+        if (treasuryError is not null)
+            return (treasuryError, null);
+
         var exists = await _db.SalaryPayments.AnyAsync(
             s => s.EmployeeId == employeeId && s.Year == year && s.Month == month,
             cancellationToken);

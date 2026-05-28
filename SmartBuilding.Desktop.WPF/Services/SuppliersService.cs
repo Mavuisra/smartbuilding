@@ -1,5 +1,6 @@
 using System.Globalization;
 using Microsoft.EntityFrameworkCore;
+using SmartBuilding.Domain.Entities.Finance;
 using SmartBuilding.Domain.Entities.Suppliers;
 using SmartBuilding.Desktop.WPF.Models;
 using SmartBuilding.Infrastructure.Persistence;
@@ -122,6 +123,122 @@ public class SuppliersService
         supplier.IsSynced = false;
 
         _db.Suppliers.Add(supplier);
+        await _db.SaveChangesAsync(cancellationToken);
+        return string.Empty;
+    }
+
+    public async Task<string> CreateContractAsync(SupplierContract contract, CancellationToken cancellationToken = default)
+    {
+        if (contract.SupplierId == Guid.Empty)
+            return "Sélectionnez un fournisseur.";
+        if (string.IsNullOrWhiteSpace(contract.Description))
+            return "La description du contrat est obligatoire.";
+        if (contract.StartDate == default || contract.EndDate == default || contract.EndDate < contract.StartDate)
+            return "Les dates du contrat sont invalides.";
+        if (contract.TotalValue <= 0)
+            return "Le montant du contrat doit être supérieur à zéro.";
+
+        var supplier = await _db.Suppliers.FirstOrDefaultAsync(s => s.Id == contract.SupplierId, cancellationToken);
+        if (supplier is null)
+            return "Fournisseur introuvable.";
+
+        if (string.IsNullOrWhiteSpace(contract.ContractNumber))
+            contract.ContractNumber = $"CTR-FRN-{DateTime.Today:yyyyMM}-{(await _db.SupplierContracts.CountAsync(cancellationToken) + 1):D3}";
+
+        contract.ContractNumber = contract.ContractNumber.Trim();
+        contract.Description = contract.Description.Trim();
+        contract.Status = string.IsNullOrWhiteSpace(contract.Status) ? "Actif" : contract.Status.Trim();
+        contract.Building = string.IsNullOrWhiteSpace(contract.Building) ? supplier.Building : contract.Building.Trim();
+        contract.IsSynced = false;
+
+        _db.SupplierContracts.Add(contract);
+        await _db.SaveChangesAsync(cancellationToken);
+        return string.Empty;
+    }
+
+    public async Task<string> CreateInvoiceAsync(
+        SupplierPayment payment,
+        string recordedBy,
+        CancellationToken cancellationToken = default)
+    {
+        if (payment.SupplierId == Guid.Empty)
+            return "Sélectionnez un fournisseur.";
+        if (payment.Amount <= 0)
+            return "Le montant de la facture doit être supérieur à zéro.";
+
+        var supplier = await _db.Suppliers.FirstOrDefaultAsync(s => s.Id == payment.SupplierId, cancellationToken);
+        if (supplier is null)
+            return "Fournisseur introuvable.";
+
+        payment.PaymentDate = payment.PaymentDate == default ? DateTime.Today : payment.PaymentDate;
+        payment.Description = string.IsNullOrWhiteSpace(payment.Description) ? "Facture fournisseur" : payment.Description.Trim();
+        payment.Category = string.IsNullOrWhiteSpace(payment.Category) ? supplier.Category : payment.Category.Trim();
+        payment.InvoiceReference = string.IsNullOrWhiteSpace(payment.InvoiceReference)
+            ? $"FAC-{DateTime.Today:yyyyMM}-{(await _db.SupplierPayments.CountAsync(cancellationToken) + 1):D4}"
+            : payment.InvoiceReference.Trim();
+        payment.IsSynced = false;
+
+        _db.SupplierPayments.Add(payment);
+
+        if (payment.IsPaid)
+        {
+            try
+            {
+                await _financeLedger.RecordExpensePendingPdgApprovalAsync(
+                    payment.Amount,
+                    payment.Category,
+                    $"Facture fournisseur {payment.InvoiceReference} — {supplier.Name}",
+                    FinanceConstants.SourceFinances,
+                    string.IsNullOrWhiteSpace(recordedBy) ? "SBMS — Fournisseurs" : recordedBy,
+                    payment.Id,
+                    cancellationToken);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return ex.Message;
+            }
+        }
+
+        await _db.SaveChangesAsync(cancellationToken);
+        return string.Empty;
+    }
+
+    public async Task<string> PlanInterventionAsync(
+        Guid supplierId,
+        DateTime date,
+        string description,
+        decimal estimatedAmount,
+        string recordedBy,
+        CancellationToken cancellationToken = default)
+    {
+        if (supplierId == Guid.Empty)
+            return "Sélectionnez un fournisseur.";
+        if (date == default)
+            return "La date d'intervention est obligatoire.";
+        if (string.IsNullOrWhiteSpace(description))
+            return "La description de l'intervention est obligatoire.";
+        if (estimatedAmount <= 0)
+            return "Le montant estimé doit être supérieur à zéro.";
+
+        var supplier = await _db.Suppliers.FirstOrDefaultAsync(s => s.Id == supplierId, cancellationToken);
+        if (supplier is null)
+            return "Fournisseur introuvable.";
+
+        var payment = new SupplierPayment
+        {
+            SupplierId = supplierId,
+            Amount = estimatedAmount,
+            PaymentDate = date.Date,
+            DueDate = date.Date,
+            InvoiceReference = $"INT-{DateTime.Today:yyyyMM}-{(await _db.SupplierPayments.CountAsync(cancellationToken) + 1):D4}",
+            Notes = "Intervention planifiée",
+            Description = description.Trim(),
+            Category = supplier.Category,
+            IsPaid = false,
+            IsSynced = false
+        };
+
+        _db.SupplierPayments.Add(payment);
         await _db.SaveChangesAsync(cancellationToken);
         return string.Empty;
     }

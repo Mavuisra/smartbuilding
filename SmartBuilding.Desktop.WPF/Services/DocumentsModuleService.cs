@@ -537,7 +537,7 @@ public class DocumentsModuleService
         var items = await _db.ConsumptionRecords.ToListAsync(ct);
         return items.Select(c =>
         {
-            var body = $"Consommation {c.Type} — {c.PeriodStart:MMMM yyyy}\n{c.Quantity:N2} {c.Unit}";
+            var body = $"Consommation {c.Type} — {c.PeriodStart:MMMM yyyy}\nMontant: {MoneyFormatter.Format(c.Cost)}";
             return new RawDocument
             {
                 Id = c.Id,
@@ -550,7 +550,7 @@ public class DocumentsModuleService
                 AddedBy = "Énergie",
                 Building = string.IsNullOrWhiteSpace(c.Building) ? "—" : c.Building,
                 Status = "Validé",
-                SizeBytes = EstimateSize(body, c.Quantity.ToString("F2")),
+                SizeBytes = EstimateSize(body, c.Cost.ToString("F2")),
                 IsShared = c.IsSynced,
                 Tags = BuildTags("RAPPORT"),
                 PreviewTitle = "RAPPORT DE CONSOMMATION",

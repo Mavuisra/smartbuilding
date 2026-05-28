@@ -179,19 +179,19 @@
                                 <TextBlock Text="Ajouter fournisseur"/>
                             </StackPanel>
                         </Button>
-                        <Button Style="{StaticResource SuppliersToolbarButton}">
+                        <Button Command="{Binding OpenContractFormCommand}" Style="{StaticResource SuppliersToolbarButton}">
                             <StackPanel Orientation="Horizontal">
                                 <materialDesign:PackIcon Kind="FileDocumentEdit" Margin="0,0,6,0"/>
                                 <TextBlock Text="Nouveau contrat"/>
                             </StackPanel>
                         </Button>
-                        <Button Style="{StaticResource SuppliersToolbarButton}">
+                        <Button Command="{Binding OpenInvoiceFormCommand}" Style="{StaticResource SuppliersToolbarButton}">
                             <StackPanel Orientation="Horizontal">
                                 <materialDesign:PackIcon Kind="Receipt" Margin="0,0,6,0"/>
                                 <TextBlock Text="Nouvelle facture"/>
                             </StackPanel>
                         </Button>
-                        <Button Style="{StaticResource SuppliersToolbarButton}">
+                        <Button Command="{Binding OpenInterventionFormCommand}" Style="{StaticResource SuppliersToolbarButton}">
                             <StackPanel Orientation="Horizontal">
                                 <materialDesign:PackIcon Kind="CalendarPlus" Margin="0,0,6,0"/>
                                 <TextBlock Text="Planifier intervention"/>
@@ -481,6 +481,89 @@
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                         <Button Content="Annuler" Command="{Binding CloseAddFormCommand}" Style="{StaticResource SuppliersToolbarButton}" Margin="0,0,8,0"/>
                         <Button Content="Enregistrer" Command="{Binding SaveSupplierCommand}" Style="{StaticResource SuppliersPrimaryButton}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Border>
+
+        <!-- Modal contrat -->
+        <Border Grid.RowSpan="2" Background="#80000000" Visibility="{Binding IsContractFormOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Border Background="White" CornerRadius="12" Padding="24" MaxWidth="560" VerticalAlignment="Center" HorizontalAlignment="Center">
+                <StackPanel>
+                    <TextBlock Text="Nouveau contrat fournisseur" FontSize="18" FontWeight="Bold" Foreground="#1B3D3B" Margin="0,0,0,16"/>
+                    <TextBlock Text="Fournisseur *" FontSize="11" Foreground="#64748B" Margin="0,0,0,4"/>
+                    <ComboBox ItemsSource="{Binding SupplierChoices}" DisplayMemberPath="Name" SelectedValuePath="Id"
+                              SelectedValue="{Binding ContractSupplierId}" Style="{StaticResource SuppliersFilterCombo}" Margin="0,0,0,8"/>
+                    <Grid Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
+                        <TextBox Grid.Column="0" Margin="0,0,8,0" materialDesign:HintAssist.Hint="N° contrat (auto si vide)" Text="{Binding ContractNumber, UpdateSourceTrigger=PropertyChanged}"/>
+                        <ComboBox Grid.Column="1" ItemsSource="{Binding ContractStatuses}" SelectedItem="{Binding ContractStatus}" Style="{StaticResource SuppliersFilterCombo}"/>
+                    </Grid>
+                    <Grid Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
+                        <DatePicker Grid.Column="0" Margin="0,0,8,0" SelectedDate="{Binding ContractStartDate}"/>
+                        <DatePicker Grid.Column="1" SelectedDate="{Binding ContractEndDate}"/>
+                    </Grid>
+                    <TextBox materialDesign:HintAssist.Hint="Bâtiment concerné" Text="{Binding ContractBuilding, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
+                    <TextBox materialDesign:HintAssist.Hint="Description contrat *" Text="{Binding ContractDescription, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
+                    <TextBox materialDesign:HintAssist.Hint="Montant total (USD) *" Text="{Binding ContractAmountText, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
+                    <TextBlock Text="{Binding ContractError}" Foreground="#DC2626" FontSize="12" Margin="0,0,0,8"
+                               Visibility="{Binding ContractError, Converter={StaticResource NullToVisibilityConverter}}"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Content="Annuler" Command="{Binding CloseContractFormCommand}" Style="{StaticResource SuppliersToolbarButton}" Margin="0,0,8,0"/>
+                        <Button Content="Enregistrer" Command="{Binding SaveContractCommand}" Style="{StaticResource SbmsLoginPrimaryButton}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Border>
+
+        <!-- Modal facture -->
+        <Border Grid.RowSpan="2" Background="#80000000" Visibility="{Binding IsInvoiceFormOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Border Background="White" CornerRadius="12" Padding="24" MaxWidth="560" VerticalAlignment="Center" HorizontalAlignment="Center">
+                <StackPanel>
+                    <TextBlock Text="Nouvelle facture fournisseur" FontSize="18" FontWeight="Bold" Foreground="#1B3D3B" Margin="0,0,0,16"/>
+                    <TextBlock Text="Fournisseur *" FontSize="11" Foreground="#64748B" Margin="0,0,0,4"/>
+                    <ComboBox ItemsSource="{Binding SupplierChoices}" DisplayMemberPath="Name" SelectedValuePath="Id"
+                              SelectedValue="{Binding InvoiceSupplierId}" Style="{StaticResource SuppliersFilterCombo}" Margin="0,0,0,8"/>
+                    <Grid Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
+                        <DatePicker Grid.Column="0" Margin="0,0,8,0" SelectedDate="{Binding InvoiceDate}"/>
+                        <DatePicker Grid.Column="1" SelectedDate="{Binding InvoiceDueDate}"/>
+                    </Grid>
+                    <Grid Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
+                        <TextBox Grid.Column="0" Margin="0,0,8,0" materialDesign:HintAssist.Hint="Réf facture (auto si vide)" Text="{Binding InvoiceReference, UpdateSourceTrigger=PropertyChanged}"/>
+                        <TextBox Grid.Column="1" materialDesign:HintAssist.Hint="Catégorie" Text="{Binding InvoiceCategory, UpdateSourceTrigger=PropertyChanged}"/>
+                    </Grid>
+                    <TextBox materialDesign:HintAssist.Hint="Description facture *" Text="{Binding InvoiceDescription, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
+                    <TextBox materialDesign:HintAssist.Hint="Montant facture (USD) *" Text="{Binding InvoiceAmountText, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
+                    <CheckBox Content="Facture déjà payée (soumettre validation PDG)" IsChecked="{Binding InvoiceIsPaid}" Margin="0,0,0,8"/>
+                    <TextBlock Text="{Binding InvoiceError}" Foreground="#DC2626" FontSize="12" Margin="0,0,0,8"
+                               Visibility="{Binding InvoiceError, Converter={StaticResource NullToVisibilityConverter}}"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Content="Annuler" Command="{Binding CloseInvoiceFormCommand}" Style="{StaticResource SuppliersToolbarButton}" Margin="0,0,8,0"/>
+                        <Button Content="Enregistrer" Command="{Binding SaveInvoiceCommand}" Style="{StaticResource SbmsLoginPrimaryButton}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Border>
+
+        <!-- Modal intervention -->
+        <Border Grid.RowSpan="2" Background="#80000000" Visibility="{Binding IsInterventionFormOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Border Background="White" CornerRadius="12" Padding="24" MaxWidth="520" VerticalAlignment="Center" HorizontalAlignment="Center">
+                <StackPanel>
+                    <TextBlock Text="Planifier intervention fournisseur" FontSize="18" FontWeight="Bold" Foreground="#1B3D3B" Margin="0,0,0,16"/>
+                    <TextBlock Text="Fournisseur *" FontSize="11" Foreground="#64748B" Margin="0,0,0,4"/>
+                    <ComboBox ItemsSource="{Binding SupplierChoices}" DisplayMemberPath="Name" SelectedValuePath="Id"
+                              SelectedValue="{Binding InterventionSupplierId}" Style="{StaticResource SuppliersFilterCombo}" Margin="0,0,0,8"/>
+                    <DatePicker SelectedDate="{Binding InterventionDate}" Margin="0,0,0,8"/>
+                    <TextBox materialDesign:HintAssist.Hint="Description intervention *" Text="{Binding InterventionDescription, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
+                    <TextBox materialDesign:HintAssist.Hint="Budget estimé (USD) *" Text="{Binding InterventionAmountText, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
+                    <TextBlock Text="{Binding InterventionError}" Foreground="#DC2626" FontSize="12" Margin="0,0,0,8"
+                               Visibility="{Binding InterventionError, Converter={StaticResource NullToVisibilityConverter}}"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Content="Annuler" Command="{Binding CloseInterventionFormCommand}" Style="{StaticResource SuppliersToolbarButton}" Margin="0,0,8,0"/>
+                        <Button Content="Planifier" Command="{Binding SaveInterventionCommand}" Style="{StaticResource SbmsLoginPrimaryButton}"/>
                     </StackPanel>
                 </StackPanel>
             </Border>

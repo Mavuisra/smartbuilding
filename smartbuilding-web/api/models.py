@@ -170,6 +170,9 @@ class FinancialTransaction(BaseEntity):
     payment_method = models.CharField(max_length=80, blank=True, default="")
     status = models.CharField(max_length=50, blank=True, default="Payé")
     recorded_by = models.CharField(max_length=120, blank=True, default="")
+    requires_pdg_approval = models.BooleanField(default=False)
+    approved_at = models.DateTimeField(null=True, blank=True)
+    approved_by = models.CharField(max_length=120, blank=True, default="")
 
 
 class Employee(BaseEntity):

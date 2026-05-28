@@ -16,15 +16,13 @@ public static class ConsumptionsExportService
         var path = Path.Combine(folder, $"consommations_{DateTime.Now:yyyyMMdd_HHmmss}.csv");
 
         var sb = new StringBuilder();
-        sb.AppendLine("Date;Type;Équipement;Quantité;Unité;Coût;Variation;Responsable;Statut;Bâtiment");
+        sb.AppendLine("Date;Type;Poste;Montant;Variation;Responsable;Statut;Bâtiment");
         foreach (var i in items)
         {
             sb.AppendLine(string.Join(';',
                 i.DateDisplay,
                 i.TypeLabel,
                 i.EquipmentSource,
-                i.QuantityDisplay,
-                i.Unit,
                 i.CostDisplay,
                 i.VariationDisplay,
                 i.Responsible,

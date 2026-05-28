@@ -1,5 +1,6 @@
 using System.Globalization;
 using Microsoft.EntityFrameworkCore;
+using SmartBuilding.Domain.Entities.Finance;
 using SmartBuilding.Domain.Entities.Technical;
 using SmartBuilding.Domain.Enums;
 using SmartBuilding.Desktop.WPF.Models;
@@ -124,6 +125,156 @@ public class TechnicalService
         equipment.IsSynced = false;
 
         _db.Equipment.Add(equipment);
+        await _db.SaveChangesAsync(cancellationToken);
+        return string.Empty;
+    }
+
+    public async Task<string> UpdateEquipmentAsync(Equipment equipment, CancellationToken cancellationToken = default)
+    {
+        var entity = await _db.Equipment.FirstOrDefaultAsync(e => e.Id == equipment.Id, cancellationToken);
+        if (entity is null)
+            return "Équipement introuvable.";
+
+        if (string.IsNullOrWhiteSpace(equipment.Name))
+            return "Le nom est obligatoire.";
+
+        entity.Name = equipment.Name.Trim();
+        entity.Category = string.IsNullOrWhiteSpace(equipment.Category) ? "Autre" : equipment.Category.Trim();
+        entity.Location = equipment.Location.Trim();
+        entity.Brand = equipment.Brand.Trim();
+        entity.Model = equipment.Model.Trim();
+        entity.SerialNumber = equipment.SerialNumber.Trim();
+        entity.PowerSpec = equipment.PowerSpec.Trim();
+        entity.VoltageSpec = equipment.VoltageSpec.Trim();
+        entity.FrequencySpec = equipment.FrequencySpec.Trim();
+        entity.FuelType = equipment.FuelType.Trim();
+        entity.OperatingHours = equipment.OperatingHours.Trim();
+        entity.MarkUpdated();
+        await _db.SaveChangesAsync(cancellationToken);
+        return string.Empty;
+    }
+
+    public async Task<string> ScheduleMaintenanceAsync(
+        Guid equipmentId,
+        DateTime scheduledDate,
+        string maintenanceType,
+        string description,
+        string technician,
+        CancellationToken cancellationToken = default)
+    {
+        var equipment = await _db.Equipment.FirstOrDefaultAsync(e => e.Id == equipmentId, cancellationToken);
+        if (equipment is null)
+            return "Équipement introuvable.";
+
+        if (scheduledDate.Date < DateTime.Today)
+            return "La date planifiée ne peut pas être dans le passé.";
+
+        var label = string.IsNullOrWhiteSpace(maintenanceType) ? "Maintenance préventive" : maintenanceType.Trim();
+        var desc = string.IsNullOrWhiteSpace(description)
+            ? label
+            : $"{label} — {description.Trim()}";
+
+        var record = new MaintenanceRecord
+        {
+            EquipmentId = equipmentId,
+            ScheduledDate = scheduledDate.Date,
+            Description = desc,
+            Technician = string.IsNullOrWhiteSpace(technician) ? "—" : technician.Trim(),
+            Cost = 0,
+            IsSynced = false
+        };
+
+        _db.MaintenanceRecords.Add(record);
+        equipment.NextMaintenanceDate = scheduledDate.Date;
+        if (equipment.Status == EquipmentStatus.Operationnel && scheduledDate.Date <= DateTime.Today.AddDays(2))
+            equipment.Status = EquipmentStatus.Maintenance;
+        equipment.MarkUpdated();
+
+        await _db.SaveChangesAsync(cancellationToken);
+        return string.Empty;
+    }
+
+    public async Task<IReadOnlyList<TechnicalInterventionHistoryRow>> GetInterventionsHistoryAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var rows = await _db.MaintenanceRecords
+            .Include(m => m.Equipment)
+            .OrderByDescending(m => m.ScheduledDate)
+            .Take(500)
+            .ToListAsync(cancellationToken);
+
+        return rows.Select(m =>
+        {
+            var planned = !m.CompletedDate.HasValue;
+            var (bg, fg) = planned ? ("#FFEDD5", "#EA580C") : ("#DCFCE7", "#166534");
+            return new TechnicalInterventionHistoryRow
+            {
+                MaintenanceId = m.Id,
+                EquipmentId = m.EquipmentId,
+                EquipmentCode = m.Equipment?.Code ?? "—",
+                EquipmentName = m.Equipment?.Name ?? "—",
+                DateDisplay = (m.CompletedDate ?? m.ScheduledDate).ToString("dd/MM/yyyy"),
+                Description = m.Description,
+                Technician = m.Technician ?? "—",
+                CostDisplay = m.Cost > 0 ? Fc(m.Cost) : planned ? "À définir" : "—",
+                StatusLabel = planned ? "Planifiée" : "Terminée",
+                StatusBadgeBackground = bg,
+                StatusBadgeForeground = fg,
+                IsPlanned = planned
+            };
+        }).ToList();
+    }
+
+    public async Task<string> CompleteMaintenanceAsync(
+        Guid maintenanceId,
+        decimal actualCost,
+        string recordedBy,
+        CancellationToken cancellationToken = default)
+    {
+        var record = await _db.MaintenanceRecords
+            .Include(m => m.Equipment)
+            .FirstOrDefaultAsync(m => m.Id == maintenanceId, cancellationToken);
+        if (record is null)
+            return "Intervention introuvable.";
+        if (record.CompletedDate.HasValue)
+            return "Cette intervention est déjà clôturée.";
+
+        if (actualCost < 0)
+            return "Le coût ne peut pas être négatif.";
+
+        if (actualCost > 0)
+        {
+            try
+            {
+                await _financeLedger.RecordExpenseAsync(
+                    actualCost,
+                    FinanceConstants.CategoryMaintenance,
+                    $"Maintenance {record.Equipment?.Code} — {record.Description}",
+                    FinanceConstants.SourceTechnique,
+                    string.IsNullOrWhiteSpace(recordedBy) ? FinanceConstants.RecordedByTechnique : recordedBy,
+                    record.Id,
+                    cancellationToken);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return ex.Message;
+            }
+        }
+
+        var today = DateTime.Today;
+        record.CompletedDate = today;
+        record.Cost = actualCost;
+        record.MarkUpdated();
+
+        if (record.Equipment is not null)
+        {
+            record.Equipment.LastMaintenanceDate = today;
+            record.Equipment.NextMaintenanceDate = today.AddMonths(3);
+            if (record.Equipment.Status == EquipmentStatus.Maintenance)
+                record.Equipment.Status = EquipmentStatus.Operationnel;
+            record.Equipment.MarkUpdated();
+        }
+
         await _db.SaveChangesAsync(cancellationToken);
         return string.Empty;
     }

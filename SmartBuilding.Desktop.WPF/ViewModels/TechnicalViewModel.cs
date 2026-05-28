@@ -153,7 +153,13 @@ public partial class TechnicalViewModel : BaseViewModel
             BuildCharts(data);
             CurrentPage = 1;
             ApplyFilters();
-            if (SelectedEquipment is null || !_allEquipment.Any(e => e.Id == SelectedEquipment.Id))
+            if (SelectedEquipment is not null)
+            {
+                var selectedId = SelectedEquipment.Id;
+                SelectedEquipment = _allEquipment.FirstOrDefault(e => e.Id == selectedId)
+                    ?? Equipment.FirstOrDefault(e => e.Id == selectedId);
+            }
+            else
                 SelectedEquipment = Equipment.FirstOrDefault();
 
             UpdateSyncStatus();
@@ -236,13 +242,6 @@ public partial class TechnicalViewModel : BaseViewModel
 
     [RelayCommand]
     private async Task RefreshAsync() => await LoadAsync();
-
-    [RelayCommand]
-    private void ExportCsv()
-    {
-        var path = TechnicalExportService.ExportCsv(_allEquipment);
-        StatusMessage = $"Export : {path}";
-    }
 
     [RelayCommand]
     private async Task SyncAsync()

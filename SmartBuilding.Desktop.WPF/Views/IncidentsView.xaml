@@ -204,25 +204,25 @@
                                 <TextBlock Text="Signaler incident"/>
                             </StackPanel>
                         </Button>
-                        <Button Style="{StaticResource IncidentsToolbarButton}">
+                        <Button Command="{Binding OpenInterventionFormCommand}" Style="{StaticResource IncidentsToolbarButton}">
                             <StackPanel Orientation="Horizontal">
                                 <materialDesign:PackIcon Kind="Wrench" Margin="0,0,6,0"/>
                                 <TextBlock Text="Nouvelle intervention"/>
                             </StackPanel>
                         </Button>
-                        <Button Style="{StaticResource IncidentsToolbarButton}">
+                        <Button Command="{Binding OpenSecurityAlertFormCommand}" Style="{StaticResource IncidentsToolbarButton}">
                             <StackPanel Orientation="Horizontal">
                                 <materialDesign:PackIcon Kind="BellRing" Margin="0,0,6,0"/>
                                 <TextBlock Text="Alerte sécurité"/>
                             </StackPanel>
                         </Button>
-                        <Button Style="{StaticResource IncidentsToolbarButton}">
+                        <Button Command="{Binding OpenHistoryCommand}" Style="{StaticResource IncidentsToolbarButton}">
                             <StackPanel Orientation="Horizontal">
                                 <materialDesign:PackIcon Kind="History" Margin="0,0,6,0"/>
                                 <TextBlock Text="Historique incidents"/>
                             </StackPanel>
                         </Button>
-                        <Button Style="{StaticResource IncidentsToolbarButton}">
+                        <Button Command="{Binding ExportPdfCommand}" Style="{StaticResource IncidentsToolbarButton}" ToolTip="Exporter PDF">
                             <materialDesign:PackIcon Kind="FilePdfBox"/>
                         </Button>
                         <Button Command="{Binding ExportCsvCommand}" Style="{StaticResource IncidentsToolbarButton}">
@@ -290,6 +290,12 @@
 
                                 <DataGrid ItemsSource="{Binding Incidents}" SelectedItem="{Binding SelectedIncident}"
                                           Style="{StaticResource IncidentsDataGrid}" materialDesign:DataGridAssist.CellPadding="8,4" MinHeight="200">
+                                    <DataGrid.RowStyle>
+                                        <Style TargetType="DataGridRow" BasedOn="{StaticResource MaterialDesignDataGridRow}">
+                                            <Setter Property="Cursor" Value="Hand"/>
+                                            <EventSetter Event="MouseLeftButtonUp" Handler="IncidentRow_MouseLeftButtonUp"/>
+                                        </Style>
+                                    </DataGrid.RowStyle>
                                     <DataGrid.Columns>
                                         <DataGridTextColumn Header="ID" Binding="{Binding Code}" Width="90"/>
                                         <DataGridTextColumn Header="DATE" Binding="{Binding DateDisplay}" Width="110"/>
@@ -320,11 +326,10 @@
                                             <DataGridTemplateColumn.CellTemplate>
                                                 <DataTemplate>
                                                     <StackPanel Orientation="Horizontal">
-                                                        <Button Style="{StaticResource MaterialDesignIconButton}">
+                                                        <Button Command="{Binding DataContext.OpenIncidentDetailCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                CommandParameter="{Binding}"
+                                                                Style="{StaticResource MaterialDesignIconButton}" ToolTip="Voir le détail">
                                                             <materialDesign:PackIcon Kind="EyeOutline"/>
-                                                        </Button>
-                                                        <Button Style="{StaticResource MaterialDesignIconButton}">
-                                                            <materialDesign:PackIcon Kind="DotsVertical"/>
                                                         </Button>
                                                     </StackPanel>
                                                 </DataTemplate>
@@ -525,8 +530,8 @@
                                 </ScrollViewer>
                                 <Border Grid.Row="2" Padding="14,10,14,12" BorderBrush="#E8EFED" BorderThickness="0,1,0,0">
                                     <UniformGrid Columns="2">
-                                        <Button Style="{StaticResource IncidentsToolbarButton}" Margin="0,0,4,0" Content="Modifier"/>
-                                        <Button Style="{StaticResource IncidentsPrimaryButton}" Margin="4,0,0,0" Content="Résoudre"/>
+                                        <Button Command="{Binding OpenEditIncidentCommand}" Style="{StaticResource IncidentsToolbarButton}" Margin="0,0,4,0" Content="Modifier"/>
+                                        <Button Command="{Binding OpenResolveFormCommand}" Style="{StaticResource SbmsLoginPrimaryButton}" Margin="4,0,0,0" Content="Résoudre"/>
                                     </UniformGrid>
                                 </Border>
                             </Grid>
@@ -536,22 +541,178 @@
             </Grid>
         </ScrollViewer>
 
-        <Border Grid.RowSpan="2" Background="#80000000" Visibility="{Binding IsAddFormOpen, Converter={StaticResource BoolToVisibilityConverter}}">
-            <Border Background="White" CornerRadius="12" Padding="24" MaxWidth="460" VerticalAlignment="Center" HorizontalAlignment="Center">
+        <!-- Signaler incident -->
+        <Border Grid.RowSpan="2" Background="#CC0F172A" Visibility="{Binding IsAddFormOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Border Background="White" CornerRadius="12" BorderBrush="#DC2626" BorderThickness="2" Padding="28" MaxWidth="500"
+                    VerticalAlignment="Center" HorizontalAlignment="Center">
                 <StackPanel>
-                    <TextBlock Text="Signaler un incident" FontSize="18" FontWeight="Bold" Foreground="#1B3D3B" Margin="0,0,0,16"/>
-                    <ComboBox ItemsSource="{Binding IncidentTypes}" SelectedItem="{Binding FormType}" Style="{StaticResource IncidentsFilterCombo}" Margin="0,0,0,8"/>
-                    <TextBox materialDesign:HintAssist.Hint="Titre *" Text="{Binding FormTitle, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
+                    <TextBlock Text="Signaler un incident" FontSize="20" FontWeight="Bold" Foreground="#0F172A" Margin="0,0,0,4"/>
+                    <TextBlock Text="Enregistrement réel — suivi sécurité SBMS" FontSize="12" Foreground="#64748B" Margin="0,0,0,16"/>
+                    <ComboBox ItemsSource="{Binding IncidentTypes}" SelectedItem="{Binding FormType}" Style="{StaticResource IncidentsFilterCombo}" Margin="0,0,0,10"/>
+                    <TextBox materialDesign:HintAssist.Hint="Titre *" Text="{Binding FormTitle, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}" Margin="0,0,0,10"/>
                     <TextBox materialDesign:HintAssist.Hint="Description" Text="{Binding FormDescription, UpdateSourceTrigger=PropertyChanged}"
-                             AcceptsReturn="True" Height="60" TextWrapping="Wrap" Margin="0,0,0,8"/>
-                    <ComboBox ItemsSource="{Binding IncidentLocations}" SelectedItem="{Binding FormLocation}" Style="{StaticResource IncidentsFilterCombo}" Margin="0,0,0,8"/>
-                    <ComboBox ItemsSource="{Binding FormSeverityOptions}" SelectedItem="{Binding FormSeverity}"
-                              Style="{StaticResource IncidentsFilterCombo}" Margin="0,0,0,8"/>
-                    <TextBlock Text="{Binding FormError}" Foreground="#DC2626" FontSize="12" Margin="0,0,0,8"
-                               Visibility="{Binding FormError, Converter={StaticResource NullToVisibilityConverter}}"/>
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}" AcceptsReturn="True" Height="72" TextWrapping="Wrap" Margin="0,0,0,10"/>
+                    <ComboBox ItemsSource="{Binding IncidentLocations}" SelectedItem="{Binding FormLocation}" Style="{StaticResource IncidentsFilterCombo}" Margin="0,0,0,10"/>
+                    <ComboBox ItemsSource="{Binding FormSeverityOptions}" SelectedItem="{Binding FormSeverity}" Style="{StaticResource IncidentsFilterCombo}" Margin="0,0,0,10"/>
+                    <TextBlock Text="{Binding FormError}" Foreground="#DC2626" FontSize="12"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
                         <Button Content="Annuler" Command="{Binding CloseAddFormCommand}" Style="{StaticResource IncidentsToolbarButton}" Margin="0,0,8,0"/>
                         <Button Content="Signaler" Command="{Binding SaveIncidentCommand}" Style="{StaticResource IncidentsPrimaryButton}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Border>
+
+        <!-- Nouvelle intervention -->
+        <Border Grid.RowSpan="2" Background="#CC0F172A" Visibility="{Binding IsInterventionFormOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Border Background="White" CornerRadius="12" BorderBrush="#0F172A" BorderThickness="2" Padding="28" MaxWidth="540"
+                    VerticalAlignment="Center" HorizontalAlignment="Center">
+                <StackPanel>
+                    <TextBlock Text="Nouvelle intervention" FontSize="20" FontWeight="Bold" Foreground="#0F172A"/>
+                    <TextBlock Text="Planifier ou lancer une intervention technique" FontSize="12" Foreground="#64748B" Margin="0,0,0,16"/>
+                    <TextBlock Text="Incident lié *" FontSize="11" Foreground="#64748B" Margin="0,0,0,4"/>
+                    <ComboBox ItemsSource="{Binding IncidentPickerItems}" DisplayMemberPath="Code" SelectedValuePath="Id"
+                              SelectedValue="{Binding InterventionIncidentId}" Style="{StaticResource IncidentsFilterCombo}" Margin="0,0,0,10"/>
+                    <ComboBox ItemsSource="{Binding InterventionTypes}" SelectedItem="{Binding InterventionType}" Style="{StaticResource IncidentsFilterCombo}" Margin="0,0,0,10"/>
+                    <DatePicker SelectedDate="{Binding InterventionScheduledAt}" Margin="0,0,0,10"/>
+                    <Grid Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <ComboBox Grid.Column="0" ItemsSource="{Binding TechnicianOptions}" DisplayMemberPath="DisplayLabel" SelectedValuePath="Id"
+                                  SelectedValue="{Binding InterventionTechnicianId}" Style="{StaticResource IncidentsFilterCombo}" Margin="0,0,8,0"/>
+                        <Button Grid.Column="1" Content="Ajouter" Command="{Binding QuickAddTechnicianCommand}" Style="{StaticResource IncidentsToolbarButton}"/>
+                    </Grid>
+                    <TextBox materialDesign:HintAssist.Hint="Nom technicien (ajout rapide)" Text="{Binding QuickTechnicianName, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}" Margin="0,0,0,10"/>
+                    <TextBox materialDesign:HintAssist.Hint="Notes" Text="{Binding InterventionNotes, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}" AcceptsReturn="True" Height="60" TextWrapping="Wrap" Margin="0,0,0,10"/>
+                    <TextBlock Text="{Binding InterventionError}" Foreground="#DC2626" FontSize="12"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+                        <Button Content="Annuler" Command="{Binding CloseInterventionFormCommand}" Style="{StaticResource IncidentsToolbarButton}" Margin="0,0,8,0"/>
+                        <Button Content="Enregistrer" Command="{Binding SaveInterventionCommand}" Style="{StaticResource SbmsLoginPrimaryButton}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Border>
+
+        <!-- Alerte sécurité -->
+        <Border Grid.RowSpan="2" Background="#CC0F172A" Visibility="{Binding IsSecurityAlertFormOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Border Background="White" CornerRadius="12" BorderBrush="#EA580C" BorderThickness="2" Padding="28" MaxWidth="500"
+                    VerticalAlignment="Center" HorizontalAlignment="Center">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                        <materialDesign:PackIcon Kind="ShieldAlert" Width="28" Height="28" Foreground="#EA580C" Margin="0,0,10,0"/>
+                        <TextBlock Text="Alerte sécurité" FontSize="20" FontWeight="Bold" Foreground="#0F172A" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <TextBlock Text="Signalement prioritaire — visible dans le tableau de bord sécurité" FontSize="12" Foreground="#64748B" Margin="0,0,0,16"/>
+                    <TextBox materialDesign:HintAssist.Hint="Titre de l'alerte *" Text="{Binding AlertTitle, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}" Margin="0,0,0,10"/>
+                    <TextBox materialDesign:HintAssist.Hint="Message détaillé" Text="{Binding AlertMessage, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}" AcceptsReturn="True" Height="64" TextWrapping="Wrap" Margin="0,0,0,10"/>
+                    <Grid Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <ComboBox Grid.Column="0" ItemsSource="{Binding EquipmentOptions}" DisplayMemberPath="Label" SelectedValuePath="Id"
+                                  SelectedValue="{Binding AlertEquipmentId}" Style="{StaticResource IncidentsFilterCombo}" Margin="0,0,8,0"/>
+                        <Button Grid.Column="1" Content="Ajouter" Command="{Binding QuickAddEquipmentCommand}" Style="{StaticResource IncidentsToolbarButton}"/>
+                    </Grid>
+                    <TextBox materialDesign:HintAssist.Hint="Nom équipement (ajout rapide)" Text="{Binding QuickEquipmentName, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}" Margin="0,0,0,10"/>
+                    <Grid Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox Grid.Column="0" materialDesign:HintAssist.Hint="Catégorie équipement"
+                                 Text="{Binding QuickEquipmentCategory, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{StaticResource MaterialDesignOutlinedTextBox}" Margin="0,0,8,0"/>
+                        <TextBox Grid.Column="1" materialDesign:HintAssist.Hint="Emplacement équipement"
+                                 Text="{Binding QuickEquipmentLocation, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{StaticResource MaterialDesignOutlinedTextBox}"/>
+                    </Grid>
+                    <ComboBox ItemsSource="{Binding IncidentLocations}" SelectedItem="{Binding AlertLocation}" Style="{StaticResource IncidentsFilterCombo}" Margin="0,0,0,10"/>
+                    <ComboBox ItemsSource="{Binding FormSeverityOptions}" SelectedItem="{Binding AlertSeverity}" Style="{StaticResource IncidentsFilterCombo}" Margin="0,0,0,10"/>
+                    <TextBlock Text="{Binding AlertError}" Foreground="#DC2626" FontSize="12"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+                        <Button Content="Annuler" Command="{Binding CloseSecurityAlertFormCommand}" Style="{StaticResource IncidentsToolbarButton}" Margin="0,0,8,0"/>
+                        <Button Content="Déclencher l'alerte" Command="{Binding SaveSecurityAlertCommand}" Style="{StaticResource IncidentsPrimaryButton}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Border>
+
+        <!-- Historique incidents -->
+        <Border Grid.RowSpan="2" Background="#CC0F172A" Visibility="{Binding IsHistoryOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Border Background="White" CornerRadius="12" BorderBrush="#0F172A" BorderThickness="2" MaxWidth="960" MaxHeight="620"
+                    VerticalAlignment="Center" HorizontalAlignment="Center" Padding="24" Margin="20">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <DockPanel Grid.Row="0" Margin="0,0,0,12">
+                        <Button DockPanel.Dock="Right" Command="{Binding CloseHistoryCommand}" Style="{StaticResource MaterialDesignIconButton}">
+                            <materialDesign:PackIcon Kind="Close"/>
+                        </Button>
+                        <StackPanel>
+                            <TextBlock Text="Historique des incidents" FontSize="20" FontWeight="Bold" Foreground="#0F172A"/>
+                            <TextBlock Text="Tous les signalements — filtres actifs non appliqués" FontSize="12" Foreground="#64748B"/>
+                        </StackPanel>
+                    </DockPanel>
+                    <DataGrid Grid.Row="1" ItemsSource="{Binding HistoryIncidents}" Style="{StaticResource IncidentsDataGrid}"
+                              AutoGenerateColumns="False" IsReadOnly="True" MinHeight="400">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="ID" Binding="{Binding Code}" Width="90"/>
+                            <DataGridTextColumn Header="DATE" Binding="{Binding DateDisplay}" Width="115"/>
+                            <DataGridTextColumn Header="TYPE" Binding="{Binding TypeLabel}" Width="120"/>
+                            <DataGridTextColumn Header="EMPLACEMENT" Binding="{Binding Location}" Width="*"/>
+                            <DataGridTextColumn Header="GRAVITÉ" Binding="{Binding SeverityLabel}" Width="85"/>
+                            <DataGridTextColumn Header="STATUT" Binding="{Binding StatusLabel}" Width="100"/>
+                            <DataGridTextColumn Header="COÛT" Binding="{Binding CostDisplay}" Width="90"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </Border>
+        </Border>
+
+        <!-- Résoudre incident -->
+        <Border Grid.RowSpan="2" Background="#80000000" Visibility="{Binding IsResolveFormOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Border Background="White" CornerRadius="12" BorderBrush="#2D6A4F" BorderThickness="2" Padding="28" MaxWidth="440"
+                    VerticalAlignment="Center" HorizontalAlignment="Center">
+                <StackPanel>
+                    <TextBlock Text="Résoudre l'incident" FontSize="18" FontWeight="Bold" Foreground="#0F172A" Margin="0,0,0,12"/>
+                    <TextBox materialDesign:HintAssist.Hint="Notes de résolution" Text="{Binding ResolveNotes, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}" AcceptsReturn="True" Height="64" TextWrapping="Wrap" Margin="0,0,0,10"/>
+                    <TextBox materialDesign:HintAssist.Hint="Coût réparation (USD)" Text="{Binding ResolveCostText, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}" Margin="0,0,0,10"/>
+                    <TextBlock Text="Le coût est débité de la trésorerie (loyers encaissés)." FontSize="11" Foreground="#64748B" TextWrapping="Wrap"/>
+                    <TextBlock Text="{Binding ResolveError}" Foreground="#DC2626" FontSize="12" Margin="0,8,0,0"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+                        <Button Content="Annuler" Command="{Binding CloseResolveFormCommand}" Style="{StaticResource IncidentsToolbarButton}" Margin="0,0,8,0"/>
+                        <Button Content="Confirmer" Command="{Binding SaveResolveCommand}" Style="{StaticResource SbmsLoginPrimaryButton}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Border>
+
+        <!-- Modifier incident -->
+        <Border Grid.RowSpan="2" Background="#80000000" Visibility="{Binding IsEditIncidentOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Border Background="White" CornerRadius="12" Padding="24" MaxWidth="440" VerticalAlignment="Center" HorizontalAlignment="Center">
+                <StackPanel>
+                    <TextBlock Text="Modifier l'incident" FontSize="18" FontWeight="Bold" Foreground="#1B3D3B" Margin="0,0,0,12"/>
+                    <TextBox materialDesign:HintAssist.Hint="Titre *" Text="{Binding EditTitle, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
+                    <TextBox materialDesign:HintAssist.Hint="Description" Text="{Binding EditDescription, UpdateSourceTrigger=PropertyChanged}"
+                             AcceptsReturn="True" Height="60" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                    <ComboBox ItemsSource="{Binding FormSeverityOptions}" SelectedItem="{Binding EditSeverity}" Style="{StaticResource IncidentsFilterCombo}" Margin="0,0,0,8"/>
+                    <TextBlock Text="{Binding EditError}" Foreground="#DC2626" FontSize="12"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+                        <Button Content="Annuler" Command="{Binding CloseEditIncidentCommand}" Style="{StaticResource IncidentsToolbarButton}" Margin="0,0,8,0"/>
+                        <Button Content="Enregistrer" Command="{Binding SaveEditIncidentCommand}" Style="{StaticResource SbmsLoginPrimaryButton}"/>
                     </StackPanel>
                 </StackPanel>
             </Border>

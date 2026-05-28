@@ -52,7 +52,7 @@ public partial class ConsumptionsViewModel : BaseViewModel
     [ObservableProperty] private string _syncStatusLabel = "Hors ligne";
     [ObservableProperty] private string _lastSyncDisplay = "Dernière sync : —";
 
-    [ObservableProperty] private string _electricityDisplay = "0 kWh";
+    [ObservableProperty] private string _electricityDisplay = MoneyFormatter.ZeroDisplay;
     [ObservableProperty] private string _waterBillDisplay = MoneyFormatter.ZeroDisplay;
     [ObservableProperty] private string _fuelCostDisplay = MoneyFormatter.ZeroDisplay;
     [ObservableProperty] private string _internetCostDisplay = MoneyFormatter.ZeroDisplay;
@@ -68,9 +68,7 @@ public partial class ConsumptionsViewModel : BaseViewModel
 
     [ObservableProperty] private string _formType = "Électricité";
     [ObservableProperty] private string _formEquipment = string.Empty;
-    [ObservableProperty] private string _formQuantityText = "0";
     [ObservableProperty] private string _formCostText = "0";
-    [ObservableProperty] private string _formUnit = "kWh";
     [ObservableProperty] private string _formPeriodType = "Mensuel";
     [ObservableProperty] private string? _formError;
 
@@ -95,7 +93,6 @@ public partial class ConsumptionsViewModel : BaseViewModel
         "Éclairage", "Groupe électrogène", "Réseau technique", "Énergie"
     ];
     public ObservableCollection<string> PeriodTypes { get; } = ["Journalier", "Hebdomadaire", "Mensuel", "Annuel"];
-    public ObservableCollection<string> UnitOptions { get; } = ["kWh", "m³", "L", "GB", "USD", "FC"];
 
     public ConsumptionsViewModel(
         ConsumptionsService consumptionsService,
@@ -177,9 +174,7 @@ public partial class ConsumptionsViewModel : BaseViewModel
     {
         FormType = "Électricité";
         FormEquipment = "Compteur principal Tour SBMS";
-        FormQuantityText = "0";
         FormCostText = "0";
-        FormUnit = "kWh";
         FormPeriodType = "Mensuel";
         FormError = null;
         IsAddFormOpen = true;
@@ -187,22 +182,14 @@ public partial class ConsumptionsViewModel : BaseViewModel
 
     [RelayCommand] private void CloseAddForm() => IsAddFormOpen = false;
 
-    partial void OnFormTypeChanged(string value) => FormUnit = value switch
-    {
-        "Eau" => "m³",
-        "Carburant générateur" or "Groupe électrogène" => "L",
-        "Internet" or "Réseau technique" => "GB",
-        _ => "kWh"
-    };
-
     [RelayCommand]
     private async Task SaveRecordAsync()
     {
         FormError = null;
-        if (!decimal.TryParse(FormQuantityText.Replace(',', '.'), NumberStyles.Any, CultureInfo.InvariantCulture, out var qty) || qty <= 0)
-        { FormError = "Quantité invalide."; return; }
         if (!decimal.TryParse(FormCostText.Replace(',', '.'), NumberStyles.Any, CultureInfo.InvariantCulture, out var cost))
-        { FormError = "Coût invalide."; return; }
+        { FormError = "Montant invalide."; return; }
+        if (cost <= 0)
+        { FormError = "Le montant doit être supérieur à zéro."; return; }
 
         IsBusy = true;
         try
@@ -213,10 +200,10 @@ public partial class ConsumptionsViewModel : BaseViewModel
                 Type = type,
                 PeriodStart = DateTime.Today.AddDays(-30),
                 PeriodEnd = DateTime.Today,
-                Quantity = qty,
-                Unit = FormUnit,
+                Quantity = cost,
+                Unit = "USD",
                 Cost = cost,
-                Currency = FormUnit == "USD" ? "USD" : MoneyFormatter.CurrencyCode,
+                Currency = "USD",
                 EquipmentSource = FormEquipment,
                 Building = "Tour SBMS",
                 Responsible = "Paul Ngoy",

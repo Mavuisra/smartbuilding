@@ -209,8 +209,74 @@ public class FinanceLedgerService
             PaymentMethod = "Virement",
             Status = "Payé",
             RecordedBy = recordedBy,
+            RequiresPdgApproval = false,
+            ApprovedAt = DateTime.UtcNow,
+            ApprovedBy = recordedBy,
             IsSynced = false
         });
+    }
+
+    /// <summary>
+    /// Dépense enregistrée par le gérant en attente d'approbation finale du PDG.
+    /// </summary>
+    public async Task RecordExpensePendingPdgApprovalAsync(
+        decimal amount,
+        string category,
+        string description,
+        string source,
+        string recordedBy,
+        Guid? relatedEntityId = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (amount <= 0)
+            return;
+
+        var cashError = await ValidateExpenseAsync(amount, cancellationToken);
+        if (cashError is not null)
+            throw new InvalidOperationException(cashError);
+
+        var reference = await NextReferenceAsync(TransactionType.Depense, cancellationToken);
+        _db.FinancialTransactions.Add(new FinancialTransaction
+        {
+            Type = TransactionType.Depense,
+            Category = category.Trim(),
+            Description = description.Trim(),
+            Amount = amount,
+            TransactionDate = DateTime.Today,
+            Reference = reference,
+            RelatedEntityId = relatedEntityId,
+            Source = source,
+            PaymentMethod = "Virement",
+            Status = "En attente validation PDG",
+            RecordedBy = recordedBy,
+            RequiresPdgApproval = true,
+            ApprovedAt = null,
+            ApprovedBy = null,
+            IsSynced = false
+        });
+    }
+
+    public async Task<string> ApproveExpenseAsync(
+        Guid transactionId,
+        string approvedBy,
+        CancellationToken cancellationToken = default)
+    {
+        var tx = await _db.FinancialTransactions
+            .FirstOrDefaultAsync(t => t.Id == transactionId, cancellationToken);
+        if (tx is null)
+            return "Transaction introuvable.";
+        if (tx.Type != TransactionType.Depense)
+            return "Seules les dépenses sont approuvables.";
+        if (!tx.RequiresPdgApproval || tx.Status != "En attente validation PDG")
+            return "Cette transaction n'est pas en attente d'approbation PDG.";
+
+        tx.Status = "Payé";
+        tx.RequiresPdgApproval = false;
+        tx.ApprovedAt = DateTime.UtcNow;
+        tx.ApprovedBy = string.IsNullOrWhiteSpace(approvedBy) ? "PDG" : approvedBy.Trim();
+        tx.MarkUpdated();
+        await _db.SaveChangesAsync(cancellationToken);
+        return string.Empty;
     }
 
     /// <summary>
@@ -291,7 +357,8 @@ public class FinanceLedgerService
         var monthStart = new DateTime(today.Year, today.Month, 1);
 
         var expenseAmounts = await _db.FinancialTransactions
-            .Where(t => t.Type == TransactionType.Depense)
+            .Where(t => t.Type == TransactionType.Depense &&
+                        t.Status != "En attente validation PDG")
             .Select(t => new { t.Amount, t.TransactionDate })
             .ToListAsync(cancellationToken);
 

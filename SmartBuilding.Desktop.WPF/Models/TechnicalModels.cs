@@ -78,3 +78,19 @@ public class TechnicalMonthPoint
     public string Label { get; init; } = string.Empty;
     public decimal Cost { get; init; }
 }
+
+public class TechnicalInterventionHistoryRow
+{
+    public Guid MaintenanceId { get; init; }
+    public Guid EquipmentId { get; init; }
+    public string EquipmentCode { get; init; } = string.Empty;
+    public string EquipmentName { get; init; } = string.Empty;
+    public string DateDisplay { get; init; } = string.Empty;
+    public string Description { get; init; } = string.Empty;
+    public string Technician { get; init; } = "—";
+    public string CostDisplay { get; init; } = "—";
+    public string StatusLabel { get; init; } = string.Empty;
+    public string StatusBadgeBackground { get; init; } = "#F1F5F9";
+    public string StatusBadgeForeground { get; init; } = "#64748B";
+    public bool IsPlanned { get; init; }
+}

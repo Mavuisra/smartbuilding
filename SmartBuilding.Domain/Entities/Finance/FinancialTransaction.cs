@@ -16,4 +16,7 @@ public class FinancialTransaction : BaseEntity
     public string PaymentMethod { get; set; } = "Virement";
     public string Status { get; set; } = "Payé";
     public string RecordedBy { get; set; } = string.Empty;
+    public bool RequiresPdgApproval { get; set; }
+    public DateTime? ApprovedAt { get; set; }
+    public string? ApprovedBy { get; set; }
 }

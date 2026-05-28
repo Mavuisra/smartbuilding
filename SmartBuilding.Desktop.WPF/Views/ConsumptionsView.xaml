@@ -33,7 +33,7 @@
                 <StackPanel Grid.Column="0" VerticalAlignment="Center">
                     <TextBlock Text="Accueil › Consommations" FontSize="11" Foreground="{StaticResource SbmsTextMutedBrush}"/>
                     <TextBlock Text="Consommations" FontSize="26" FontWeight="Bold" Foreground="#1B3D3B"/>
-                    <TextBlock Text="Suivi énergétique, eau, carburant et coûts techniques" FontSize="13"
+                    <TextBlock Text="Suivi des dépenses de consommation par période" FontSize="13"
                                Foreground="{StaticResource SbmsTextMutedBrush}" Margin="0,2,0,0"/>
                 </StackPanel>
                 <Border Grid.Column="1" Margin="24,0" BorderBrush="#E2E8F0" BorderThickness="1"
@@ -97,9 +97,9 @@
                                 <materialDesign:PackIcon Kind="Flash" Foreground="#2563EB" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
                             <StackPanel>
-                                <TextBlock Text="Électricité totale" FontSize="10" Foreground="#94A3B8"/>
+                                <TextBlock Text="Électricité (montant)" FontSize="10" Foreground="#94A3B8"/>
                                 <TextBlock Text="{Binding ElectricityDisplay}" FontSize="16" FontWeight="Bold" Foreground="#2563EB"/>
-                                <TextBlock Text="Ce mois" FontSize="10" Foreground="#64748B"/>
+                                <TextBlock Text="Période courante" FontSize="10" Foreground="#64748B"/>
                             </StackPanel>
                         </StackPanel>
                     </Border>
@@ -189,7 +189,7 @@
                         <Button Style="{StaticResource ConsumptionsToolbarButton}">
                             <StackPanel Orientation="Horizontal">
                                 <materialDesign:PackIcon Kind="Counter" Margin="0,0,6,0"/>
-                                <TextBlock Text="Nouveau relevé compteur"/>
+                                <TextBlock Text="Nouvel enregistrement"/>
                             </StackPanel>
                         </Button>
                         <Button Style="{StaticResource ConsumptionsToolbarButton}">
@@ -287,8 +287,6 @@
                                         </DataGridTemplateColumn.CellTemplate>
                                     </DataGridTemplateColumn>
                                     <DataGridTextColumn Header="ÉQUIPEMENT" Binding="{Binding EquipmentSource}" Width="*"/>
-                                    <DataGridTextColumn Header="VALEUR" Binding="{Binding QuantityDisplay}" Width="70"/>
-                                    <DataGridTextColumn Header="UNITÉ" Binding="{Binding Unit}" Width="50"/>
                                     <DataGridTextColumn Header="COÛT" Binding="{Binding CostDisplay}" Width="95"/>
                                     <DataGridTemplateColumn Header="VARIATION" Width="80">
                                         <DataGridTemplateColumn.CellTemplate>
@@ -433,8 +431,8 @@
                                         <StackPanel Visibility="{Binding DataContext.SelectedDetailTab, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource IntEqualsToVisibilityConverter}, ConverterParameter=0}">
                                             <TextBlock Text="Coût total relevé" FontSize="10" Foreground="#94A3B8"/>
                                             <TextBlock Text="{Binding CostDisplay}" FontSize="20" FontWeight="Bold" Foreground="#2563EB" Margin="0,2,0,8"/>
-                                            <TextBlock Text="Consommation" FontSize="10" Foreground="#94A3B8"/>
-                                            <TextBlock Margin="0,2,0,6"><Run Text="{Binding QuantityDisplay}"/><Run Text=" "/><Run Text="{Binding Unit}"/></TextBlock>
+                                            <TextBlock Text="Montant période" FontSize="10" Foreground="#94A3B8"/>
+                                            <TextBlock Margin="0,2,0,6"><Run Text="{Binding CostDisplay}"/></TextBlock>
                                             <TextBlock Text="Variation vs N-1" FontSize="10" Foreground="#94A3B8"/>
                                             <TextBlock Text="{Binding VariationDisplay}" Foreground="{Binding VariationColor}" FontWeight="SemiBold" Margin="0,2,0,6"/>
                                             <TextBlock Text="Période" FontSize="10" Foreground="#94A3B8"/><TextBlock Text="{Binding PeriodType}" Margin="0,2,0,6"/>
@@ -455,7 +453,7 @@
                                                             </Grid.ColumnDefinitions>
                                                             <StackPanel>
                                                                 <TextBlock Text="{Binding Label}" FontWeight="SemiBold" FontSize="12"/>
-                                                                <TextBlock Text="{Binding QuantityDisplay}" FontSize="10" Foreground="#64748B"/>
+                                                                <TextBlock Text="{Binding CostDisplay}" FontSize="10" Foreground="#64748B"/>
                                                             </StackPanel>
                                                             <TextBlock Grid.Column="1" Text="{Binding CostDisplay}" FontWeight="SemiBold" Foreground="#2563EB" VerticalAlignment="Center"/>
                                                         </Grid>
@@ -487,17 +485,8 @@
                 <StackPanel>
                     <TextBlock Text="Nouvelle consommation" FontSize="18" FontWeight="Bold" Foreground="#1B3D3B" Margin="0,0,0,16"/>
                     <ComboBox ItemsSource="{Binding ConsumptionTypes}" SelectedItem="{Binding FormType}" Style="{StaticResource ConsumptionsFilterCombo}" Margin="0,0,0,8"/>
-                    <TextBox materialDesign:HintAssist.Hint="Équipement / source" Text="{Binding FormEquipment, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
-                    <Grid Margin="0,0,0,8">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="8"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBox Grid.Column="0" materialDesign:HintAssist.Hint="Quantité" Text="{Binding FormQuantityText, UpdateSourceTrigger=PropertyChanged}"/>
-                        <ComboBox Grid.Column="2" ItemsSource="{Binding UnitOptions}" SelectedItem="{Binding FormUnit}" Style="{StaticResource ConsumptionsFilterCombo}"/>
-                    </Grid>
-                    <TextBox materialDesign:HintAssist.Hint="Coût (USD)" Text="{Binding FormCostText, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
+                    <TextBox materialDesign:HintAssist.Hint="Poste / source de dépense" Text="{Binding FormEquipment, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
+                    <TextBox materialDesign:HintAssist.Hint="Montant (USD)" Text="{Binding FormCostText, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
                     <ComboBox ItemsSource="{Binding PeriodTypes}" SelectedItem="{Binding FormPeriodType}" Style="{StaticResource ConsumptionsFilterCombo}" Margin="0,0,0,8"/>
                     <TextBlock Text="{Binding FormError}" Foreground="#DC2626" FontSize="12" Margin="0,0,0,8"
                                Visibility="{Binding FormError, Converter={StaticResource NullToVisibilityConverter}}"/>

@@ -874,8 +874,8 @@
                                               materialDesign:DataGridAssist.CellPadding="8,4" IsReadOnly="True">
                                         <DataGrid.Columns>
                                             <DataGridTextColumn Header="PÉRIODE" Binding="{Binding PeriodDisplay}" Width="*"/>
-                                            <DataGridTextColumn Header="BRUT" Binding="{Binding GrossDisplay}" Width="100"/>
-                                            <DataGridTextColumn Header="NET" Binding="{Binding AmountDisplay}" Width="100"/>
+                                            <DataGridTextColumn Header="BRUT" Binding="{Binding GrossDisplay}" Width="130" MinWidth="120"/>
+                                            <DataGridTextColumn Header="NET" Binding="{Binding AmountDisplay}" Width="130" MinWidth="120"/>
                                             <DataGridTextColumn Header="DATE" Binding="{Binding PaymentDateDisplay}" Width="100"/>
                                             <DataGridTemplateColumn Header="STATUT" Width="90">
                                                 <DataGridTemplateColumn.CellTemplate>
