@@ -1,4 +1,5 @@
 from django.db.models import Sum
+from typing import Any
 from django.utils import timezone
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -57,6 +58,31 @@ def _module_payload(title, rows, kpis=None, actions=None):
         "rows": rows,
         "actions": actions or [],
     }
+
+
+def _pick_sync_value(data: dict[str, Any], *keys: str, default: Any = "—") -> Any:
+    for key in keys:
+        if key in data and data[key] not in (None, ""):
+            return data[key]
+    return default
+
+
+def _rows_from_sync_store(
+    entity_types: list[str],
+    mapper,
+    limit: int = 300,
+) -> list[dict[str, Any]]:
+    rows = []
+    stores = (
+        SyncedEntityStore.objects.filter(entity_type__in=entity_types, deleted_at__isnull=True)
+        .order_by("-updated_at")[:limit]
+    )
+    for s in stores:
+        payload = s.json_data if isinstance(s.json_data, dict) else {}
+        mapped = mapper(payload)
+        if mapped:
+            rows.append(mapped)
+    return rows
 
 
 class HealthView(APIView):
@@ -383,8 +409,25 @@ class ExecutiveModuleDataView(APIView):
             }
             for p in Premise.objects.filter(deleted_at__isnull=True).order_by("code")[:300]
         ]
+        if not rows:
+            rows = _rows_from_sync_store(
+                ["Premises"],
+                lambda d: {
+                    "Code": _pick_sync_value(d, "Code", "code"),
+                    "Local": _pick_sync_value(d, "Name", "name"),
+                    "Bâtiment": _pick_sync_value(d, "Building", "building", "BuildingName", "buildingName"),
+                    "Étage": _pick_sync_value(d, "Floor", "floor"),
+                    "Loyer": _money(_pick_sync_value(d, "MonthlyRent", "monthlyRent", default=0)),
+                    "Statut": "Occupé"
+                    if bool(_pick_sync_value(d, "IsOccupied", "isOccupied", default=False))
+                    else "Libre",
+                },
+            )
         total = Premise.objects.filter(deleted_at__isnull=True).count()
         occupied = Premise.objects.filter(deleted_at__isnull=True, is_occupied=True).count()
+        if total == 0 and rows:
+            total = len(rows)
+            occupied = sum(1 for r in rows if r.get("Statut") == "Occupé")
         return _module_payload(
             "Locations",
             rows,
@@ -407,6 +450,18 @@ class ExecutiveModuleDataView(APIView):
             }
             for c in LeaseContract.objects.filter(deleted_at__isnull=True).order_by("-updated_at")[:300]
         ]
+        if not rows:
+            rows = _rows_from_sync_store(
+                ["LeaseContracts"],
+                lambda d: {
+                    "Référence": _pick_sync_value(d, "ContractNumber", "contractNumber", "Reference", "reference"),
+                    "Début": _pick_sync_value(d, "StartDate", "startDate"),
+                    "Fin": _pick_sync_value(d, "EndDate", "endDate"),
+                    "Loyer mensuel": _money(_pick_sync_value(d, "MonthlyRent", "monthlyRent", default=0)),
+                    "Garantie": _money(_pick_sync_value(d, "Deposit", "deposit", default=0)),
+                    "Statut": _pick_sync_value(d, "Status", "status"),
+                },
+            )
         return _module_payload(
             "Contrats",
             rows,
@@ -428,8 +483,25 @@ class ExecutiveModuleDataView(APIView):
             }
             for t in FinancialTransaction.objects.filter(deleted_at__isnull=True).order_by("-transaction_date")[:300]
         ]
+        if not rows:
+            rows = _rows_from_sync_store(
+                ["FinancialTransactions"],
+                lambda d: {
+                    "Date": _pick_sync_value(d, "TransactionDate", "transactionDate", "CreatedAt", "createdAt"),
+                    "Type": "Dépense"
+                    if str(_pick_sync_value(d, "Type", "type", default="1")) in {"2", "Depense", "Dépense"}
+                    else "Recette",
+                    "Catégorie": _pick_sync_value(d, "Category", "category"),
+                    "Description": _pick_sync_value(d, "Description", "description"),
+                    "Montant": _money(_pick_sync_value(d, "Amount", "amount", default=0)),
+                    "Statut": _pick_sync_value(d, "Status", "status"),
+                },
+            )
         expenses = FinancialTransaction.objects.filter(deleted_at__isnull=True, type=FinancialTransaction.TxType.DEPENSE).aggregate(t=Sum("amount"))["t"] or 0
         income = FinancialTransaction.objects.filter(deleted_at__isnull=True, type=FinancialTransaction.TxType.RECETTE).aggregate(t=Sum("amount"))["t"] or 0
+        if expenses == 0 and income == 0 and rows:
+            income = sum(r.get("Montant", 0) for r in rows if r.get("Type") == "Recette")
+            expenses = sum(r.get("Montant", 0) for r in rows if r.get("Type") == "Dépense")
         return _module_payload(
             "Finance",
             rows,
@@ -459,6 +531,17 @@ class ExecutiveModuleDataView(APIView):
             {"Type": "Contrat location", "Référence": c.contract_number or str(c.id)[:8], "Statut": c.status or "—", "Dernière maj": _iso(c.updated_at)}
             for c in LeaseContract.objects.filter(deleted_at__isnull=True).order_by("-updated_at")[:200]
         ]
+        if not rows:
+            rows = _rows_from_sync_store(
+                ["LeaseContracts", "TenantActivities", "LeaseGuarantees"],
+                lambda d: {
+                    "Type": "Contrat location",
+                    "Référence": _pick_sync_value(d, "ContractNumber", "contractNumber", "Reference", "reference"),
+                    "Statut": _pick_sync_value(d, "Status", "status"),
+                    "Dernière maj": _pick_sync_value(d, "UpdatedAt", "updatedAt"),
+                },
+                limit=200,
+            )
         return _module_payload("Documents", rows, [{"label": "Documents suivis", "value": len(rows)}])
 
     def _maintenance(self):
@@ -466,6 +549,17 @@ class ExecutiveModuleDataView(APIView):
             {"Équipement": e.name, "Catégorie": e.category or "—", "Statut": e.status or "—", "Localisation": e.location or "—", "Dernière maj": _iso(e.updated_at)}
             for e in Equipment.objects.filter(deleted_at__isnull=True).order_by("name")[:300]
         ]
+        if not rows:
+            rows = _rows_from_sync_store(
+                ["Equipment"],
+                lambda d: {
+                    "Équipement": _pick_sync_value(d, "Name", "name"),
+                    "Catégorie": _pick_sync_value(d, "Category", "category"),
+                    "Statut": _pick_sync_value(d, "Status", "status"),
+                    "Localisation": _pick_sync_value(d, "Location", "location"),
+                    "Dernière maj": _pick_sync_value(d, "UpdatedAt", "updatedAt"),
+                },
+            )
         return _module_payload("Maintenance", rows, [{"label": "Équipements", "value": Equipment.objects.filter(deleted_at__isnull=True).count()}])
 
     def _incidents(self):
@@ -473,6 +567,18 @@ class ExecutiveModuleDataView(APIView):
             {"Code": i.code or "—", "Titre": i.title, "Sévérité": i.severity, "Statut": i.status, "Lieu": i.location or "—", "Coût": _money(i.cost)}
             for i in Incident.objects.filter(deleted_at__isnull=True).order_by("-reported_at")[:300]
         ]
+        if not rows:
+            rows = _rows_from_sync_store(
+                ["Incidents"],
+                lambda d: {
+                    "Code": _pick_sync_value(d, "Code", "code"),
+                    "Titre": _pick_sync_value(d, "Title", "title"),
+                    "Sévérité": _pick_sync_value(d, "Severity", "severity"),
+                    "Statut": _pick_sync_value(d, "Status", "status"),
+                    "Lieu": _pick_sync_value(d, "Location", "location", "Building", "building"),
+                    "Coût": _money(_pick_sync_value(d, "Cost", "cost", default=0)),
+                },
+            )
         return _module_payload("Incidents", rows, [{"label": "Incidents", "value": Incident.objects.filter(deleted_at__isnull=True).count()}])
 
     def _supervision(self):

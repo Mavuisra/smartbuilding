@@ -82,6 +82,15 @@ public class SyncService : ISyncService
                 }
 
                 var localChanges = await adapter.GetLocalChangesAsync(_context, cancellationToken);
+                // Bootstrap cloud: sur sync manuelle, si rien n'est marqué "local change",
+                // on envoie un snapshot complet pour éviter un web vide.
+                if (manual && localChanges.Count == 0)
+                {
+                    localChanges = await adapter.GetChangesSinceAsync(
+                        _context,
+                        DateTime.MinValue,
+                        cancellationToken);
+                }
                 if (localChanges.Count > 0)
                 {
                     var pushRequest = new SyncPushRequest { EntityType = entityType, Entities = localChanges.ToList() };
