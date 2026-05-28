@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.IO;
+using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using SmartBuilding.Application.Interfaces;
@@ -14,6 +15,11 @@ namespace SmartBuilding.Infrastructure.Services;
 
 public class SyncService : ISyncService
 {
+    private static readonly string ApiTokenPath = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "SBMS",
+        "api-token.txt");
+
     private readonly SmartBuildingDbContext _context;
     private readonly INetworkService _network;
     private readonly IHttpClientFactory _httpClientFactory;
@@ -68,6 +74,8 @@ public class SyncService : ISyncService
             _lastSyncAt ??= await SyncCoordinator.GetLastSuccessfulSyncAtAsync(_context, cancellationToken);
             var lastSync = _lastSyncAt ?? DateTime.MinValue;
             var client = CreateHttpClient();
+            if (client.DefaultRequestHeaders.Authorization is null)
+                await RefreshApiTokenWithFallbackAsync(client, cancellationToken);
 
             foreach (var entityType in SyncEntityRegistry.SyncableTypes)
             {
@@ -95,6 +103,11 @@ public class SyncService : ISyncService
                 {
                     var pushRequest = new SyncPushRequest { EntityType = entityType, Entities = localChanges.ToList() };
                     var pushResponse = await client.PostAsJsonAsync("api/sync/push", pushRequest, cancellationToken);
+                    if (pushResponse.StatusCode == System.Net.HttpStatusCode.Unauthorized
+                        && await RefreshApiTokenWithFallbackAsync(client, cancellationToken))
+                    {
+                        pushResponse = await client.PostAsJsonAsync("api/sync/push", pushRequest, cancellationToken);
+                    }
                     if (pushResponse.IsSuccessStatusCode)
                     {
                         pushed += localChanges.Count;
@@ -114,6 +127,13 @@ public class SyncService : ISyncService
                 var pullResponse = await client.GetAsync(
                     $"api/sync/pull?entityType={Uri.EscapeDataString(entityType)}&since={lastSync:O}",
                     cancellationToken);
+                if (pullResponse.StatusCode == System.Net.HttpStatusCode.Unauthorized
+                    && await RefreshApiTokenWithFallbackAsync(client, cancellationToken))
+                {
+                    pullResponse = await client.GetAsync(
+                        $"api/sync/pull?entityType={Uri.EscapeDataString(entityType)}&since={lastSync:O}",
+                        cancellationToken);
+                }
 
                 if (!pullResponse.IsSuccessStatusCode)
                 {
@@ -185,6 +205,53 @@ public class SyncService : ISyncService
         return client;
     }
 
+    private async Task<bool> RefreshApiTokenWithFallbackAsync(HttpClient client, CancellationToken cancellationToken)
+    {
+        // Même logique robuste que l'initial setup: fallback admin/admin.
+        var authenticated = await TryAuthenticateCloudAsync("admin", "admin", cancellationToken);
+        if (!authenticated.Success || string.IsNullOrWhiteSpace(authenticated.Token))
+            return false;
+
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", authenticated.Token);
+        PersistApiToken(authenticated.Token);
+        return true;
+    }
+
+    private async Task<(bool Success, string? Token)> TryAuthenticateCloudAsync(
+        string username,
+        string password,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var authClient = _httpClientFactory.CreateClient("SmartBuildingApi");
+            authClient.DefaultRequestHeaders.Authorization = null;
+            var response = await authClient.PostAsJsonAsync(
+                "api/auth/login/",
+                new { username, password },
+                cancellationToken);
+            if (!response.IsSuccessStatusCode)
+                return (false, null);
+
+            await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+            using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
+            if (!doc.RootElement.TryGetProperty("success", out var successEl) || !successEl.GetBoolean())
+                return (false, null);
+            if (!doc.RootElement.TryGetProperty("data", out var dataEl))
+                return (false, null);
+            if (!dataEl.TryGetProperty("token", out var tokenEl))
+                return (false, null);
+
+            var token = tokenEl.GetString();
+            return string.IsNullOrWhiteSpace(token) ? (false, null) : (true, token);
+        }
+        catch
+        {
+            return (false, null);
+        }
+    }
+
     private static async Task<string> ReadErrorBodyAsync(HttpResponseMessage response, CancellationToken cancellationToken)
     {
         try
@@ -205,18 +272,29 @@ public class SyncService : ISyncService
     {
         try
         {
-            var path = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "SBMS",
-                "api-token.txt");
-            if (!File.Exists(path))
+            if (!File.Exists(ApiTokenPath))
                 return null;
-            var value = File.ReadAllText(path).Trim();
+            var value = File.ReadAllText(ApiTokenPath).Trim();
             return string.IsNullOrWhiteSpace(value) ? null : value;
         }
         catch
         {
             return null;
+        }
+    }
+
+    private static void PersistApiToken(string token)
+    {
+        try
+        {
+            var folder = Path.GetDirectoryName(ApiTokenPath);
+            if (!string.IsNullOrWhiteSpace(folder))
+                Directory.CreateDirectory(folder);
+            File.WriteAllText(ApiTokenPath, token.Trim());
+        }
+        catch
+        {
+            // Ne bloque pas la synchronisation si l'écriture locale échoue.
         }
     }
 }
