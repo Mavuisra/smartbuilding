@@ -186,26 +186,29 @@
                                 <TextBlock Text="Ajouter consommation"/>
                             </StackPanel>
                         </Button>
-                        <Button Style="{StaticResource ConsumptionsToolbarButton}">
+                        <Button Command="{Binding OpenNewRecordFormCommand}" Style="{StaticResource ConsumptionsToolbarButton}">
                             <StackPanel Orientation="Horizontal">
                                 <materialDesign:PackIcon Kind="Counter" Margin="0,0,6,0"/>
                                 <TextBlock Text="Nouvel enregistrement"/>
                             </StackPanel>
                         </Button>
-                        <Button Style="{StaticResource ConsumptionsToolbarButton}">
+                        <Button Command="{Binding OpenRecordHistoryCommand}" Style="{StaticResource ConsumptionsToolbarButton}">
                             <StackPanel Orientation="Horizontal">
                                 <materialDesign:PackIcon Kind="History" Margin="0,0,6,0"/>
                                 <TextBlock Text="Historique"/>
                             </StackPanel>
                         </Button>
-                        <Button Style="{StaticResource ConsumptionsToolbarButton}">
+                        <Button Command="{Binding GenerateReportCommand}" Style="{StaticResource ConsumptionsToolbarButton}">
                             <StackPanel Orientation="Horizontal">
                                 <materialDesign:PackIcon Kind="FileChart" Margin="0,0,6,0"/>
                                 <TextBlock Text="Générer rapport"/>
                             </StackPanel>
                         </Button>
-                        <Button Style="{StaticResource ConsumptionsToolbarButton}">
-                            <materialDesign:PackIcon Kind="FilePdfBox"/>
+                        <Button Command="{Binding GenerateReportCommand}" Style="{StaticResource ConsumptionsToolbarButton}" ToolTip="Exporter le détail en PDF">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="FilePdfBox" Margin="0,0,6,0"/>
+                                <TextBlock Text="PDF"/>
+                            </StackPanel>
                         </Button>
                         <Button Command="{Binding ExportCsvCommand}" Style="{StaticResource ConsumptionsToolbarButton}">
                             <StackPanel Orientation="Horizontal">
@@ -310,7 +313,7 @@
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
                                                 <StackPanel Orientation="Horizontal">
-                                                    <Button Style="{StaticResource MaterialDesignIconButton}" ToolTip="Voir">
+                                                    <Button Style="{StaticResource MaterialDesignIconButton}" ToolTip="Voir détail" Command="{Binding DataContext.OpenRecordDetailsCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}">
                                                         <materialDesign:PackIcon Kind="EyeOutline"/>
                                                     </Button>
                                                     <Button Style="{StaticResource MaterialDesignIconButton}" ToolTip="Modifier">
@@ -465,10 +468,10 @@
                                 </ScrollViewer>
                                 <Border Grid.Row="2" Padding="14,10,14,12" BorderBrush="#E8EFED" BorderThickness="0,1,0,0">
                                     <UniformGrid Columns="2">
-                                        <Button Style="{StaticResource ConsumptionsToolbarButton}" Margin="0,0,4,0">
+                                        <Button Command="{Binding OpenRecordDetailsCommand}" Style="{StaticResource ConsumptionsToolbarButton}" Margin="0,0,4,0">
                                             <TextBlock Text="Modifier" FontSize="11"/>
                                         </Button>
-                                        <Button Style="{StaticResource ConsumptionsPrimaryButton}" Margin="4,0,0,0">
+                                        <Button Command="{Binding GenerateReportCommand}" Style="{StaticResource ConsumptionsPrimaryButton}" Margin="4,0,0,0">
                                             <TextBlock Text="Rapport" FontSize="11"/>
                                         </Button>
                                     </UniformGrid>
@@ -493,6 +496,57 @@
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                         <Button Content="Annuler" Command="{Binding CloseAddFormCommand}" Style="{StaticResource ConsumptionsToolbarButton}" Margin="0,0,8,0"/>
                         <Button Content="Enregistrer" Command="{Binding SaveRecordCommand}" Style="{StaticResource ConsumptionsPrimaryButton}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Border>
+
+        <Border Grid.RowSpan="2" Background="#80000000" Visibility="{Binding IsRecordDetailsOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Border Background="White" CornerRadius="12" Padding="24" MaxWidth="560" VerticalAlignment="Center" HorizontalAlignment="Center">
+                <StackPanel DataContext="{Binding SelectedRecord}">
+                    <DockPanel Margin="0,0,0,12">
+                        <Button DockPanel.Dock="Right" Command="{Binding DataContext.CloseRecordDetailsCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" Style="{StaticResource MaterialDesignIconButton}">
+                            <materialDesign:PackIcon Kind="Close"/>
+                        </Button>
+                        <TextBlock Text="Détail complet consommation" FontSize="18" FontWeight="Bold" Foreground="#1B3D3B"/>
+                    </DockPanel>
+
+                    <Border Background="#F8FAFC" CornerRadius="10" BorderBrush="#E8EFED" BorderThickness="1" Padding="12" Margin="0,0,0,10">
+                        <StackPanel>
+                            <TextBlock Text="{Binding TypeLabel}" FontSize="16" FontWeight="Bold" Foreground="#1D4ED8"/>
+                            <TextBlock Text="{Binding EquipmentSource}" FontSize="12" Foreground="#64748B" Margin="0,2,0,0"/>
+                            <TextBlock Text="{Binding DateDisplay}" FontSize="12" Foreground="#64748B"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Grid Margin="0,0,0,6">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                            <TextBlock Text="Coût" FontSize="11" Foreground="#94A3B8"/>
+                            <TextBlock Text="{Binding CostDisplay}" FontWeight="SemiBold"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="Variation" FontSize="11" Foreground="#94A3B8"/>
+                            <TextBlock Text="{Binding VariationDisplay}" FontWeight="SemiBold" Foreground="{Binding VariationColor}"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <TextBlock Text="Statut" FontSize="11" Foreground="#94A3B8"/>
+                    <TextBlock Text="{Binding StatusLabel}" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                    <TextBlock Text="Période" FontSize="11" Foreground="#94A3B8"/>
+                    <TextBlock Text="{Binding PeriodType}" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                    <TextBlock Text="Bâtiment" FontSize="11" Foreground="#94A3B8"/>
+                    <TextBlock Text="{Binding Building}" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                    <TextBlock Text="Responsable" FontSize="11" Foreground="#94A3B8"/>
+                    <TextBlock Text="{Binding Responsible}" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                    <TextBlock Text="Compteur" FontSize="11" Foreground="#94A3B8"/>
+                    <TextBlock Text="{Binding MeterReference}" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                    <TextBlock Text="Notes" FontSize="11" Foreground="#94A3B8"/>
+                    <TextBlock Text="{Binding Notes}" TextWrapping="Wrap" Margin="0,0,0,10"/>
+
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Command="{Binding DataContext.GenerateReportCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" Content="Exporter PDF" Style="{StaticResource ConsumptionsToolbarButton}" Margin="0,0,8,0"/>
+                        <Button Command="{Binding DataContext.CloseRecordDetailsCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" Content="Fermer" Style="{StaticResource ConsumptionsPrimaryButton}"/>
                     </StackPanel>
                 </StackPanel>
             </Border>

@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
+using System.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LiveChartsCore;
@@ -19,6 +20,7 @@ public partial class ConsumptionsViewModel : BaseViewModel
 {
     private readonly ConsumptionsService _consumptionsService;
     private readonly ISyncService _syncService;
+    private readonly ConsumptionsReportPdfService _consumptionsPdf = new();
     private List<ConsumptionListItem> _allRecords = [];
 
     public const string AllPeriods = "Ce mois";
@@ -48,6 +50,7 @@ public partial class ConsumptionsViewModel : BaseViewModel
     [ObservableProperty] private bool _isDetailPanelOpen;
     [ObservableProperty] private int _selectedDetailTab;
     [ObservableProperty] private bool _isAddFormOpen;
+    [ObservableProperty] private bool _isRecordDetailsOpen;
     [ObservableProperty] private ConsumptionListItem? _selectedRecord;
     [ObservableProperty] private string _syncStatusLabel = "Hors ligne";
     [ObservableProperty] private string _lastSyncDisplay = "Dernière sync : —";
@@ -222,7 +225,81 @@ public partial class ConsumptionsViewModel : BaseViewModel
     [RelayCommand] private async Task RefreshAsync() => await LoadAsync();
 
     [RelayCommand]
-    private void ExportCsv() => StatusMessage = $"Export : {ConsumptionsExportService.ExportCsv(_allRecords)}";
+    private void ExportCsv()
+    {
+        if (_allRecords.Count == 0)
+        {
+            ErrorMessage = "Aucune donnée à exporter.";
+            return;
+        }
+
+        var path = ConsumptionsExportService.ExportCsv(_allRecords);
+        Process.Start(new ProcessStartInfo
+        {
+            FileName = path,
+            UseShellExecute = true
+        });
+        StatusMessage = $"Export : {path}";
+        ErrorMessage = null;
+    }
+
+    [RelayCommand]
+    private void OpenNewRecordForm() => OpenAddForm();
+
+    [RelayCommand]
+    private void OpenRecordHistory()
+    {
+        if (SelectedRecord is null)
+            SelectedRecord = Records.FirstOrDefault() ?? _allRecords.FirstOrDefault();
+
+        if (SelectedRecord is null)
+        {
+            ErrorMessage = "Aucune consommation disponible.";
+            return;
+        }
+
+        IsDetailPanelOpen = true;
+        SelectedDetailTab = 1;
+        ErrorMessage = null;
+    }
+
+    [RelayCommand]
+    private void OpenRecordDetails(ConsumptionListItem? item)
+    {
+        var target = item ?? SelectedRecord;
+        if (target is null)
+        {
+            ErrorMessage = "Sélectionnez une consommation.";
+            return;
+        }
+
+        SelectedRecord = target;
+        IsRecordDetailsOpen = true;
+        ErrorMessage = null;
+    }
+
+    [RelayCommand]
+    private void CloseRecordDetails() => IsRecordDetailsOpen = false;
+
+    [RelayCommand]
+    private void GenerateReport()
+    {
+        var target = SelectedRecord ?? Records.FirstOrDefault() ?? _allRecords.FirstOrDefault();
+        if (target is null)
+        {
+            ErrorMessage = "Aucune consommation disponible pour générer le rapport.";
+            return;
+        }
+
+        var path = _consumptionsPdf.ExportRecordDetails(target);
+        Process.Start(new ProcessStartInfo
+        {
+            FileName = path,
+            UseShellExecute = true
+        });
+        StatusMessage = $"Rapport généré : {path}";
+        ErrorMessage = null;
+    }
 
     [RelayCommand]
     private async Task SyncAsync()

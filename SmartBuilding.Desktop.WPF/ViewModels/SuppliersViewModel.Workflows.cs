@@ -1,16 +1,21 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SmartBuilding.Domain.Entities.Suppliers;
 using SmartBuilding.Desktop.WPF.Models;
+using SmartBuilding.Desktop.WPF.Services;
 
 namespace SmartBuilding.Desktop.WPF.ViewModels;
 
 public partial class SuppliersViewModel
 {
+    private readonly SuppliersContractPdfService _suppliersPdf = new();
+
     [ObservableProperty] private bool _isContractFormOpen;
     [ObservableProperty] private bool _isInvoiceFormOpen;
     [ObservableProperty] private bool _isInterventionFormOpen;
+    [ObservableProperty] private bool _isContractDetailsOpen;
 
     [ObservableProperty] private Guid _contractSupplierId;
     [ObservableProperty] private string _contractNumber = string.Empty;
@@ -167,6 +172,65 @@ public partial class SuppliersViewModel
 
     [RelayCommand]
     private void CloseInterventionForm() => IsInterventionFormOpen = false;
+
+    [RelayCommand]
+    private void OpenSupplierDetails(SupplierListItem? supplier)
+    {
+        if (supplier is null)
+            return;
+        SelectedSupplier = supplier;
+        IsDetailPanelOpen = true;
+    }
+
+    [RelayCommand]
+    private void ViewContractDetails(SupplierListItem? supplier)
+    {
+        var target = supplier ?? SelectedSupplier;
+        if (target is null)
+        {
+            ErrorMessage = "Sélectionnez un fournisseur pour voir le contrat.";
+            return;
+        }
+
+        if (target.ContractDisplay == "—")
+        {
+            ErrorMessage = "Aucun contrat disponible pour ce fournisseur.";
+            return;
+        }
+
+        SelectedSupplier = target;
+        IsContractDetailsOpen = true;
+        ErrorMessage = null;
+    }
+
+    [RelayCommand]
+    private void CloseContractDetails() => IsContractDetailsOpen = false;
+
+    [RelayCommand]
+    private void ExportContractPdf()
+    {
+        var target = SelectedSupplier;
+        if (target is null)
+        {
+            ErrorMessage = "Sélectionnez un fournisseur pour exporter le contrat.";
+            return;
+        }
+
+        if (target.ContractDisplay == "—")
+        {
+            ErrorMessage = "Aucun contrat à exporter pour ce fournisseur.";
+            return;
+        }
+
+        var path = _suppliersPdf.ExportContractDetails(target);
+        Process.Start(new ProcessStartInfo
+        {
+            FileName = path,
+            UseShellExecute = true
+        });
+        StatusMessage = $"Contrat exporté : {path}";
+        ErrorMessage = null;
+    }
 
     [RelayCommand]
     private async Task SaveInterventionAsync()

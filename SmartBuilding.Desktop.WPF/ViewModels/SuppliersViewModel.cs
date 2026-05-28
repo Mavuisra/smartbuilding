@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
+using System.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LiveChartsCore;
@@ -210,8 +211,20 @@ public partial class SuppliersViewModel : BaseViewModel
     [RelayCommand]
     private void ExportCsv()
     {
+        if (_allSuppliers.Count == 0)
+        {
+            ErrorMessage = "Aucune donnée à exporter.";
+            return;
+        }
+
         var path = SuppliersExportService.ExportCsv(_allSuppliers);
+        Process.Start(new ProcessStartInfo
+        {
+            FileName = path,
+            UseShellExecute = true
+        });
         StatusMessage = $"Export : {path}";
+        ErrorMessage = null;
     }
 
     [RelayCommand]

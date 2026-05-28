@@ -143,3 +143,23 @@ public class EmailHistoryItem
     public string Action { get; init; } = string.Empty;
     public string TimeDisplay { get; init; } = string.Empty;
 }
+
+public partial class EmailCategoryRuleItem : ObservableObject
+{
+    [ObservableProperty] private string _senderPattern = string.Empty;
+    [ObservableProperty] private string _category = "Administration";
+    [ObservableProperty] private bool _isEnabled = true;
+}
+
+public class EmailAccountConfig
+{
+    public string Provider { get; init; } = "Gmail";
+    public string EmailAddress { get; init; } = string.Empty;
+    public string ImapHost { get; init; } = "imap.gmail.com";
+    public int ImapPort { get; init; } = 993;
+    public string SmtpHost { get; init; } = "smtp.gmail.com";
+    public int SmtpPort { get; init; } = 587;
+    public string Password { get; init; } = string.Empty;
+    public bool UseSsl { get; init; } = true;
+    public string FilterKeywords { get; init; } = string.Empty;
+}

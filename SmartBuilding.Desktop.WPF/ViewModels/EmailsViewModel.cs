@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using SmartBuilding.Domain.Entities.Email;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LiveChartsCore;
@@ -40,6 +41,18 @@ public partial class EmailsViewModel : BaseViewModel
     [ObservableProperty] private string _composeSubject = string.Empty;
     [ObservableProperty] private string _composeBody = string.Empty;
     [ObservableProperty] private string? _composeError;
+    [ObservableProperty] private string _ruleSenderPattern = string.Empty;
+    [ObservableProperty] private string _ruleCategory = "Administration";
+    [ObservableProperty] private string _emailProvider = "Gmail";
+    [ObservableProperty] private string _emailAddressInput = string.Empty;
+    [ObservableProperty] private string _emailAppPasswordInput = string.Empty;
+    [ObservableProperty] private string _imapHostInput = "imap.gmail.com";
+    [ObservableProperty] private int _imapPortInput = 993;
+    [ObservableProperty] private string _smtpHostInput = "smtp.gmail.com";
+    [ObservableProperty] private int _smtpPortInput = 587;
+    [ObservableProperty] private bool _useSslInput = true;
+    [ObservableProperty] private string _emailFilterKeywordsInput = string.Empty;
+    [ObservableProperty] private string _emailConfigStatus = "Compte non configuré.";
 
     [ObservableProperty] private int _receivedToday;
     [ObservableProperty] private int _unreadCount;
@@ -96,6 +109,7 @@ public partial class EmailsViewModel : BaseViewModel
     public ObservableCollection<EmailActivityItem> EmailActivities { get; } = [];
     public ObservableCollection<EmailKeywordItem> EmailKeywords { get; } = [];
     public ObservableCollection<EmailHistoryItem> EmailHistory { get; } = [];
+    public ObservableCollection<EmailCategoryRuleItem> CategoryRules { get; } = [];
 
     public EmailsViewModel(
         EmailsModuleService emailsModuleService,
@@ -166,6 +180,25 @@ public partial class EmailsViewModel : BaseViewModel
             BuildCharts(data);
             BuildKpiSparklines(data);
             ApplyFilters();
+
+            CategoryRules.Clear();
+            var rules = await _emailsModuleService.LoadCategoryRulesAsync();
+            foreach (var rule in rules)
+                CategoryRules.Add(rule);
+
+            var accountConfig = await _emailsModuleService.GetEmailAccountConfigAsync();
+            EmailProvider = accountConfig.Provider;
+            EmailAddressInput = accountConfig.EmailAddress;
+            EmailAppPasswordInput = accountConfig.Password;
+            ImapHostInput = accountConfig.ImapHost;
+            ImapPortInput = accountConfig.ImapPort;
+            SmtpHostInput = accountConfig.SmtpHost;
+            SmtpPortInput = accountConfig.SmtpPort;
+            UseSslInput = accountConfig.UseSsl;
+            EmailFilterKeywordsInput = accountConfig.FilterKeywords;
+            EmailConfigStatus = string.IsNullOrWhiteSpace(accountConfig.EmailAddress)
+                ? "Compte non configuré."
+                : "Compte configuré localement.";
         }
         finally { IsBusy = false; }
     }
@@ -236,10 +269,20 @@ public partial class EmailsViewModel : BaseViewModel
     private async Task SendReplyAsync()
     {
         if (SelectedEmail is null) return;
+        var sender = (AccountEmail ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(sender) || sender == "—")
+        {
+            var msg = "Email expéditeur non configuré. Renseignez-le dans Paramètres → Société & bailleur.";
+            ComposeError = msg;
+            StatusMessage = msg;
+            return;
+        }
+
         var body = string.IsNullOrWhiteSpace(ReplyBody) ? ComposeBody : ReplyBody;
         if (string.IsNullOrWhiteSpace(body))
         {
             StatusMessage = "Le message ne peut pas être vide.";
+            ComposeError = "Le message ne peut pas être vide.";
             return;
         }
 
@@ -251,15 +294,20 @@ public partial class EmailsViewModel : BaseViewModel
             {
                 await _emailService.SendReplyAsync(accountId.Value, SelectedEmail.FromAddress, SelectedEmail.Subject, body);
                 StatusMessage = "Réponse envoyée.";
+                ComposeError = null;
             }
             else
+            {
                 StatusMessage = "Réponse enregistrée (mode démo — configurez un compte email).";
+                ComposeError = null;
+            }
 
             ReplyBody = string.Empty;
             IsComposeOpen = false;
         }
         catch (Exception ex)
         {
+            ComposeError = ex.Message;
             StatusMessage = $"Échec envoi : {ex.Message}";
         }
         finally { IsBusy = false; }
@@ -284,7 +332,30 @@ public partial class EmailsViewModel : BaseViewModel
             if (accountId.HasValue)
             {
                 var fetched = await _emailService.FetchNewEmailsAsync(accountId.Value);
-                StatusMessage = $"Synchronisation : {fetched.Count} nouveau(x) email(s).";
+                if (fetched.Count > 0)
+                {
+                    var supplierCount = fetched.Count(IsSupplierIncomingEmail);
+                    if (supplierCount > 0)
+                    {
+                        Alerts.Insert(0, new EmailAlertItem
+                        {
+                            Title = "Nouveaux mails fournisseurs",
+                            Message = $"{supplierCount} message(s) fournisseur reçu(s).",
+                            AccentColor = "#EA580C",
+                            Background = "#FFEDD5"
+                        });
+                        while (Alerts.Count > 6)
+                            Alerts.RemoveAt(Alerts.Count - 1);
+                    }
+
+                    StatusMessage = supplierCount > 0
+                        ? $"Synchronisation : {fetched.Count} nouveau(x) email(s), dont {supplierCount} fournisseur(s)."
+                        : $"Synchronisation : {fetched.Count} nouveau(x) email(s).";
+                }
+                else
+                {
+                    StatusMessage = "Synchronisation : aucun nouveau mail.";
+                }
             }
             else
             {
@@ -301,7 +372,138 @@ public partial class EmailsViewModel : BaseViewModel
         finally { IsBusy = false; }
     }
 
+    private static bool IsSupplierIncomingEmail(CachedEmail email)
+    {
+        if (email.Category.Equals("Fournisseurs", StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        var from = email.FromAddress?.ToLowerInvariant() ?? string.Empty;
+        var subject = email.Subject?.ToLowerInvariant() ?? string.Empty;
+        return from.Contains("fourn") || subject.Contains("fourn");
+    }
+
     [RelayCommand] private async Task RefreshAsync() => await LoadAsync();
+
+    [RelayCommand]
+    private async Task SaveEmailConfigAsync()
+    {
+        var email = (EmailAddressInput ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            EmailConfigStatus = "Adresse email requise.";
+            StatusMessage = EmailConfigStatus;
+            return;
+        }
+
+        if (!email.Contains('@') || !email.Contains('.'))
+        {
+            EmailConfigStatus = "Adresse email invalide.";
+            StatusMessage = EmailConfigStatus;
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(ImapHostInput) || string.IsNullOrWhiteSpace(SmtpHostInput))
+        {
+            EmailConfigStatus = "Serveurs IMAP/SMTP requis.";
+            StatusMessage = EmailConfigStatus;
+            return;
+        }
+
+        if (ImapPortInput <= 0 || SmtpPortInput <= 0)
+        {
+            EmailConfigStatus = "Ports IMAP/SMTP invalides.";
+            StatusMessage = EmailConfigStatus;
+            return;
+        }
+
+        IsBusy = true;
+        try
+        {
+            await _emailsModuleService.SaveEmailAccountConfigAsync(new EmailAccountConfig
+            {
+                Provider = string.IsNullOrWhiteSpace(EmailProvider) ? "Gmail" : EmailProvider.Trim(),
+                EmailAddress = email,
+                Password = (EmailAppPasswordInput ?? string.Empty).Trim(),
+                ImapHost = ImapHostInput.Trim(),
+                ImapPort = ImapPortInput,
+                SmtpHost = SmtpHostInput.Trim(),
+                SmtpPort = SmtpPortInput,
+                UseSsl = UseSslInput,
+                FilterKeywords = (EmailFilterKeywordsInput ?? string.Empty).Trim()
+            });
+
+            EmailConfigStatus = "Compte email enregistré.";
+            StatusMessage = EmailConfigStatus;
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            EmailConfigStatus = $"Échec sauvegarde : {ex.Message}";
+            StatusMessage = EmailConfigStatus;
+        }
+        finally { IsBusy = false; }
+    }
+
+    [RelayCommand]
+    private async Task TestEmailConfigAsync()
+    {
+        await SaveEmailConfigAsync();
+        if (EmailConfigStatus.StartsWith("Échec", StringComparison.OrdinalIgnoreCase) ||
+            EmailConfigStatus.Contains("requise", StringComparison.OrdinalIgnoreCase) ||
+            EmailConfigStatus.Contains("invalide", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        await SyncEmailsAsync();
+    }
+
+    [RelayCommand]
+    private async Task AddCategoryRuleAsync()
+    {
+        var pattern = RuleSenderPattern.Trim();
+        if (string.IsNullOrWhiteSpace(pattern))
+        {
+            StatusMessage = "Saisissez l'email ou le domaine expéditeur.";
+            return;
+        }
+
+        var category = string.IsNullOrWhiteSpace(RuleCategory) ? "Administration" : RuleCategory.Trim();
+        var existing = CategoryRules.FirstOrDefault(r =>
+            string.Equals(r.SenderPattern, pattern, StringComparison.OrdinalIgnoreCase));
+
+        if (existing is null)
+        {
+            CategoryRules.Add(new EmailCategoryRuleItem
+            {
+                SenderPattern = pattern,
+                Category = category,
+                IsEnabled = true
+            });
+        }
+        else
+        {
+            existing.Category = category;
+            existing.IsEnabled = true;
+        }
+
+        await _emailsModuleService.SaveCategoryRulesAsync(CategoryRules);
+        RuleSenderPattern = string.Empty;
+        StatusMessage = "Règle enregistrée.";
+        await LoadAsync();
+    }
+
+    [RelayCommand]
+    private async Task RemoveCategoryRuleAsync(EmailCategoryRuleItem? rule)
+    {
+        if (rule is null)
+            return;
+
+        CategoryRules.Remove(rule);
+        await _emailsModuleService.SaveCategoryRulesAsync(CategoryRules);
+        StatusMessage = "Règle supprimée.";
+        await LoadAsync();
+    }
 
     partial void OnSearchQueryChanged(string value) => ApplyFilters();
     partial void OnFilterCategoryChanged(string value) => ApplyFilters();

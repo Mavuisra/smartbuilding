@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.IO;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using SmartBuilding.Domain.Entities.Email;
 using SmartBuilding.Desktop.WPF.Models;
@@ -11,8 +12,17 @@ public class EmailsModuleService
 {
     private static readonly CultureInfo Fr = CultureInfo.GetCultureInfo("fr-FR");
     private readonly SmartBuildingDbContext _db;
+    private readonly string _rulesPath;
 
-    public EmailsModuleService(SmartBuildingDbContext db) => _db = db;
+    public EmailsModuleService(SmartBuildingDbContext db)
+    {
+        _db = db;
+        var folder = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "SBMS");
+        Directory.CreateDirectory(folder);
+        _rulesPath = Path.Combine(folder, "email-category-rules.json");
+    }
 
     public Task<List<CachedEmail>> GetAllCachedAsync(CancellationToken cancellationToken = default) =>
         _db.CachedEmails.OrderByDescending(e => e.ReceivedAt).ToListAsync(cancellationToken);
@@ -22,6 +32,13 @@ public class EmailsModuleService
         var today = DateTime.Today;
         var emails = await _db.CachedEmails.OrderByDescending(e => e.ReceivedAt).ToListAsync(cancellationToken);
         var account = await _db.EmailAccounts.FirstOrDefaultAsync(cancellationToken);
+        var building = await _db.BuildingInfos.FirstOrDefaultAsync(cancellationToken);
+
+        emails = await ApplyCategoryRulesAsync(emails, cancellationToken);
+
+        var senderEmail = !string.IsNullOrWhiteSpace(account?.EmailAddress)
+            ? account!.EmailAddress
+            : (string.IsNullOrWhiteSpace(building?.Email) ? "—" : building!.Email);
 
         var items = emails.Select(MapEmail).ToList();
         var receivedToday = emails.Count(e => e.ReceivedAt.Date == today && !e.IsDraft);
@@ -80,7 +97,7 @@ public class EmailsModuleService
             SyncStatusLabel = connected ? "Synchronisé" : "Hors ligne",
             SyncStatusColor = connected ? "#166534" : "#64748B",
             AccountProvider = account?.Provider ?? "—",
-            AccountEmail = account?.EmailAddress ?? "—",
+            AccountEmail = senderEmail,
             LastSyncDisplay = lastSync.HasValue ? lastSync.Value.ToLocalTime().ToString("dd/MM/yyyy HH:mm", Fr) : "—",
             LastSyncShort = lastSync.HasValue ? lastSync.Value.ToLocalTime().ToString("HH:mm", Fr) : "—",
             CachedEmailCount = emails.Count,
@@ -129,6 +146,129 @@ public class EmailsModuleService
     {
         var account = await _db.EmailAccounts.FirstOrDefaultAsync(cancellationToken);
         return account?.Id;
+    }
+
+    public async Task<EmailAccountConfig> GetEmailAccountConfigAsync(CancellationToken cancellationToken = default)
+    {
+        var account = await _db.EmailAccounts.FirstOrDefaultAsync(cancellationToken);
+        if (account is null)
+        {
+            return new EmailAccountConfig();
+        }
+
+        return new EmailAccountConfig
+        {
+            Provider = string.IsNullOrWhiteSpace(account.Provider) ? "Gmail" : account.Provider,
+            EmailAddress = account.EmailAddress,
+            ImapHost = string.IsNullOrWhiteSpace(account.ImapHost) ? "imap.gmail.com" : account.ImapHost,
+            ImapPort = account.ImapPort <= 0 ? 993 : account.ImapPort,
+            SmtpHost = string.IsNullOrWhiteSpace(account.SmtpHost) ? "smtp.gmail.com" : account.SmtpHost,
+            SmtpPort = account.SmtpPort <= 0 ? 587 : account.SmtpPort,
+            Password = account.EncryptedPassword,
+            UseSsl = account.UseSsl,
+            FilterKeywords = account.FilterKeywords ?? string.Empty
+        };
+    }
+
+    public async Task SaveEmailAccountConfigAsync(EmailAccountConfig config, CancellationToken cancellationToken = default)
+    {
+        var account = await _db.EmailAccounts.FirstOrDefaultAsync(cancellationToken);
+        if (account is null)
+        {
+            var userId = await _db.Users.Select(u => u.Id).FirstOrDefaultAsync(cancellationToken);
+            account = new EmailAccount
+            {
+                UserId = userId == Guid.Empty ? Guid.NewGuid() : userId
+            };
+            _db.EmailAccounts.Add(account);
+        }
+
+        account.Provider = string.IsNullOrWhiteSpace(config.Provider) ? "Gmail" : config.Provider.Trim();
+        account.EmailAddress = config.EmailAddress.Trim();
+        account.ImapHost = config.ImapHost.Trim();
+        account.ImapPort = config.ImapPort;
+        account.SmtpHost = config.SmtpHost.Trim();
+        account.SmtpPort = config.SmtpPort;
+        account.EncryptedPassword = config.Password;
+        account.UseSsl = config.UseSsl;
+        account.FilterKeywords = string.IsNullOrWhiteSpace(config.FilterKeywords) ? null : config.FilterKeywords.Trim();
+        account.UpdatedAt = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<List<EmailCategoryRuleItem>> LoadCategoryRulesAsync(CancellationToken cancellationToken = default)
+    {
+        await Task.CompletedTask;
+        if (!File.Exists(_rulesPath))
+            return [];
+
+        try
+        {
+            var json = await File.ReadAllTextAsync(_rulesPath, cancellationToken);
+            var rules = JsonSerializer.Deserialize<List<EmailCategoryRuleItem>>(json) ?? [];
+            return rules
+                .Where(r => !string.IsNullOrWhiteSpace(r.SenderPattern))
+                .ToList();
+        }
+        catch
+        {
+            return [];
+        }
+    }
+
+    public async Task SaveCategoryRulesAsync(IEnumerable<EmailCategoryRuleItem> rules, CancellationToken cancellationToken = default)
+    {
+        var sanitized = rules
+            .Where(r => !string.IsNullOrWhiteSpace(r.SenderPattern))
+            .Select(r => new EmailCategoryRuleItem
+            {
+                SenderPattern = r.SenderPattern.Trim(),
+                Category = string.IsNullOrWhiteSpace(r.Category) ? "Administration" : r.Category.Trim(),
+                IsEnabled = r.IsEnabled
+            })
+            .ToList();
+
+        var json = JsonSerializer.Serialize(sanitized, new JsonSerializerOptions { WriteIndented = true });
+        await File.WriteAllTextAsync(_rulesPath, json, cancellationToken);
+    }
+
+    private async Task<List<CachedEmail>> ApplyCategoryRulesAsync(
+        List<CachedEmail> emails,
+        CancellationToken cancellationToken = default)
+    {
+        var rules = await LoadCategoryRulesAsync(cancellationToken);
+        var activeRules = rules
+            .Where(r => r.IsEnabled && !string.IsNullOrWhiteSpace(r.SenderPattern))
+            .OrderByDescending(r => r.SenderPattern.Length)
+            .ToList();
+
+        if (activeRules.Count == 0)
+            return emails;
+
+        var changed = false;
+        foreach (var email in emails)
+        {
+            var sender = ExtractEmailAddress(email.FromAddress);
+            var match = activeRules.FirstOrDefault(r =>
+                sender.Contains(r.SenderPattern, StringComparison.OrdinalIgnoreCase));
+
+            if (match is null)
+                continue;
+
+            if (!string.Equals(email.Category, match.Category, StringComparison.OrdinalIgnoreCase))
+            {
+                email.Category = match.Category;
+                email.UpdatedAt = DateTime.UtcNow;
+                email.IsSynced = false;
+                changed = true;
+            }
+        }
+
+        if (changed)
+            await _db.SaveChangesAsync(cancellationToken);
+
+        return emails;
     }
 
     public static IReadOnlyList<EmailFolderItem> BuildMainFolders(IReadOnlyDictionary<string, int> counts) =>
@@ -419,6 +559,19 @@ public class EmailsModuleService
         var idx = address.IndexOf('<');
         if (idx > 0) return address[..idx].Trim().Trim('"');
         return address.Contains('@') ? address.Split('@')[0] : address;
+    }
+
+    private static string ExtractEmailAddress(string address)
+    {
+        if (string.IsNullOrWhiteSpace(address))
+            return string.Empty;
+
+        var start = address.IndexOf('<');
+        var end = address.IndexOf('>');
+        if (start >= 0 && end > start)
+            return address[(start + 1)..end].Trim().ToLowerInvariant();
+
+        return address.Trim().ToLowerInvariant();
     }
 
     private static string GetInitials(string name)

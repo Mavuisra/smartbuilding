@@ -203,13 +203,22 @@
                                 <TextBlock Text="Export Excel"/>
                             </StackPanel>
                         </Button>
-                        <Button Style="{StaticResource SuppliersToolbarButton}">
-                            <materialDesign:PackIcon Kind="FilePdfBox"/>
+                        <Button Command="{Binding ExportContractPdfCommand}" Style="{StaticResource SuppliersToolbarButton}" ToolTip="Exporter le contrat sélectionné en PDF">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="FilePdfBox" Margin="0,0,6,0"/>
+                                <TextBlock Text="Contrat PDF"/>
+                            </StackPanel>
                         </Button>
                         <Button Command="{Binding SyncCommand}" Style="{StaticResource SuppliersToolbarButton}">
                             <StackPanel Orientation="Horizontal">
                                 <materialDesign:PackIcon Kind="Sync" Margin="0,0,6,0"/>
                                 <TextBlock Text="Synchroniser"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Command="{Binding ViewContractDetailsCommand}" Style="{StaticResource SuppliersToolbarButton}">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="FileDocumentOutline" Margin="0,0,6,0"/>
+                                <TextBlock Text="Voir contrat"/>
                             </StackPanel>
                         </Button>
                     </WrapPanel>
@@ -274,8 +283,11 @@
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
                                                 <StackPanel Orientation="Horizontal">
-                                                    <Button Style="{StaticResource MaterialDesignIconButton}" ToolTip="Voir">
+                                                    <Button Style="{StaticResource MaterialDesignIconButton}" ToolTip="Voir" Command="{Binding DataContext.OpenSupplierDetailsCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}">
                                                         <materialDesign:PackIcon Kind="EyeOutline"/>
+                                                    </Button>
+                                                    <Button Style="{StaticResource MaterialDesignIconButton}" ToolTip="Voir contrat" Command="{Binding DataContext.ViewContractDetailsCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}">
+                                                        <materialDesign:PackIcon Kind="FileDocumentOutline"/>
                                                     </Button>
                                                     <Button Style="{StaticResource MaterialDesignIconButton}" ToolTip="Modifier">
                                                         <materialDesign:PackIcon Kind="PencilOutline"/>
@@ -429,10 +441,10 @@
                                     </StackPanel>
                                 </ScrollViewer>
                                 <Border Grid.Row="2" Padding="14,10,14,12" BorderBrush="#E8EFED" BorderThickness="0,1,0,0">
-                                    <Button Style="{StaticResource SbmsLoginPrimaryButton}" HorizontalAlignment="Stretch" Padding="12,10">
+                                    <Button Command="{Binding ViewContractDetailsCommand}" Style="{StaticResource SbmsLoginPrimaryButton}" HorizontalAlignment="Stretch" Padding="12,10">
                                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                            <materialDesign:PackIcon Kind="PencilOutline" Margin="0,0,8,0"/>
-                                            <TextBlock Text="Modifier"/>
+                                            <materialDesign:PackIcon Kind="FileDocumentOutline" Margin="0,0,8,0"/>
+                                            <TextBlock Text="Voir contrat détaillé"/>
                                         </StackPanel>
                                     </Button>
                                 </Border>
@@ -564,6 +576,64 @@
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                         <Button Content="Annuler" Command="{Binding CloseInterventionFormCommand}" Style="{StaticResource SuppliersToolbarButton}" Margin="0,0,8,0"/>
                         <Button Content="Planifier" Command="{Binding SaveInterventionCommand}" Style="{StaticResource SbmsLoginPrimaryButton}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Border>
+
+        <!-- Modal détail contrat -->
+        <Border Grid.RowSpan="2" Background="#80000000" Visibility="{Binding IsContractDetailsOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Border Background="White" CornerRadius="12" Padding="24" MaxWidth="560" VerticalAlignment="Center" HorizontalAlignment="Center">
+                <StackPanel DataContext="{Binding SelectedSupplier}">
+                    <DockPanel Margin="0,0,0,12">
+                        <Button DockPanel.Dock="Right" Command="{Binding DataContext.CloseContractDetailsCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" Style="{StaticResource MaterialDesignIconButton}">
+                            <materialDesign:PackIcon Kind="Close"/>
+                        </Button>
+                        <TextBlock Text="Contrat fournisseur - détail complet" FontSize="18" FontWeight="Bold" Foreground="#1B3D3B"/>
+                    </DockPanel>
+
+                    <Border Background="#F8FAFC" CornerRadius="10" BorderBrush="#E8EFED" BorderThickness="1" Padding="12" Margin="0,0,0,10">
+                        <StackPanel>
+                            <TextBlock Text="{Binding Name}" FontSize="16" FontWeight="Bold" Foreground="#1B3D3B"/>
+                            <TextBlock Text="{Binding Code}" FontSize="12" Foreground="#64748B" Margin="0,2,0,0"/>
+                            <TextBlock Text="{Binding ContactName}" FontSize="12" Foreground="#64748B" Margin="0,2,0,0"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Grid Margin="0,0,0,6">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                            <TextBlock Text="N° contrat" FontSize="11" Foreground="#94A3B8"/>
+                            <TextBlock Text="{Binding ContractDisplay}" FontWeight="SemiBold"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="Statut contrat" FontSize="11" Foreground="#94A3B8"/>
+                            <TextBlock Text="{Binding ContractStatus}" FontWeight="SemiBold"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <Grid Margin="0,0,0,6">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                            <TextBlock Text="Début contrat" FontSize="11" Foreground="#94A3B8"/>
+                            <TextBlock Text="{Binding ContractStartDisplay}" FontWeight="SemiBold"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="Fin contrat" FontSize="11" Foreground="#94A3B8"/>
+                            <TextBlock Text="{Binding ContractEndDisplay}" FontWeight="SemiBold"/>
+                        </StackPanel>
+                    </Grid>
+
+                    <TextBlock Text="Bâtiment" FontSize="11" Foreground="#94A3B8"/>
+                    <TextBlock Text="{Binding Building}" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                    <TextBlock Text="Montant contrat" FontSize="11" Foreground="#94A3B8"/>
+                    <TextBlock Text="{Binding ContractAmountDisplay}" FontSize="18" FontWeight="Bold" Foreground="#166534" Margin="0,0,0,6"/>
+                    <TextBlock Text="Description" FontSize="11" Foreground="#94A3B8"/>
+                    <TextBlock Text="{Binding ContractDescription}" TextWrapping="Wrap" Margin="0,0,0,10"/>
+
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Command="{Binding DataContext.ExportContractPdfCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" Content="Exporter PDF" Style="{StaticResource SuppliersToolbarButton}" Margin="0,0,8,0"/>
+                        <Button Command="{Binding DataContext.CloseContractDetailsCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" Content="Fermer" Style="{StaticResource SbmsLoginPrimaryButton}"/>
                     </StackPanel>
                 </StackPanel>
             </Border>

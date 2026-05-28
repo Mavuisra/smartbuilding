@@ -45,7 +45,10 @@ public partial class SupplierListItem : ObservableObject
     public string TaxId { get; init; } = "—";
     public string Notes { get; init; } = "—";
     public string ContractStatus { get; init; } = "—";
+    public string ContractDescription { get; init; } = "—";
+    public string ContractStartDisplay { get; init; } = "—";
     public string ContractEndDisplay { get; init; } = "—";
+    public string ContractAmountDisplay { get; init; } = "—";
     public decimal TotalExpenses { get; init; }
     public IReadOnlyList<SupplierInvoiceItem> Invoices { get; init; } = [];
     public IReadOnlyList<SupplierInterventionItem> Interventions { get; init; } = [];

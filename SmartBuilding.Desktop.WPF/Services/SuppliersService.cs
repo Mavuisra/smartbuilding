@@ -276,7 +276,10 @@ public class SuppliersService
             TaxId = s.TaxId ?? "—",
             Notes = s.Notes ?? "—",
             ContractStatus = contract?.Status ?? "—",
+            ContractDescription = string.IsNullOrWhiteSpace(contract?.Description) ? "—" : contract!.Description,
+            ContractStartDisplay = contract is null ? "—" : contract.StartDate.ToString("dd/MM/yyyy"),
             ContractEndDisplay = contract?.EndDate.ToString("dd/MM/yyyy") ?? "—",
+            ContractAmountDisplay = contract is null ? "—" : Fc(contract.TotalValue),
             TotalExpenses = totalExp,
             Invoices = s.Payments.OrderByDescending(p => p.PaymentDate).Take(6).Select(p =>
             {
