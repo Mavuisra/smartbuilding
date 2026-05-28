@@ -40,14 +40,11 @@ public sealed class AppConfiguration
     public string FullAddress =>
         string.Join(", ", new[] { Address, City, Country }.Where(s => !string.IsNullOrWhiteSpace(s)));
 
-    public string FormatMoney(decimal amountInCdf)
-    {
-        var (value, suffix) = ConvertFromCdf(amountInCdf);
-        return string.Format(System.Globalization.CultureInfo.GetCultureInfo("fr-FR"), "{0:N0} {1}", value, suffix);
-    }
+    public string FormatMoney(decimal amount) =>
+        SmartBuilding.Shared.Money.BuildingMoneyFormat.Format(amount, Currency);
 
-    public (decimal DisplayValue, string Suffix) ConvertFromCdf(decimal amountInCdf) =>
-        SmartBuilding.Shared.Money.BuildingMoneyFormat.ConvertFromCdf(amountInCdf, Currency, UsdExchangeRate);
+    public (decimal DisplayValue, string Suffix) ToDisplayAmount(decimal amount) =>
+        SmartBuilding.Shared.Money.BuildingMoneyFormat.ToDisplay(amount, Currency);
 
     public static AppConfiguration Default { get; } = new();
 

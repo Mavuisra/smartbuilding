@@ -205,7 +205,7 @@ public class ConsumptionsService
             EquipmentSource = string.IsNullOrWhiteSpace(r.EquipmentSource) ? typeLabel : r.EquipmentSource,
             QuantityDisplay = $"{r.Quantity:N2}",
             Unit = r.Unit,
-            CostDisplay = r.Currency == "USD" ? Usd(r.Cost) : Fc(r.Cost),
+            CostDisplay = Fc(r.Cost),
             VariationDisplay = $"{r.VariationPercent:+0.0;-0.0}%",
             VariationColor = varColor,
             Responsible = string.IsNullOrWhiteSpace(r.Responsible) ? "—" : r.Responsible,
@@ -344,5 +344,4 @@ public class ConsumptionsService
     };
 
     private static string Fc(decimal amount) => MoneyFormatter.Format(amount);
-    private static string Usd(decimal amount) => string.Format(CultureInfo.InvariantCulture, "${0:N2}", amount);
 }

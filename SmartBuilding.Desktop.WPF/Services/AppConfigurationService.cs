@@ -45,6 +45,18 @@ public sealed class AppConfigurationService
         var db = scope.ServiceProvider.GetRequiredService<SmartBuildingDbContext>();
         var building = await db.BuildingInfos.AsNoTracking().FirstOrDefaultAsync(cancellationToken)
                        ?? new BuildingInfo();
+
+        var buildingRow = await db.BuildingInfos.FirstOrDefaultAsync(cancellationToken);
+        if (buildingRow is not null
+            && (string.IsNullOrWhiteSpace(buildingRow.Currency)
+                || buildingRow.Currency.Equals("CDF", StringComparison.OrdinalIgnoreCase)
+                || buildingRow.Currency.Equals("FC", StringComparison.OrdinalIgnoreCase)))
+        {
+            buildingRow.Currency = "USD";
+            await db.SaveChangesAsync(cancellationToken);
+            building = buildingRow;
+        }
+
         var appearance = LoadAppearanceFile();
 
         var config = BuildConfiguration(building, appearance);

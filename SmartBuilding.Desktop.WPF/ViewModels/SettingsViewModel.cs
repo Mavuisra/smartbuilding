@@ -151,12 +151,8 @@ public partial class SettingsViewModel : BaseViewModel
 
     partial void OnSelectedCategoryIdChanged(string value) => UpdateCategoryHeader(value);
 
-    partial void OnSelectedCurrencyChanged(string value)
-    {
+    partial void OnSelectedCurrencyChanged(string value) =>
         OnPropertyChanged(nameof(IsUsdCurrency));
-        if (IsUsdCurrency && !TryParseUsdRate(out _))
-            _ = PromptUsdExchangeRateAsync();
-    }
 
     partial void OnBuildingCityChanged(string value) => UpdateCompanyLocationBadge();
     partial void OnBuildingCountryChanged(string value) => UpdateCompanyLocationBadge();
@@ -498,18 +494,7 @@ public partial class SettingsViewModel : BaseViewModel
         await Task.CompletedTask;
     }
 
-    private async Task<bool> EnsureUsdExchangeRateAsync()
-    {
-        if (!IsUsdCurrency)
-            return true;
-
-        if (TryParseUsdRate(out _))
-            return true;
-
-        ErrorMessage = "Le taux de change USD est obligatoire.";
-        await PromptUsdExchangeRateAsync();
-        return TryParseUsdRate(out _);
-    }
+    private Task<bool> EnsureUsdExchangeRateAsync() => Task.FromResult(true);
 
     private bool TryParseUsdRate(out decimal rate)
     {

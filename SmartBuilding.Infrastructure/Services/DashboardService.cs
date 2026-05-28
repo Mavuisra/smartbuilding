@@ -281,5 +281,5 @@ public static class FinanceMetrics
          !category.Contains("Remboursement", StringComparison.OrdinalIgnoreCase));
 
     public static string Fc(decimal amount) =>
-        string.Format(System.Globalization.CultureInfo.GetCultureInfo("fr-FR"), "{0:N0} FC", amount);
+        SmartBuilding.Shared.Money.BuildingMoneyFormat.Format(amount, "USD");
 }

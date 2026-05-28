@@ -1,6 +1,6 @@
 namespace SmartBuilding.Desktop.WPF.Services;
 
-/// <summary>Conversion montant → texte français (francs congolais).</summary>
+/// <summary>Conversion montant → texte français (dollars US).</summary>
 public static class FrenchAmountInWords
 {
     private static readonly string[] Units =
@@ -15,14 +15,16 @@ public static class FrenchAmountInWords
         "", "", "vingt", "trente", "quarante", "cinquante", "soixante", "soixante", "quatre-vingt", "quatre-vingt"
     ];
 
-    public static string ToFrancsCongolais(decimal amount)
+    public static string ToFrancsCongolais(decimal amount) => ToDollarsUs(amount);
+
+    public static string ToDollarsUs(decimal amount)
     {
         var value = (long)Math.Round(amount, 0, MidpointRounding.AwayFromZero);
         if (value == 0)
-            return "zéro franc congolais";
+            return "zéro dollar américain";
 
         var words = Convert(value);
-        var currency = value > 1 ? "francs congolais" : "franc congolais";
+        var currency = value > 1 ? "dollars américains" : "dollar américain";
         return $"{char.ToUpper(words[0])}{words[1..]} {currency}";
     }
 

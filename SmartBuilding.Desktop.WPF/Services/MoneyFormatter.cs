@@ -3,12 +3,12 @@ using SmartBuilding.Desktop.WPF.Models;
 namespace SmartBuilding.Desktop.WPF.Services;
 
 /// <summary>
-/// Formatage monétaire global — montants stockés en CDF, affichage selon la devise des paramètres (USD par défaut).
+/// Formatage monétaire global — pas de conversion : affichage direct en USD (ou devise paramètres).
 /// </summary>
 public static class MoneyFormatter
 {
-    public static string Format(decimal amountInCdf) =>
-        (AppConfigurationService.Instance?.Current ?? AppConfiguration.Default).FormatMoney(amountInCdf);
+    public static string Format(decimal amount) =>
+        (AppConfigurationService.Instance?.Current ?? AppConfiguration.Default).FormatMoney(amount);
 
     public static string ZeroDisplay => Format(0);
 
@@ -17,9 +17,8 @@ public static class MoneyFormatter
 
     public static string AmountHint => $"Montant ({CurrencyCode})";
 
-    public static bool RequiresUsdRate =>
-        string.Equals(CurrencyCode, "USD", StringComparison.OrdinalIgnoreCase);
+    /// <summary>Plus de conversion : le taux n'est plus requis pour l'affichage USD.</summary>
+    public static bool RequiresUsdRate => false;
 
-    public static bool HasValidUsdRate =>
-        (AppConfigurationService.Instance?.Current.UsdExchangeRate ?? 0) > 0;
+    public static bool HasValidUsdRate => true;
 }
