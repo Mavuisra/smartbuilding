@@ -237,7 +237,7 @@ public class SettingsService
         if (string.IsNullOrWhiteSpace(building.TimeZoneId))
             building.TimeZoneId = "Africa/Kinshasa";
         if (string.IsNullOrWhiteSpace(building.Currency))
-            building.Currency = "CDF";
+            building.Currency = "USD";
         building.MarkUpdated();
         await _db.SaveChangesAsync(cancellationToken);
         await _appConfiguration.ReloadAndApplyAsync(cancellationToken);

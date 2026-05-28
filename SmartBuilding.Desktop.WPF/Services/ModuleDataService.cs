@@ -41,7 +41,7 @@ public class ModuleDataService
             e.Position,
             e.Department,
             e.IsActive ? "Actif" : "Inactif",
-            $"{e.BaseSalary:N2} €")).ToList();
+            MoneyFormatter.Format(e.BaseSalary))).ToList();
         return new(["Nom", "Matricule", "Poste", "Département", "Statut", "Salaire base"], rows, rows.Count);
     }
 
@@ -54,7 +54,7 @@ public class ModuleDataService
             p.Floor,
             $"{p.AreaSqM:N1} m²",
             p.IsOccupied ? "Occupé" : "Libre",
-            $"{p.MonthlyRent:N2} €")).ToList();
+            MoneyFormatter.Format(p.MonthlyRent))).ToList();
         return new(["Code", "Local", "Étage", "Surface", "Statut", "Loyer/mois"], rows, rows.Count);
     }
 
@@ -69,7 +69,7 @@ public class ModuleDataService
             t.Type.ToString(),
             t.Category,
             t.Description,
-            $"{t.Amount:N2} €",
+            MoneyFormatter.Format(t.Amount),
             t.Reference ?? "—")).ToList();
         return new(["Date", "Type", "Catégorie", "Description", "Montant", "Référence"], rows, rows.Count);
     }
@@ -109,7 +109,7 @@ public class ModuleDataService
             i.Category,
             i.Location,
             i.Quantity.ToString(),
-            $"{i.UnitValue:N2} €")).ToList();
+            MoneyFormatter.Format(i.UnitValue))).ToList();
         return new(["Code", "Article", "Catégorie", "Emplacement", "Quantité", "Valeur"], rows, rows.Count);
     }
 
@@ -124,7 +124,7 @@ public class ModuleDataService
             c.PeriodStart.ToString("dd/MM/yyyy"),
             c.PeriodEnd.ToString("dd/MM/yyyy"),
             $"{c.Quantity:N2}",
-            $"{c.Cost:N2} €",
+            MoneyFormatter.Format(c.Cost),
             c.Unit)).ToList();
         return new(["Type", "Début", "Fin", "Quantité", "Coût", "Unité"], rows, rows.Count);
     }
@@ -138,7 +138,7 @@ public class ModuleDataService
             i.Status.ToString(),
             i.Location,
             i.ReportedAt.ToString("dd/MM/yyyy HH:mm"),
-            $"{i.Cost:N2} €")).ToList();
+            MoneyFormatter.Format(i.Cost))).ToList();
         return new(["Titre", "Gravité", "Statut", "Lieu", "Signalé le", "Coût"], rows, rows.Count);
     }
 

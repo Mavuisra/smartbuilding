@@ -17,7 +17,7 @@ public class BuildingInfo : BaseEntity
     public decimal TotalAreaSqM { get; set; }
 
     public string TimeZoneId { get; set; } = "Africa/Kinshasa";
-    public string Currency { get; set; } = "CDF";
+    public string Currency { get; set; } = "USD";
     /// <summary>Nombre de CDF pour 1 USD (obligatoire si devise = USD).</summary>
     public decimal UsdExchangeRate { get; set; }
     public string DateFormat { get; set; } = "dd/MM/yyyy";

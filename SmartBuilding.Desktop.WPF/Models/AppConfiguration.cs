@@ -19,7 +19,7 @@ public sealed class AppConfiguration
     public string NationalId { get; init; } = BuildingInfoDefaults.NationalId;
 
     public string TimeZoneId { get; init; } = "Africa/Kinshasa";
-    public string Currency { get; init; } = "CDF";
+    public string Currency { get; init; } = "USD";
     /// <summary>Taux : 1 USD = X CDF.</summary>
     public decimal UsdExchangeRate { get; init; } = 2850m;
     public string DateFormat { get; init; } = "dd/MM/yyyy";
@@ -46,19 +46,8 @@ public sealed class AppConfiguration
         return string.Format(System.Globalization.CultureInfo.GetCultureInfo("fr-FR"), "{0:N0} {1}", value, suffix);
     }
 
-    public (decimal DisplayValue, string Suffix) ConvertFromCdf(decimal amountInCdf)
-    {
-        if (string.Equals(Currency, "USD", StringComparison.OrdinalIgnoreCase) && UsdExchangeRate > 0)
-            return (amountInCdf / UsdExchangeRate, "USD");
-
-        return Currency.ToUpperInvariant() switch
-        {
-            "EUR" => (amountInCdf, "EUR"),
-            "XAF" => (amountInCdf, "XAF"),
-            "USD" => (amountInCdf, "USD"),
-            _ => (amountInCdf, "FC")
-        };
-    }
+    public (decimal DisplayValue, string Suffix) ConvertFromCdf(decimal amountInCdf) =>
+        SmartBuilding.Shared.Money.BuildingMoneyFormat.ConvertFromCdf(amountInCdf, Currency, UsdExchangeRate);
 
     public static AppConfiguration Default { get; } = new();
 

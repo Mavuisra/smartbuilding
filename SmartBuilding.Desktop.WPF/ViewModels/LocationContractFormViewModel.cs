@@ -62,12 +62,12 @@ public partial class LocationContractFormViewModel : BaseViewModel
     [ObservableProperty] private string _selectedTenantEmail = "—";
     [ObservableProperty] private string _selectedPremiseName = "Aucun espace";
     [ObservableProperty] private string _selectedPremiseSubtitle = "Sélectionnez un espace";
-    [ObservableProperty] private string _selectedPremiseRent = "0 FC";
+    [ObservableProperty] private string _selectedPremiseRent = MoneyFormatter.ZeroDisplay;
     [ObservableProperty] private string _selectedPremiseSelectionSummary = "Sélectionnez un espace";
     [ObservableProperty] private string _contractDurationDisplay = "12 mois";
     [ObservableProperty] private string _nextPaymentDateDisplay = string.Empty;
-    [ObservableProperty] private string _rentSummaryDisplay = "0 FC";
-    [ObservableProperty] private string _depositSummaryDisplay = "0 FC";
+    [ObservableProperty] private string _rentSummaryDisplay = MoneyFormatter.ZeroDisplay;
+    [ObservableProperty] private string _depositSummaryDisplay = MoneyFormatter.ZeroDisplay;
 
     [ObservableProperty] private int _statsTotalPremises;
     [ObservableProperty] private int _statsAvailablePremises;

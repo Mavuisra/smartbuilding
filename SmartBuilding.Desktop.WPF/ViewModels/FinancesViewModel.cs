@@ -48,23 +48,23 @@ public partial class FinancesViewModel : BaseViewModel
     [ObservableProperty] private bool _isTransactionFormOpen;
     [ObservableProperty] private bool _isRevenueForm;
 
-    [ObservableProperty] private string _monthlyRevenueDisplay = "0 FC";
-    [ObservableProperty] private string _monthlyExpensesDisplay = "0 FC";
-    [ObservableProperty] private string _netProfitDisplay = "0 FC";
+    [ObservableProperty] private string _monthlyRevenueDisplay = MoneyFormatter.ZeroDisplay;
+    [ObservableProperty] private string _monthlyExpensesDisplay = MoneyFormatter.ZeroDisplay;
+    [ObservableProperty] private string _netProfitDisplay = MoneyFormatter.ZeroDisplay;
     [ObservableProperty] private string _revenueTrend = "+0%";
     [ObservableProperty] private string _expenseTrend = "+0%";
     [ObservableProperty] private string _profitTrend = "+0%";
-    [ObservableProperty] private string _rentCollectedDisplay = "0 FC";
+    [ObservableProperty] private string _rentCollectedDisplay = MoneyFormatter.ZeroDisplay;
     [ObservableProperty] private string _rentCollectedPercent = "0%";
-    [ObservableProperty] private string _rentLateDisplay = "0 FC";
+    [ObservableProperty] private string _rentLateDisplay = MoneyFormatter.ZeroDisplay;
     [ObservableProperty] private string _rentLatePercent = "0%";
-    [ObservableProperty] private string _treasuryDisplay = "0 FC";
-    [ObservableProperty] private string _rentCollectedTotalDisplay = "0 FC";
-    [ObservableProperty] private string _availableBalanceDisplay = "0 FC";
+    [ObservableProperty] private string _treasuryDisplay = MoneyFormatter.ZeroDisplay;
+    [ObservableProperty] private string _rentCollectedTotalDisplay = MoneyFormatter.ZeroDisplay;
+    [ObservableProperty] private string _availableBalanceDisplay = MoneyFormatter.ZeroDisplay;
     [ObservableProperty] private string _pendingInvoicesDisplay = "0";
-    [ObservableProperty] private string _pendingAmountDisplay = "0 FC";
-    [ObservableProperty] private string _maintenanceDisplay = "0 FC";
-    [ObservableProperty] private string _lateRentTotalDisplay = "0 FC";
+    [ObservableProperty] private string _pendingAmountDisplay = MoneyFormatter.ZeroDisplay;
+    [ObservableProperty] private string _maintenanceDisplay = MoneyFormatter.ZeroDisplay;
+    [ObservableProperty] private string _lateRentTotalDisplay = MoneyFormatter.ZeroDisplay;
 
     [ObservableProperty] private string _formCategory = "Loyers";
     [ObservableProperty] private string _formDescription = string.Empty;

@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using SmartBuilding.Desktop.WPF.Services;
 
 namespace SmartBuilding.Desktop.WPF.Models;
 
@@ -144,7 +145,7 @@ public class LocationsPickItem
     public string StatusLabel { get; init; } = string.Empty;
     public string AreaDisplay { get; init; } = string.Empty;
     public decimal MonthlyRent { get; init; }
-    public string RentDisplay { get; init; } = "0 FC";
+    public string RentDisplay { get; init; } = MoneyFormatter.ZeroDisplay;
     public string PhotoPath { get; init; } = string.Empty;
     public string Phone { get; init; } = string.Empty;
     public string Email { get; init; } = string.Empty;

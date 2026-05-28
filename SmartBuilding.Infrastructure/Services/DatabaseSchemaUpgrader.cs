@@ -212,7 +212,7 @@ public static class DatabaseSchemaUpgrader
                 """, cancellationToken);
 
             await EnsureColumnAsync(connection, "BuildingInfos", "TimeZoneId", "TEXT NOT NULL DEFAULT 'Africa/Kinshasa'", cancellationToken);
-            await EnsureColumnAsync(connection, "BuildingInfos", "Currency", "TEXT NOT NULL DEFAULT 'CDF'", cancellationToken);
+            await EnsureColumnAsync(connection, "BuildingInfos", "Currency", "TEXT NOT NULL DEFAULT 'USD'", cancellationToken);
             await EnsureColumnAsync(connection, "BuildingInfos", "UsdExchangeRate", "REAL NOT NULL DEFAULT 2850", cancellationToken);
             await EnsureColumnAsync(connection, "BuildingInfos", "DateFormat", "TEXT NOT NULL DEFAULT 'dd/MM/yyyy'", cancellationToken);
             await EnsureColumnAsync(connection, "BuildingInfos", "Language", "TEXT NOT NULL DEFAULT 'Français'", cancellationToken);
@@ -235,7 +235,7 @@ public static class DatabaseSchemaUpgrader
                     Website = 'www.sbms.cd',
                     NationalId = 'ID Nat. —',
                     TimeZoneId = 'Africa/Kinshasa',
-                    Currency = 'CDF'
+                    Currency = 'USD'
                 WHERE Country = 'France'
                    OR City LIKE '%configurer%'
                    OR Name = 'Smart Building (SB)'

@@ -105,7 +105,7 @@ public sealed class InitialSetupService
         building.TotalFloors = request.TotalFloors;
         building.LogoPath = PersistLogo(request.LogoPath);
         building.TimeZoneId = "Africa/Kinshasa";
-        building.Currency = "CDF";
+        building.Currency = "USD";
         building.DateFormat = "dd/MM/yyyy";
         building.Language = "Français";
         building.TimeFormat = "24 heures";

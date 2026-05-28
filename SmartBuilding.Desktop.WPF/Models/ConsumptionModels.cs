@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using SmartBuilding.Desktop.WPF.Services;
 
 namespace SmartBuilding.Desktop.WPF.Models;
 
@@ -8,10 +9,10 @@ public class ConsumptionPageData
     public decimal AvailableBalance { get; init; }
     public decimal TotalExpenses { get; init; }
     public string ElectricityDisplay { get; init; } = "0 kWh";
-    public string WaterBillDisplay { get; init; } = "0 FC";
-    public string FuelCostDisplay { get; init; } = "0 FC";
-    public string InternetCostDisplay { get; init; } = "0 FC";
-    public string TotalEnergyCostDisplay { get; init; } = "0 FC";
+    public string WaterBillDisplay { get; init; } = MoneyFormatter.ZeroDisplay;
+    public string FuelCostDisplay { get; init; } = MoneyFormatter.ZeroDisplay;
+    public string InternetCostDisplay { get; init; } = MoneyFormatter.ZeroDisplay;
+    public string TotalEnergyCostDisplay { get; init; } = MoneyFormatter.ZeroDisplay;
     public string MonthlyVariationDisplay { get; init; } = "0%";
     public string MonthlyVariationTrend { get; init; } = "—";
     public decimal TotalEnergyCost { get; init; }

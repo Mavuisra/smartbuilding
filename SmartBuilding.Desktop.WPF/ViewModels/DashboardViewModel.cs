@@ -19,13 +19,13 @@ public partial class DashboardViewModel : BaseViewModel
     private readonly AppConfigurationService _appConfiguration;
 
     [ObservableProperty] private DashboardSummaryDto _summary = new();
-    [ObservableProperty] private string _monthlyRevenueDisplay = "0 FC";
-    [ObservableProperty] private string _rentCollectedDisplay = "0 FC";
+    [ObservableProperty] private string _monthlyRevenueDisplay = MoneyFormatter.ZeroDisplay;
+    [ObservableProperty] private string _rentCollectedDisplay = MoneyFormatter.ZeroDisplay;
     [ObservableProperty] private string _rentSubtitleDisplay = "—";
-    [ObservableProperty] private string _rentLateDisplay = "0 FC";
-    [ObservableProperty] private string _netBalanceDisplay = "0 FC";
-    [ObservableProperty] private string _availableBalanceDisplay = "0 FC";
-    [ObservableProperty] private string _rentCollectedTotalDisplay = "0 FC";
+    [ObservableProperty] private string _rentLateDisplay = MoneyFormatter.ZeroDisplay;
+    [ObservableProperty] private string _netBalanceDisplay = MoneyFormatter.ZeroDisplay;
+    [ObservableProperty] private string _availableBalanceDisplay = MoneyFormatter.ZeroDisplay;
+    [ObservableProperty] private string _rentCollectedTotalDisplay = MoneyFormatter.ZeroDisplay;
     [ObservableProperty] private ISeries[] _financeTrendSeries = [];
     [ObservableProperty] private ISeries[] _topExpenseSeries = [];
     [ObservableProperty] private ISeries[] _occupancySeries = [];

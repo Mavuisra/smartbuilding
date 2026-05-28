@@ -497,7 +497,7 @@
                         <TextBox Grid.Column="0" materialDesign:HintAssist.Hint="Quantité" Text="{Binding FormQuantityText, UpdateSourceTrigger=PropertyChanged}"/>
                         <ComboBox Grid.Column="2" ItemsSource="{Binding UnitOptions}" SelectedItem="{Binding FormUnit}" Style="{StaticResource ConsumptionsFilterCombo}"/>
                     </Grid>
-                    <TextBox materialDesign:HintAssist.Hint="Coût (FC)" Text="{Binding FormCostText, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
+                    <TextBox materialDesign:HintAssist.Hint="Coût (USD)" Text="{Binding FormCostText, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
                     <ComboBox ItemsSource="{Binding PeriodTypes}" SelectedItem="{Binding FormPeriodType}" Style="{StaticResource ConsumptionsFilterCombo}" Margin="0,0,0,8"/>
                     <TextBlock Text="{Binding FormError}" Foreground="#DC2626" FontSize="12" Margin="0,0,0,8"
                                Visibility="{Binding FormError, Converter={StaticResource NullToVisibilityConverter}}"/>
@@ -514,3 +514,4 @@
                      Foreground="#2563EB"/>
     </Grid>
 </UserControl>
+

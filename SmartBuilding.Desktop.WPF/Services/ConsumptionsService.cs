@@ -136,7 +136,7 @@ public class ConsumptionsService
         record.Responsible = string.IsNullOrWhiteSpace(record.Responsible) ? "Paul Ngoy" : record.Responsible.Trim();
         record.Status = string.IsNullOrWhiteSpace(record.Status) ? "Normal" : record.Status;
         record.Unit = string.IsNullOrWhiteSpace(record.Unit) ? DefaultUnit(record.Type) : record.Unit;
-        record.Currency = string.IsNullOrWhiteSpace(record.Currency) ? "FC" : record.Currency;
+        record.Currency = string.IsNullOrWhiteSpace(record.Currency) ? MoneyFormatter.CurrencyCode : record.Currency;
         record.PeriodType = string.IsNullOrWhiteSpace(record.PeriodType) ? "Mensuel" : record.PeriodType;
         if (record.PeriodEnd == default)
             record.PeriodEnd = DateTime.Today;

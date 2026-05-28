@@ -63,8 +63,8 @@ public partial class TechnicalViewModel : BaseViewModel
     [ObservableProperty] private string _maintenancePercent = "0%";
     [ObservableProperty] private int _brokenCount;
     [ObservableProperty] private string _brokenPercent = "0%";
-    [ObservableProperty] private string _monthlyMaintenanceDisplay = "0 FC";
-    [ObservableProperty] private string _availableBalanceDisplay = "0 FC";
+    [ObservableProperty] private string _monthlyMaintenanceDisplay = MoneyFormatter.ZeroDisplay;
+    [ObservableProperty] private string _availableBalanceDisplay = MoneyFormatter.ZeroDisplay;
     [ObservableProperty] private int _plannedThisWeek;
 
     [ObservableProperty] private string _formCode = string.Empty;

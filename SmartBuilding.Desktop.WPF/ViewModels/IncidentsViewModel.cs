@@ -58,8 +58,8 @@ public partial class IncidentsViewModel : BaseViewModel
     [ObservableProperty] private int _criticalCount;
     [ObservableProperty] private int _resolvedCount;
     [ObservableProperty] private int _activeSecurityAlerts;
-    [ObservableProperty] private string _totalCostDisplay = "0 FC";
-    [ObservableProperty] private string _availableBalanceDisplay = "0 FC";
+    [ObservableProperty] private string _totalCostDisplay = MoneyFormatter.ZeroDisplay;
+    [ObservableProperty] private string _availableBalanceDisplay = MoneyFormatter.ZeroDisplay;
     [ObservableProperty] private int _interventionsToday;
 
     [ObservableProperty] private string _formTitle = string.Empty;

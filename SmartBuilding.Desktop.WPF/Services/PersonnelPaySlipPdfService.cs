@@ -57,7 +57,7 @@ public class PersonnelPaySlipPdfService
                         void Row(string label, decimal value, bool bold = false)
                         {
                             table.Cell().Element(CellStyle).Text(label);
-                            var cell = table.Cell().Element(CellStyle).AlignRight().Text($"{value:N2} €");
+                            var cell = table.Cell().Element(CellStyle).AlignRight().Text(MoneyFormatter.Format(value));
                             if (bold) cell.Bold();
                         }
 
@@ -69,7 +69,7 @@ public class PersonnelPaySlipPdfService
                         Row("Retenues / déductions", -payment.Deductions);
                         table.Cell().Element(CellStyle).Text("Net à payer").Bold();
                         table.Cell().Element(CellStyle).AlignRight()
-                            .Text($"{(payment.NetAmount > 0 ? payment.NetAmount : payment.Amount):N2} €").Bold();
+                            .Text(MoneyFormatter.Format(payment.NetAmount > 0 ? payment.NetAmount : payment.Amount)).Bold();
                     });
 
                     col.Item().PaddingTop(24).Text($"Statut : {payment.Status}");

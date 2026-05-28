@@ -506,7 +506,7 @@
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
                                 <StackPanel Grid.Column="0" Margin="0,0,10,0">
-                                    <TextBlock Text="Caution / garantie (FC)" Style="{StaticResource ContractFieldLabel}"/>
+                                    <TextBlock Text="Caution / garantie (USD)" Style="{StaticResource ContractFieldLabel}"/>
                                     <TextBox Text="{Binding FormDepositText, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource MaterialDesignOutlinedTextBox}" Margin="0,0,0,10"/>
                                     <TextBlock Text="Fréquence paiement *" Style="{StaticResource ContractFieldLabel}"/>
                                     <ComboBox ItemsSource="{Binding PaymentFrequencies}" SelectedItem="{Binding FormPaymentFrequency}" Style="{StaticResource MaterialDesignOutlinedComboBox}"/>
@@ -736,3 +736,4 @@
                      Foreground="#0B63F6"/>
     </Grid>
 </UserControl>
+

@@ -338,7 +338,7 @@
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
                                 <StackPanel Grid.Column="0" Margin="0,0,10,0">
-                                    <TextBlock Text="Caution / garantie (FC)" Style="{StaticResource LocationFieldLabel}"/>
+                                    <TextBlock Text="Caution / garantie (USD)" Style="{StaticResource LocationFieldLabel}"/>
                                     <TextBox Text="{Binding ContractDepositText, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource MaterialDesignOutlinedTextBox}" Margin="0,0,0,10"/>
                                     <TextBlock Text="Fréquence paiement *" Style="{StaticResource LocationFieldLabel}"/>
                                     <ComboBox ItemsSource="{Binding PaymentFrequencies}" SelectedItem="{Binding PaymentFrequency}" Style="{StaticResource MaterialDesignOutlinedComboBox}"/>
@@ -609,7 +609,7 @@
                             <TextBox Grid.Row="2" Grid.Column="1" Margin="8,0,0,12" Style="{StaticResource MaterialDesignOutlinedTextBox}"
                                      materialDesign:HintAssist.Hint="Surface (m²)" Text="{Binding FormAreaText, UpdateSourceTrigger=PropertyChanged}"/>
                             <TextBox Grid.Row="3" Grid.Column="0" Margin="0,0,8,12" Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                     materialDesign:HintAssist.Hint="Loyer mensuel (FC)" Text="{Binding FormRentText, UpdateSourceTrigger=PropertyChanged}"/>
+                                     materialDesign:HintAssist.Hint="Loyer mensuel (USD)" Text="{Binding FormRentText, UpdateSourceTrigger=PropertyChanged}"/>
                         </Grid>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
                             <Button Command="{Binding CancelAddFormCommand}" Style="{StaticResource MaterialDesignOutlinedButton}"
@@ -628,3 +628,4 @@
         </Grid>
     </Grid>
 </UserControl>
+

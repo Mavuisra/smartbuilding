@@ -23,7 +23,7 @@ public static class BuildingInfoDefaults
         building.Website = Website;
         building.NationalId = NationalId;
         building.TimeZoneId = "Africa/Kinshasa";
-        building.Currency = "CDF";
+        building.Currency = "USD";
         building.Language = "Français";
     }
 

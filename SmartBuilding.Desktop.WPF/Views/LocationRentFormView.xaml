@@ -111,7 +111,7 @@
                                 </Grid.RowDefinitions>
 
                                 <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,8,12">
-                                    <TextBlock Text="Montant à payer (FC) *" Style="{StaticResource LocationFieldLabel}"/>
+                                    <TextBlock Text="Montant à payer (USD) *" Style="{StaticResource LocationFieldLabel}"/>
                                     <TextBox Text="{Binding FormAmountText, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource MaterialDesignOutlinedTextBox}"/>
                                 </StackPanel>
                                 <StackPanel Grid.Row="0" Grid.Column="1" Margin="8,0,0,12">
@@ -171,3 +171,4 @@
                      Foreground="#2D6A4F"/>
     </Grid>
 </UserControl>
+

@@ -144,7 +144,7 @@ public sealed class AppConfigurationService
             Website = string.IsNullOrWhiteSpace(building.Website) ? BuildingInfoDefaults.Website : building.Website,
             NationalId = string.IsNullOrWhiteSpace(building.NationalId) ? BuildingInfoDefaults.NationalId : building.NationalId,
             TimeZoneId = building.TimeZoneId ?? "Africa/Kinshasa",
-            Currency = building.Currency ?? "CDF",
+            Currency = NormalizeCurrency(building.Currency),
             UsdExchangeRate = building.UsdExchangeRate > 0 ? building.UsdExchangeRate : 2850m,
             DateFormat = building.DateFormat ?? "dd/MM/yyyy",
             Language = building.Language ?? "Français",
@@ -157,6 +157,19 @@ public sealed class AppConfigurationService
             CompactTables = appearance.CompactTables,
             ShowKpiSparklines = appearance.ShowKpiSparklines
         };
+    }
+
+    private static string NormalizeCurrency(string? code)
+    {
+        if (string.IsNullOrWhiteSpace(code))
+            return "USD";
+
+        var value = code.Trim();
+        if (value.Equals("CDF", StringComparison.OrdinalIgnoreCase)
+            || value.Equals("FC", StringComparison.OrdinalIgnoreCase))
+            return "USD";
+
+        return value;
     }
 
     private static string ResolveSidebarColor(AppThemeMode mode, string primary, string? customSidebar)

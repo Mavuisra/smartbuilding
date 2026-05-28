@@ -15,9 +15,9 @@ public static class SettingsLookups
 
     public static readonly IReadOnlyList<string> Currencies =
     [
+        "USD - Dollar US",
         "CDF - Franc congolais",
         "EUR - Euro",
-        "USD - Dollar US",
         "XAF - Franc CFA"
     ];
 
@@ -110,7 +110,7 @@ public static class SettingsLookups
     public static string ParseCurrencyCode(string? selected)
     {
         if (string.IsNullOrWhiteSpace(selected))
-            return "CDF";
+            return "USD";
 
         var value = selected.Trim();
         var separator = value.IndexOf(" - ", StringComparison.Ordinal);
@@ -120,7 +120,7 @@ public static class SettingsLookups
     public static string ToCurrencyDisplay(string? code)
     {
         if (string.IsNullOrWhiteSpace(code))
-            return Currencies[0];
+            return "USD - Dollar US";
 
         var value = code.Trim();
         if (CurrencyDisplayByCode.TryGetValue(value, out var display))

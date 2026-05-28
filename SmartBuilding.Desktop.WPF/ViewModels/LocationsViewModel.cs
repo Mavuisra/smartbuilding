@@ -56,9 +56,9 @@ public partial class LocationsViewModel : BaseViewModel
     [ObservableProperty] private string _occupiedPercent = "0%";
     [ObservableProperty] private int _availablePremises;
     [ObservableProperty] private string _availablePercent = "0%";
-    [ObservableProperty] private string _monthlyRentDisplay = "0 FC";
-    [ObservableProperty] private string _availableBalanceDisplay = "0 FC";
-    [ObservableProperty] private string _rentCollectedTotalDisplay = "0 FC";
+    [ObservableProperty] private string _monthlyRentDisplay = MoneyFormatter.ZeroDisplay;
+    [ObservableProperty] private string _availableBalanceDisplay = MoneyFormatter.ZeroDisplay;
+    [ObservableProperty] private string _rentCollectedTotalDisplay = MoneyFormatter.ZeroDisplay;
     [ObservableProperty] private int _latePaymentsCount;
     [ObservableProperty] private string _latePercent = "0%";
     [ObservableProperty] private int _activeContracts;
@@ -140,8 +140,8 @@ public partial class LocationsViewModel : BaseViewModel
     [ObservableProperty] private string _selectedPremiseSelectionSummary = "Sélectionnez un espace";
     [ObservableProperty] private string _contractDurationDisplay = "12 mois";
     [ObservableProperty] private string _nextPaymentDateDisplay = string.Empty;
-    [ObservableProperty] private string _rentSummaryDisplay = "0 FC";
-    [ObservableProperty] private string _depositSummaryDisplay = "0 FC";
+    [ObservableProperty] private string _rentSummaryDisplay = MoneyFormatter.ZeroDisplay;
+    [ObservableProperty] private string _depositSummaryDisplay = MoneyFormatter.ZeroDisplay;
 
     public ObservableCollection<LocationsBuildingItem> BuildingRows { get; } = [];
     public ObservableCollection<LocationsGuaranteeItem> GuaranteeRows { get; } = [];

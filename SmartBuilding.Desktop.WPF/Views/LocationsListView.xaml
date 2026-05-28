@@ -429,8 +429,8 @@
                         <ComboBox ItemsSource="{Binding ContractTypes}" SelectedItem="{Binding FormContractType}" Margin="0,0,0,8"/>
                         <TextBox materialDesign:HintAssist.Hint="Date début (jj/mm/aaaa)" Text="{Binding FormStartDate, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
                         <TextBox materialDesign:HintAssist.Hint="Date fin (jj/mm/aaaa)" Text="{Binding FormEndDate, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
-                        <TextBox materialDesign:HintAssist.Hint="Loyer mensuel (FC)" Text="{Binding FormContractRentText, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
-                        <TextBox materialDesign:HintAssist.Hint="Caution (FC)" Text="{Binding FormDepositText, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
+                        <TextBox materialDesign:HintAssist.Hint="Loyer mensuel (USD)" Text="{Binding FormContractRentText, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
+                        <TextBox materialDesign:HintAssist.Hint="Caution (USD)" Text="{Binding FormDepositText, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
                         <TextBlock Text="{Binding FormError}" Foreground="#DC2626" FontSize="12" Margin="0,0,0,8"
                                    Visibility="{Binding FormError, Converter={StaticResource NullToVisibilityConverter}}"/>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
@@ -446,8 +446,8 @@
                 <Border Background="White" CornerRadius="12" Padding="24" MaxWidth="460" VerticalAlignment="Center" HorizontalAlignment="Center">
                     <StackPanel>
                         <TextBlock Text="Modifier le paiement" FontSize="18" FontWeight="Bold" Foreground="#111827" Margin="0,0,0,16"/>
-                        <TextBox materialDesign:HintAssist.Hint="Montant dû (FC)" Text="{Binding FormAmountDueText, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
-                        <TextBox materialDesign:HintAssist.Hint="Montant payé (FC)" Text="{Binding FormAmountPaidText, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
+                        <TextBox materialDesign:HintAssist.Hint="Montant dû (USD)" Text="{Binding FormAmountDueText, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
+                        <TextBox materialDesign:HintAssist.Hint="Montant payé (USD)" Text="{Binding FormAmountPaidText, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
                         <TextBox materialDesign:HintAssist.Hint="Échéance (jj/mm/aaaa)" Text="{Binding FormDueDate, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
                         <TextBox materialDesign:HintAssist.Hint="Date paiement (jj/mm/aaaa)" Text="{Binding FormPaidDate, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
                         <ComboBox ItemsSource="{Binding PaymentStatuses}" SelectedItem="{Binding FormPaymentStatus}" Margin="0,0,0,8"/>
@@ -495,7 +495,7 @@
                                     </Style>
                                 </ComboBox.Style>
                             </ComboBox>
-                            <TextBox materialDesign:HintAssist.Hint="Montant caution (FC) *" Text="{Binding FormGuaranteeAmountText, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
+                            <TextBox materialDesign:HintAssist.Hint="Montant caution (USD) *" Text="{Binding FormGuaranteeAmountText, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
                             <ComboBox ItemsSource="{Binding GuaranteeStatuses}" SelectedItem="{Binding FormGuaranteeStatus}" Margin="0,0,0,8"/>
                             <TextBox materialDesign:HintAssist.Hint="Notes" Text="{Binding FormGuaranteeNotes, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
                         </StackPanel>
@@ -518,3 +518,4 @@
         </Grid>
     </Grid>
 </UserControl>
+

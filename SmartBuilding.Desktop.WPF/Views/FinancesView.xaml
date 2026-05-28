@@ -451,7 +451,7 @@
                     </ComboBox>
                     <TextBox materialDesign:HintAssist.Hint="Description *" Text="{Binding FormDescription, UpdateSourceTrigger=PropertyChanged}"
                              Margin="0,0,0,8"/>
-                    <TextBox materialDesign:HintAssist.Hint="Montant (FC) *" Text="{Binding FormAmountText, UpdateSourceTrigger=PropertyChanged}"
+                    <TextBox materialDesign:HintAssist.Hint="Montant (USD) *" Text="{Binding FormAmountText, UpdateSourceTrigger=PropertyChanged}"
                              Margin="0,0,0,8"/>
                     <ComboBox ItemsSource="{Binding PaymentMethods}" SelectedItem="{Binding FormPaymentMethod}"
                               Style="{StaticResource FinancesFilterCombo}" Margin="0,0,0,8"/>
@@ -470,3 +470,4 @@
                      Foreground="{StaticResource SbmsAccentGreenBrush}"/>
     </Grid>
 </UserControl>
+

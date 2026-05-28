@@ -246,7 +246,7 @@ public class RentReceiptPdfService
             col.Item().Background(_navy).Padding(8).Row(h =>
             {
                 h.RelativeItem().Text("DÉSIGNATION").Bold().FontColor(Colors.White).FontSize(9);
-                h.ConstantItem(120).AlignRight().Text("MONTANT (FC)").Bold().FontColor(Colors.White).FontSize(9);
+                h.ConstantItem(120).AlignRight().Text($"MONTANT ({MoneyFormatter.CurrencyCode})").Bold().FontColor(Colors.White).FontSize(9);
             });
 
             TableRow(col, $"Loyer du mois de {periodLabel}", rentLine);

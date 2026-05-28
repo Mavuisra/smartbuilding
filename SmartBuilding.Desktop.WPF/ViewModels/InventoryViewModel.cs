@@ -53,8 +53,8 @@ public partial class InventoryViewModel : BaseViewModel
     [ObservableProperty] private int _maintenanceCount;
     [ObservableProperty] private int _outOfServiceCount;
     [ObservableProperty] private int _criticalCount;
-    [ObservableProperty] private string _totalValueDisplay = "0 FC";
-    [ObservableProperty] private string _availableBalanceDisplay = "0 FC";
+    [ObservableProperty] private string _totalValueDisplay = MoneyFormatter.ZeroDisplay;
+    [ObservableProperty] private string _availableBalanceDisplay = MoneyFormatter.ZeroDisplay;
     [ObservableProperty] private int _interventionsThisMonth;
 
     [ObservableProperty] private string _formCode = string.Empty;

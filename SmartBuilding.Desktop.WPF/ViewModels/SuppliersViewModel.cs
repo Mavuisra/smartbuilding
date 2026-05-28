@@ -51,8 +51,8 @@ public partial class SuppliersViewModel : BaseViewModel
     [ObservableProperty] private int _activeSuppliers;
     [ObservableProperty] private string _activePercent = "0%";
     [ObservableProperty] private int _unpaidInvoices;
-    [ObservableProperty] private string _monthlyExpensesDisplay = "0 FC";
-    [ObservableProperty] private string _availableBalanceDisplay = "0 FC";
+    [ObservableProperty] private string _monthlyExpensesDisplay = MoneyFormatter.ZeroDisplay;
+    [ObservableProperty] private string _availableBalanceDisplay = MoneyFormatter.ZeroDisplay;
     [ObservableProperty] private int _contractsExpiringSoon;
     [ObservableProperty] private int _interventionsThisMonth;
 

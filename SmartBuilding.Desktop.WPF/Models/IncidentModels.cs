@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using SmartBuilding.Desktop.WPF.Services;
 
 namespace SmartBuilding.Desktop.WPF.Models;
 
@@ -13,7 +14,7 @@ public class IncidentPageData
     public int ResolvedCount { get; init; }
     public int ActiveSecurityAlerts { get; init; }
     public decimal TotalIncidentCost { get; init; }
-    public string TotalCostDisplay { get; init; } = "0 FC";
+    public string TotalCostDisplay { get; init; } = MoneyFormatter.ZeroDisplay;
     public int InterventionsToday { get; init; }
     public string SecurityStatusLabel { get; init; } = "Normal";
     public string SecurityStatusColor { get; init; } = "#166534";

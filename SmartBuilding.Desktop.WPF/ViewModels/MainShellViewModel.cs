@@ -64,8 +64,8 @@ public partial class MainShellViewModel : BaseViewModel
     [ObservableProperty] private bool _isInternetConnected;
     [ObservableProperty] private bool _isCloudConnected;
     [ObservableProperty] private bool _isCurrentViewBusy;
-    [ObservableProperty] private string _treasuryAvailableDisplay = "0 FC";
-    [ObservableProperty] private string _treasuryDetailDisplay = "Loyers encaissés : 0 FC";
+    [ObservableProperty] private string _treasuryAvailableDisplay = MoneyFormatter.ZeroDisplay;
+    [ObservableProperty] private string _treasuryDetailDisplay = "Loyers encaissés : 0 USD";
     [ObservableProperty] private bool _isTreasuryDepleted;
     [ObservableProperty] private string _shellBrandName = "SBMS";
     [ObservableProperty] private string _shellBrandSubtitle = "Smart Building Management";

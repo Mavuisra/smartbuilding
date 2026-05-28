@@ -6,6 +6,7 @@ using QuestPDF.Infrastructure;
 using SmartBuilding.Application.Interfaces;
 using SmartBuilding.Domain.Enums;
 using SmartBuilding.Infrastructure.Persistence;
+using SmartBuilding.Shared.Money;
 
 namespace SmartBuilding.Infrastructure.Services;
 
@@ -32,6 +33,11 @@ public class ReportService : IReportService
         var revenue = transactions.Where(t => t.Type == TransactionType.Recette).Sum(t => t.Amount);
         var expenses = transactions.Where(t => t.Type == TransactionType.Depense).Sum(t => t.Amount);
 
+        var building = await _context.BuildingInfos.AsNoTracking().FirstOrDefaultAsync(cancellationToken);
+        var currency = building?.Currency ?? "USD";
+        var usdRate = building?.UsdExchangeRate > 0 ? building.UsdExchangeRate : 2850m;
+        string Fmt(decimal amount) => BuildingMoneyFormat.Format(amount, currency, usdRate);
+
         var document = Document.Create(container =>
         {
             container.Page(page =>
@@ -42,12 +48,12 @@ public class ReportService : IReportService
                     .FontSize(18).Bold();
                 page.Content().Column(col =>
                 {
-                    col.Item().Text($"Recettes : {revenue:N2} €");
-                    col.Item().Text($"Dépenses : {expenses:N2} €");
-                    col.Item().Text($"Solde : {revenue - expenses:N2} €").Bold();
+                    col.Item().Text($"Recettes : {Fmt(revenue)}");
+                    col.Item().Text($"Dépenses : {Fmt(expenses)}");
+                    col.Item().Text($"Solde : {Fmt(revenue - expenses)}").Bold();
                     col.Item().PaddingTop(20).Text("Détail des opérations :").Bold();
                     foreach (var t in transactions)
-                        col.Item().Text($"{t.TransactionDate:dd/MM/yyyy} — {t.Type} — {t.Description} — {t.Amount:N2} €");
+                        col.Item().Text($"{t.TransactionDate:dd/MM/yyyy} — {t.Type} — {t.Description} — {Fmt(t.Amount)}");
                 });
                 page.Footer().AlignCenter().Text($"Généré le {DateTime.Now:dd/MM/yyyy HH:mm}");
             });

@@ -866,7 +866,7 @@ public class DocumentsModuleService
     }
 
     private string GetCurrency() =>
-        _configuration["Building:Currency"] ?? "CDF";
+        _configuration["Building:Currency"] ?? "USD";
 
     public async Task<int> PurgeAllDocumentsDataAsync(CancellationToken cancellationToken = default)
     {

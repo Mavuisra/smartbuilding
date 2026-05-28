@@ -320,7 +320,7 @@ public partial class PersonnelService
                 DateDisplay = FormatDate(s.PaymentDate),
                 Category = "Paie",
                 Title = $"Salaire {s.Month:00}/{s.Year}",
-                Description = $"Versement de {(s.NetAmount > 0 ? s.NetAmount : s.Amount):N2} € — {s.Status}."
+                Description = $"Versement de {MoneyFormatter.Format(s.NetAmount > 0 ? s.NetAmount : s.Amount)} — {s.Status}."
             });
         }
 
@@ -375,7 +375,7 @@ public partial class PersonnelService
             HireDateDisplay = FormatDate(employee.HireDate),
             Supervisor = DisplayOrDash(employee.Supervisor),
             WorkSchedule = DisplayOrDash(employee.WorkSchedule),
-            BaseSalaryDisplay = $"{employee.BaseSalary:N2} €",
+            BaseSalaryDisplay = MoneyFormatter.Format(employee.BaseSalary),
             ContractNumber = ResolveContractNumber(employee),
             ContractType = DisplayOrDash(employee.ContractType),
             ContractStartDisplay = employee.ContractStartDate.HasValue
@@ -398,8 +398,8 @@ public partial class PersonnelService
             {
                 Id = s.Id,
                 PeriodDisplay = $"{CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(s.Month)} {s.Year}",
-                AmountDisplay = $"{(s.NetAmount > 0 ? s.NetAmount : s.Amount):N2} €",
-                GrossDisplay = $"{(s.GrossSalary > 0 ? s.GrossSalary : s.Amount):N2} €",
+                AmountDisplay = MoneyFormatter.Format(s.NetAmount > 0 ? s.NetAmount : s.Amount),
+                GrossDisplay = MoneyFormatter.Format(s.GrossSalary > 0 ? s.GrossSalary : s.Amount),
                 PaymentDateDisplay = FormatDate(s.PaymentDate),
                 StatusLabel = s.Status,
                 StatusColor = s.Status switch
@@ -545,7 +545,7 @@ public partial class PersonnelService
             Department = e.Department,
             Phone = e.Phone,
             Email = e.Email,
-            SalaryDisplay = $"{e.BaseSalary:N2} €",
+            SalaryDisplay = MoneyFormatter.Format(e.BaseSalary),
             StatusLabel = ResolveEmployeeStatusLabel(e),
             SeniorityDisplay = ComputeSeniority(e.HireDate),
             PresenceLabel = presence.Label,
@@ -576,7 +576,7 @@ public partial class PersonnelService
             ContractNumber = ResolveContractNumber(e),
             ContractType = DisplayOrDash(e.ContractType),
             PeriodDisplay = $"{FormatDate(start)} → {endText}",
-            SalaryDisplay = $"{e.BaseSalary:N2} €",
+            SalaryDisplay = MoneyFormatter.Format(e.BaseSalary),
             StatusLabel = status.Label,
             StatusColor = status.Color
         };

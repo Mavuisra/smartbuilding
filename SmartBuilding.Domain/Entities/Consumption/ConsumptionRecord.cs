@@ -11,7 +11,7 @@ public class ConsumptionRecord : BaseEntity
     public decimal Quantity { get; set; }
     public string Unit { get; set; } = string.Empty;
     public decimal Cost { get; set; }
-    public string Currency { get; set; } = "FC";
+    public string Currency { get; set; } = "USD";
     public string? MeterReference { get; set; }
     public string? Notes { get; set; }
     public string Building { get; set; } = string.Empty;

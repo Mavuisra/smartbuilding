@@ -76,9 +76,9 @@ public partial class PersonnelViewModel : BaseViewModel
     [ObservableProperty] private string _onLeavePercent = "0%";
     [ObservableProperty] private int _lateToday;
     [ObservableProperty] private string _presenceRateDisplay = "0%";
-    [ObservableProperty] private string _monthlyPayroll = "0 FC";
-    [ObservableProperty] private string _availableBalanceDisplay = "0 FC";
-    [ObservableProperty] private string _rentCollectedTotalDisplay = "0 FC";
+    [ObservableProperty] private string _monthlyPayroll = MoneyFormatter.ZeroDisplay;
+    [ObservableProperty] private string _availableBalanceDisplay = MoneyFormatter.ZeroDisplay;
+    [ObservableProperty] private string _rentCollectedTotalDisplay = MoneyFormatter.ZeroDisplay;
     [ObservableProperty] private int _newThisMonth;
     [ObservableProperty] private PersonnelEmployeeItem? _selectedEmployee;
     [ObservableProperty] private int _selectedDetailTab;

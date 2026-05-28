@@ -53,11 +53,11 @@ public partial class ConsumptionsViewModel : BaseViewModel
     [ObservableProperty] private string _lastSyncDisplay = "Dernière sync : —";
 
     [ObservableProperty] private string _electricityDisplay = "0 kWh";
-    [ObservableProperty] private string _waterBillDisplay = "0 FC";
-    [ObservableProperty] private string _fuelCostDisplay = "0 FC";
-    [ObservableProperty] private string _internetCostDisplay = "0 FC";
-    [ObservableProperty] private string _totalEnergyCostDisplay = "0 FC";
-    [ObservableProperty] private string _availableBalanceDisplay = "0 FC";
+    [ObservableProperty] private string _waterBillDisplay = MoneyFormatter.ZeroDisplay;
+    [ObservableProperty] private string _fuelCostDisplay = MoneyFormatter.ZeroDisplay;
+    [ObservableProperty] private string _internetCostDisplay = MoneyFormatter.ZeroDisplay;
+    [ObservableProperty] private string _totalEnergyCostDisplay = MoneyFormatter.ZeroDisplay;
+    [ObservableProperty] private string _availableBalanceDisplay = MoneyFormatter.ZeroDisplay;
     [ObservableProperty] private string _monthlyVariationDisplay = "0%";
     [ObservableProperty] private string _monthlyVariationTrend = "—";
     [ObservableProperty] private string _topConsumer = "—";
@@ -216,7 +216,7 @@ public partial class ConsumptionsViewModel : BaseViewModel
                 Quantity = qty,
                 Unit = FormUnit,
                 Cost = cost,
-                Currency = FormUnit == "USD" ? "USD" : "FC",
+                Currency = FormUnit == "USD" ? "USD" : MoneyFormatter.CurrencyCode,
                 EquipmentSource = FormEquipment,
                 Building = "Tour SBMS",
                 Responsible = "Paul Ngoy",
