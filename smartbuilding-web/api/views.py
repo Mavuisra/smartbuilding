@@ -94,6 +94,33 @@ class HealthView(APIView):
         return api_ok({"status": "ok", "service": "smartbuilding-web"})
 
 
+class LogoutView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        from django.contrib.auth import logout as django_logout
+
+        django_logout(request)
+        return api_ok({"loggedOut": True})
+
+
+class SessionCheckView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        user = request.user
+        if not user or not user.is_authenticated:
+            return api_ok({"authenticated": False})
+        return api_ok(
+            {
+                "authenticated": True,
+                "username": user.username,
+                "fullName": getattr(user, "full_name", None) or user.username,
+                "role": getattr(user, "role", ""),
+            }
+        )
+
+
 class LoginView(APIView):
     permission_classes = [AllowAny]
 
@@ -159,6 +186,10 @@ class LoginView(APIView):
 
         user.last_login_at = timezone.now()
         user.save(update_fields=["last_login_at"])
+
+        from django.contrib.auth import login as django_login
+
+        django_login(request, user)
 
         token = AccessToken.for_user(user)
         expires = timezone.now() + token.lifetime
@@ -299,7 +330,13 @@ class ExecutiveOverviewView(APIView):
     permission_classes = [IsExecutive]
 
     def get(self, request):
-        return api_ok(get_executive_overview())
+        try:
+            return api_ok(get_executive_overview())
+        except Exception as ex:
+            import logging
+
+            logging.getLogger(__name__).exception("executive/overview")
+            return api_fail(f"Erreur tableau de bord : {ex}", status=500)
 
 
 class ExecutiveTenantsView(APIView):

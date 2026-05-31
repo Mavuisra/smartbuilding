@@ -1,7 +1,10 @@
 {% include "executive/partials/sbms_common_script.html" %}
 <script>
-(function () {
-  if (!Sbms.requireAuth()) return;
+(async function () {
+  if (!Sbms.getToken()) {
+    const ok = await Sbms.ensureAuth();
+    if (!ok) return;
+  }
 
   const activeSlug = '{{ module_slug|default:"dashboard" }}'.trim() || 'dashboard';
 

@@ -135,10 +135,9 @@
 {% include "executive/partials/nav_script.html" %}
 {% endwith %}
 <script>
-if (!Sbms.requireAuth()) throw new Error('auth');
 const user = Sbms.getUser();
 document.getElementById('user-label').textContent = user.fullName || user.username || '';
-document.getElementById('logout-btn').onclick = Sbms.logout;
+document.getElementById('logout-btn').onclick = () => Sbms.logout();
 
 let revenueChart;
 let occupancyChart;
@@ -300,7 +299,6 @@ async function loadDashboard() {
 }
 
 document.getElementById('refresh-btn').addEventListener('click', loadDashboard);
-setInterval(loadDashboard, 60000);
 document.getElementById('notif-btn').addEventListener('click', async () => {
   try {
     await apiGet('/api/executive/notifications/?markRead=true');
@@ -309,6 +307,13 @@ document.getElementById('notif-btn').addEventListener('click', async () => {
     console.error(e);
   }
 });
-loadDashboard();
+
+(async () => {
+  if (!(await Sbms.ensureAuth())) return;
+  const u = Sbms.getUser();
+  document.getElementById('user-label').textContent = u.fullName || u.username || '';
+  await loadDashboard();
+  setInterval(loadDashboard, 60000);
+})();
 </script>
 {% endblock %}
