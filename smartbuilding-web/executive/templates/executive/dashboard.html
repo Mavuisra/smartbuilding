@@ -241,13 +241,16 @@ async function loadDashboard() {
     const unreadNotifications = overview.unreadNotifications || 0;
     const presence = overview.presence || { activeEmployees: 0, totalEmployees: 0, rate: 0 };
 
+    const net = Number(s.netBalance || 0);
+    const netTrend = net >= 0 ? 'Solde positif' : 'Solde négatif';
+    const netClass = net >= 0 ? 'text-success' : 'text-danger';
     document.getElementById('kpi-row').innerHTML = [
-      kpiCard('Revenus ce mois', fmtMoney(s.rentCollected), '-18.4%', 'bi bi-currency-dollar', 'text-danger'),
-      kpiCard('Bâtiments occupés', `${s.occupiedPremises} / ${s.totalPremises}`, `${Number(s.occupancyRate || 0).toFixed(0)}%`, 'bi bi-buildings', 'text-success'),
-      kpiCard('Contrats actifs', s.activeLeases || 0, '+12', 'bi bi-file-earmark-text', 'text-success'),
-      kpiCard('Paiements reçus', fmtMoney(s.rentCollected), '+22.6%', 'bi bi-cash-coin', 'text-success'),
-      kpiCard('Paiements en retard', fmtMoney(s.rentLateAmount), String(s.latePayments || 0), 'bi bi-exclamation-triangle', 'text-danger'),
-      kpiCard('Employés présents', `${presence.activeEmployees} / ${presence.totalEmployees}`, `${Number(presence.rate || 0).toFixed(0)}%`, 'bi bi-people', 'text-success'),
+      kpiCard('Loyers encaissés (mois)', fmtMoney(s.rentCollected), `Prévu ${fmtMoney(s.rentPlanned)}`, 'bi bi-currency-dollar', 'text-success'),
+      kpiCard('Dépenses (mois)', fmtMoney(s.monthlyExpenses), netTrend, 'bi bi-wallet2', netClass),
+      kpiCard('Bâtiments occupés', `${s.occupiedPremises} / ${s.totalPremises}`, `${Number(s.occupancyRate || 0).toFixed(0)}% occupation`, 'bi bi-buildings', s.totalPremises ? 'text-success' : 'text-muted'),
+      kpiCard('Contrats actifs', s.activeLeases || 0, `${s.totalTenants || 0} locataire(s)`, 'bi bi-file-earmark-text', s.activeLeases ? 'text-success' : 'text-muted'),
+      kpiCard('Loyers en retard', fmtMoney(s.rentLateAmount), `${s.latePayments || 0} paiement(s)`, 'bi bi-exclamation-triangle', s.rentLateAmount > 0 ? 'text-danger' : 'text-success'),
+      kpiCard('Équipe (RH)', `${presence.activeEmployees} / ${presence.totalEmployees}`, `${Number(presence.rate || 0).toFixed(0)}% présents`, 'bi bi-people', 'text-success'),
     ].join('');
 
     renderRevenueChart(s.revenueChart || []);

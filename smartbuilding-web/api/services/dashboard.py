@@ -20,14 +20,13 @@ from api.services.diagnostics import get_data_pipeline_diagnostics
 from api.services.finance_ledger import dedupe_financial_transactions
 from api.services.sync_metrics import (
     calendar_month_starts,
-    count_leases_orm,
-    count_tenants_orm,
+    count_active_leases,
+    count_tenants_total,
     ensure_dashboard_orm_materialized,
-    expenses_from_orm,
-    occupancy_from_orm,
-    recent_movements_from_orm,
-    rent_from_orm,
-    revenue_chart_from_orm,
+    expenses_month_totals,
+    occupancy_totals,
+    rent_month_totals,
+    revenue_chart_totals,
     sync_store_count,
 )
 
@@ -42,13 +41,13 @@ def get_executive_summary() -> dict:
     today = timezone.localdate()
     month_start = today.replace(day=1)
 
-    rent_collected, rent_planned, late_count, rent_late_amount = _resolve_month_rent(
+    rent_collected, rent_planned, late_count, rent_late_amount = rent_month_totals(
         today.year, today.month
     )
 
-    expenses_month = _resolve_expenses_month(month_start)
+    expenses_month = expenses_month_totals(month_start)
 
-    total_premises, occupied = _resolve_occupancy()
+    total_premises, occupied = occupancy_totals()
     occupancy = (occupied / total_premises * 100) if total_premises else 0
 
     closed_statuses = {"Clôturé", "Cloture", "Résolu", "Resolu", "4", "3"}
@@ -58,19 +57,8 @@ def get_executive_summary() -> dict:
         .count()
     )
 
-    if sync_store_count("LeaseContracts") > 0:
-        active_leases = _count_sync_store("LeaseContracts", status_contains="actif")
-    else:
-        active_leases = count_leases_orm()
-        if active_leases == 0:
-            active_leases = _count_sync_store("LeaseContracts", status_contains="actif")
-
-    if sync_store_count("Tenants") > 0:
-        total_tenants = _count_sync_store("Tenants")
-    else:
-        total_tenants = count_tenants_orm()
-        if total_tenants == 0:
-            total_tenants = _count_sync_store("Tenants")
+    active_leases = count_active_leases()
+    total_tenants = count_tenants_total()
 
     recent_syncs = list(
         ServerSyncEvent.objects.filter(success=True)
@@ -79,7 +67,7 @@ def get_executive_summary() -> dict:
     )
 
     month_starts = calendar_month_starts(today)
-    revenue_chart = _resolve_revenue_chart(month_starts)
+    revenue_chart = revenue_chart_totals(month_starts)
 
     recent_movements = _resolve_recent_movements(8)
 
@@ -154,6 +142,11 @@ def get_executive_summary() -> dict:
             {"label": "Loyers du mois", "value": _fc(rent_collected)},
             {"label": "Dépenses (mois)", "value": _fc(expenses_month)},
         ],
+        "dataSources": {
+            "rent": "RentPayments",
+            "expenses": "FinancialTransactions",
+            "occupancy": "Premises",
+        },
     }
 
 

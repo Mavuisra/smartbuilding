@@ -8,10 +8,11 @@ from django.test import TestCase
 from django.utils import timezone
 
 from api.models import FinancialTransaction, Premise, RentPayment, SyncedEntityStore
-from api.services.dashboard import _resolve_month_rent, get_executive_summary
+from api.services.dashboard import get_executive_summary
 from api.services.sync_metrics import (
     calendar_month_starts,
     rent_from_orm,
+    rent_month_totals,
     revenue_chart_from_orm,
     synced_id_set,
 )
@@ -70,22 +71,25 @@ class DashboardSyncAlignmentTests(TestCase):
         self.assertEqual(summary["rentCollected"], 750.0)
         self.assertEqual(summary["rentPlanned"], 1000.0)
 
-    def test_resolve_month_rent_prefers_sync_store(self):
+    def test_rent_month_totals_dedupes_duplicate_sync_rows(self):
         today = timezone.localdate()
-        SyncedEntityStore.objects.create(
-            id=uuid.uuid4(),
-            entity_type="RentPayments",
-            json_data={
-                "Year": today.year,
-                "Month": today.month,
-                "AmountDue": 2000,
-                "AmountPaid": 1500,
-            },
-            updated_at=timezone.now(),
-        )
-        collected, planned, _, _ = _resolve_month_rent(today.year, today.month)
-        self.assertEqual(collected, Decimal("1500"))
-        self.assertEqual(planned, Decimal("2000"))
+        lease_id = str(uuid.uuid4())
+        for _ in range(7):
+            SyncedEntityStore.objects.create(
+                id=uuid.uuid4(),
+                entity_type="RentPayments",
+                json_data={
+                    "Year": today.year,
+                    "Month": today.month,
+                    "AmountDue": 10000,
+                    "AmountPaid": 10000,
+                    "LeaseContractId": lease_id,
+                },
+                updated_at=timezone.now(),
+            )
+        collected, planned, _, _ = rent_month_totals(today.year, today.month)
+        self.assertEqual(collected, Decimal("10000"))
+        self.assertEqual(planned, Decimal("10000"))
 
     def test_apply_push_materializes_rent_payment(self):
         pay_id = uuid.uuid4()
@@ -151,18 +155,20 @@ class DashboardSyncAlignmentTests(TestCase):
         self.assertEqual(tx.type, FinancialTransaction.TxType.DEPENSE)
         self.assertEqual(tx.amount, Decimal("42"))
 
-    def test_ledger_sync_store_rent_fallback(self):
+    def test_rent_month_ignores_ledger_duplicates(self):
+        """Les KPI loyers ne doivent pas sommer le journal comptable."""
         today = timezone.localdate()
-        SyncedEntityStore.objects.create(
-            id=uuid.uuid4(),
-            entity_type="FinancialTransactions",
-            json_data={
-                "Type": 1,
-                "Category": "Loyers",
-                "Amount": 888,
-                "TransactionDate": today.isoformat(),
-            },
-            updated_at=timezone.now(),
-        )
-        collected, _, _, _ = _resolve_month_rent(today.year, today.month)
-        self.assertEqual(collected, Decimal("888"))
+        for _ in range(5):
+            SyncedEntityStore.objects.create(
+                id=uuid.uuid4(),
+                entity_type="FinancialTransactions",
+                json_data={
+                    "Type": 1,
+                    "Category": "Loyers",
+                    "Amount": 10000,
+                    "TransactionDate": today.isoformat(),
+                },
+                updated_at=timezone.now(),
+            )
+        collected, _, _, _ = rent_month_totals(today.year, today.month)
+        self.assertEqual(collected, Decimal("0"))
