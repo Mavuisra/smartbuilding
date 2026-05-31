@@ -21,6 +21,7 @@ namespace SmartBuilding.Desktop.WPF.ViewModels;
 public partial class SettingsViewModel : BaseViewModel
 {
     private readonly SettingsService _settingsService;
+    private readonly CloudDatabaseResetService _cloudDatabaseReset;
     private readonly AppConfigurationService _appConfiguration;
     private readonly SessionService _session;
 
@@ -123,6 +124,12 @@ public partial class SettingsViewModel : BaseViewModel
     [ObservableProperty] private string _emailAccountsDisplay = "0";
     [ObservableProperty] private string _documentsCountDisplay = "0";
     [ObservableProperty] private string _apiBaseUrl = "—";
+    [ObservableProperty] private string _resetConfirmPhrase = string.Empty;
+    public bool CanConfirmDatabaseReset =>
+        string.Equals(ResetConfirmPhrase.Trim(), CloudDatabaseResetService.ConfirmPhrase, StringComparison.Ordinal);
+
+    partial void OnResetConfirmPhraseChanged(string value) =>
+        OnPropertyChanged(nameof(CanConfirmDatabaseReset));
     [ObservableProperty] private string _selectedAccentColor = "#2D6A4F";
     [ObservableProperty] private string _selectedSidebarColor = "#1B3D3B";
     [ObservableProperty] private string _selectedSecondaryColor = "#0D9488";
@@ -155,10 +162,12 @@ public partial class SettingsViewModel : BaseViewModel
 
     public SettingsViewModel(
         SettingsService settingsService,
+        CloudDatabaseResetService cloudDatabaseReset,
         AppConfigurationService appConfiguration,
         SessionService session)
     {
         _settingsService = settingsService;
+        _cloudDatabaseReset = cloudDatabaseReset;
         _appConfiguration = appConfiguration;
         _appConfiguration.ConfigurationChanged += (_, _) => SyncAppearanceFromGlobalConfig();
         _session = session;
@@ -633,6 +642,111 @@ public partial class SettingsViewModel : BaseViewModel
             FileName = dir,
             UseShellExecute = true
         });
+    }
+
+    [RelayCommand]
+    private async Task ResetLocalDatabaseAsync()
+    {
+        if (!ConfirmDatabaseReset("base locale (SQLite sur ce PC)"))
+            return;
+
+        IsBusy = true;
+        ErrorMessage = null;
+        try
+        {
+            await _settingsService.ResetLocalDatabaseAsync();
+            MessageBox.Show(
+                "La base locale a été réinitialisée.\n\n"
+                + "• Toutes les données Desktop ont été supprimées\n"
+                + "• Comptes par défaut à recréer à la prochaine connexion\n\n"
+                + "Redémarrez SBMS pour finaliser.",
+                "Réinitialisation locale",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+            MessageBox.Show(ex.Message, "Échec réinitialisation locale", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task ResetOnlineDatabaseAsync()
+    {
+        if (!ConfirmDatabaseReset($"base en ligne ({_cloudDatabaseReset.ApiBaseUrl})"))
+            return;
+
+        var token = LoadApiToken();
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            MessageBox.Show(
+                "Aucun jeton API cloud. Connectez-vous ou lancez une synchronisation après configuration de l'URL API.",
+                "Réinitialisation en ligne",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return;
+        }
+
+        IsBusy = true;
+        ErrorMessage = null;
+        try
+        {
+            var (ok, message) = await _cloudDatabaseReset.ResetOnlineDatabaseAsync(token);
+            if (ok)
+            {
+                MessageBox.Show(message, "Réinitialisation en ligne", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            else
+            {
+                ErrorMessage = message;
+                MessageBox.Show(message, "Échec réinitialisation en ligne", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private bool ConfirmDatabaseReset(string targetLabel)
+    {
+        if (!CanConfirmDatabaseReset)
+        {
+            MessageBox.Show(
+                $"Saisissez d'abord la phrase exacte : {CloudDatabaseResetService.ConfirmPhrase}",
+                "Confirmation requise",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return false;
+        }
+
+        return MessageBox.Show(
+            $"DERNIÈRE CONFIRMATION\n\nEffacer définitivement la {targetLabel} ?\n\nCette action est irréversible.",
+            "Zone dangereuse",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning,
+            MessageBoxResult.No) == MessageBoxResult.Yes;
+    }
+
+    private static string? LoadApiToken()
+    {
+        try
+        {
+            var path = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "SBMS",
+                "api-token.txt");
+            return File.Exists(path) ? File.ReadAllText(path).Trim() : null;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     [RelayCommand]

@@ -129,6 +129,7 @@ public partial class App : System.Windows.Application
                     services.AddTransient<SynchronizationService>();
                     services.AddTransient<SettingsViewModel>();
                     services.AddTransient<SettingsService>();
+                    services.AddTransient<CloudDatabaseResetService>();
                     services.AddTransient<PropertyStructureService>();
                     services.AddTransient<DocumentsViewModel>();
                     services.AddSingleton<DocumentsUserLibraryService>();

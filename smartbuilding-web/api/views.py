@@ -24,7 +24,7 @@ from api.models import (
     User,
     Visitor,
 )
-from api.permissions import IsExecutive
+from api.permissions import IsDatabaseAdmin, IsExecutive
 from api.responses import api_fail, api_ok
 from api.sync.materializers import repair_employees_from_sync_store
 from api.serializers import (
@@ -470,3 +470,93 @@ class ExecutiveNotificationsView(APIView):
         ]
         unread_count = ExecutiveNotification.objects.filter(is_read=False).count()
         return api_ok({"unreadCount": unread_count, "items": data})
+
+
+class DatabaseInfoView(APIView):
+    permission_classes = [IsDatabaseAdmin]
+
+    def get(self, request):
+        from api.services.database_reset import database_info
+
+        info = database_info()
+        return api_ok(info)
+
+
+class DatabaseResetView(APIView):
+    permission_classes = [IsDatabaseAdmin]
+
+    def post(self, request):
+        import json
+        import urllib.error
+        import urllib.request
+
+        from api.services.database_reset import (
+            CONFIRM_PHRASE,
+            database_info,
+            is_render_host,
+            reset_application_database,
+            user_may_reset_database,
+        )
+
+        if not user_may_reset_database(request.user):
+            return api_fail("Seuls le PDG et l'administrateur peuvent réinitialiser la base.", status=403)
+
+        confirm = (request.data.get("confirmPhrase") or "").strip()
+        if confirm != CONFIRM_PHRASE:
+            return api_fail(f'Phrase de confirmation incorrecte. Saisissez exactement : "{CONFIRM_PHRASE}"', status=400)
+
+        target = (request.data.get("target") or "server").strip().lower()
+        if target not in ("server", "remote"):
+            return api_fail('Cible invalide. Utilisez "server" ou "remote".', status=400)
+
+        if target == "remote":
+            if is_render_host():
+                return api_fail(
+                    "Vous êtes déjà sur le serveur en ligne. Utilisez la réinitialisation « base de ce serveur ».",
+                    status=400,
+                )
+            info = database_info()
+            url = f"{info['remoteApiUrl']}/api/executive/admin/reset-database/"
+            body = json.dumps({"confirmPhrase": CONFIRM_PHRASE, "target": "server"}).encode("utf-8")
+            auth = request.headers.get("Authorization", "")
+            req = urllib.request.Request(
+                url,
+                data=body,
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": auth,
+                },
+                method="POST",
+            )
+            try:
+                with urllib.request.urlopen(req, timeout=120) as resp:
+                    payload = json.loads(resp.read().decode())
+            except urllib.error.HTTPError as ex:
+                try:
+                    err_body = json.loads(ex.read().decode())
+                    msg = err_body.get("message") or str(ex)
+                except Exception:
+                    msg = str(ex)
+                return api_fail(f"Échec sur le serveur en ligne : {msg}", status=502)
+            return api_ok(
+                {
+                    "target": "remote",
+                    "remoteUrl": info["remoteApiUrl"],
+                    "remoteResult": payload.get("data"),
+                },
+                message="Base en ligne réinitialisée.",
+            )
+
+        result = reset_application_database(reseed_accounts=True)
+        ServerSyncEvent.objects.create(
+            username=request.user.username,
+            user_role=request.user.role,
+            entity_type="Database",
+            direction="reset",
+            records_count=result.get("deletedRecords", 0),
+            success=True,
+        )
+        return api_ok(
+            result,
+            message="Base de ce serveur réinitialisée. Comptes admin/pdg recréés.",
+        )

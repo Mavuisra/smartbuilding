@@ -37,6 +37,15 @@ public static class DesktopSqlitePaths
         return DatabaseFilePath;
     }
 
+    /// <summary>Réinitialise le flag interne après suppression du fichier .db (nouveau EnsureInitialized).</summary>
+    public static void ResetInitializationState()
+    {
+        lock (InitLock)
+        {
+            _initialized = false;
+        }
+    }
+
     private static void MigrateLegacyDatabaseIfNeeded()
     {
         if (File.Exists(DatabaseFilePath))

@@ -6,6 +6,7 @@ using Microsoft.Extensions.Configuration;
 using SmartBuilding.Application.Interfaces;
 using SmartBuilding.Desktop.WPF.Models;
 using SmartBuilding.Infrastructure.Persistence;
+using SmartBuilding.Infrastructure.Services;
 
 namespace SmartBuilding.Desktop.WPF.Services;
 
@@ -413,6 +414,9 @@ public class SettingsService
             return new NotificationPrefs();
         }
     }
+
+    public Task ResetLocalDatabaseAsync(CancellationToken cancellationToken = default) =>
+        DesktopDatabaseResetService.ResetLocalDatabaseAsync(_db, cancellationToken);
 
     private sealed class NotificationPrefs
     {

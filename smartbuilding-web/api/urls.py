@@ -1,6 +1,8 @@
 from django.urls import path
 
 from api.views import (
+    DatabaseInfoView,
+    DatabaseResetView,
     DashboardSummaryView,
     ExecutiveOverviewView,
     ExecutiveIncidentsView,
@@ -46,4 +48,8 @@ urlpatterns = [
     path("executive/notifications", ExecutiveNotificationsView.as_view()),
     path("executive/validations/expenses/<uuid:expense_id>/<str:action>/", ExpenseValidationActionView.as_view(), name="expense-validation-action"),
     path("executive/validations/expenses/<uuid:expense_id>/<str:action>", ExpenseValidationActionView.as_view()),
+    path("executive/admin/database-info/", DatabaseInfoView.as_view(), name="database-info"),
+    path("executive/admin/database-info", DatabaseInfoView.as_view()),
+    path("executive/admin/reset-database/", DatabaseResetView.as_view(), name="database-reset"),
+    path("executive/admin/reset-database", DatabaseResetView.as_view()),
 ]

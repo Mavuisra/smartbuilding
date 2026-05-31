@@ -735,13 +735,24 @@ def sync_module():
 
 
 def settings_module():
+    from api.services.database_reset import database_info
+
+    info = database_info()
     rows = [
+        {"Paramètre": "Moteur", "Valeur": info.get("engineLabel", "—")},
+        {"Paramètre": "Hébergement", "Valeur": "Render (production)" if info.get("isRender") else "Local"},
         {"Paramètre": "Bâtiments synchronisés", "Valeur": Building.objects.filter(deleted_at__isnull=True).count()},
         {"Paramètre": "Entités brutes sync", "Valeur": SyncedEntityStore.objects.count()},
         {"Paramètre": "Utilisateurs actifs", "Valeur": User.objects.filter(deleted_at__isnull=True, is_active=True).count()},
-        {"Paramètre": "Serveur", "Valeur": timezone.now().strftime("%Y-%m-%d %H:%M")},
     ]
-    return _module_payload("Paramètres", rows)
+    return _module_payload(
+        "Paramètres",
+        rows,
+        [
+            {"label": "Moteur BDD", "value": info.get("engineLabel", "—")},
+            {"label": "Environnement", "value": "Production" if info.get("isRender") else "Développement"},
+        ],
+    )
 
 
 def audit():

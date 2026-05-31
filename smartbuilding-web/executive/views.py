@@ -22,11 +22,12 @@ def module_page(request, slug):
     # Navigation par défaut (admin) — le JS filtre selon permissions utilisateur
     nav = build_navigation("Administrateur")
 
-    template = (
-        "executive/module_finances.html"
-        if slug_norm in ("finances", "finance")
-        else "executive/module.html"
-    )
+    if slug_norm in ("finances", "finance"):
+        template = "executive/module_finances.html"
+    elif slug_norm in ("parametres", "settings"):
+        template = "executive/module_settings.html"
+    else:
+        template = "executive/module.html"
     return render(
         request,
         template,
