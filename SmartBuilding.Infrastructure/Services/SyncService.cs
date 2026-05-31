@@ -411,7 +411,7 @@ public class SyncService : ISyncService
 
     private string GetApiBaseUrl()
     {
-        var baseUrl = _configuration["Api:BaseUrl"] ?? "http://127.0.0.1:8000/";
+        var baseUrl = _configuration["Api:BaseUrl"] ?? "https://smartbuilding-0kbk.onrender.com/";
         return baseUrl.EndsWith('/') ? baseUrl : baseUrl + "/";
     }
 

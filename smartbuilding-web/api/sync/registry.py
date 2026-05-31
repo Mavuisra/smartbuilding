@@ -145,8 +145,14 @@ def apply_push(entity_type: str, entities: list[dict]) -> int:
                 logger.exception(
                     "Matérialisation échouée pour %s/%s", entity_type, entity_id
                 )
+                continue
 
         applied += 1
+
+    if applied > 0 and entity_type == "FinancialTransactions":
+        from api.sync.maintenance import dedupe_financial_sync_and_orm
+
+        dedupe_financial_sync_and_orm()
 
     return applied
 

@@ -49,7 +49,7 @@ public sealed class EntitySyncAdapter<TEntity> : IEntitySyncAdapter
         var items = await _dbSet(context)
             .AsNoTracking()
             .IgnoreQueryFilters()
-            .Where(x => !x.IsSynced && x.DeletedAt == null)
+            .Where(x => !x.IsSynced)
             .OrderBy(x => x.UpdatedAt)
             .Take(500)
             .ToListAsync(cancellationToken);
@@ -84,7 +84,7 @@ public sealed class EntitySyncAdapter<TEntity> : IEntitySyncAdapter
         CancellationToken cancellationToken) =>
         _dbSet(context)
             .IgnoreQueryFilters()
-            .CountAsync(x => !x.IsSynced && x.DeletedAt == null, cancellationToken);
+            .CountAsync(x => !x.IsSynced, cancellationToken);
 
     public async Task<bool> ApplyRemoteAsync(
         SmartBuildingDbContext context,

@@ -25,14 +25,13 @@ public class FinanceLedgerService
         if (amountCollected <= 0)
             return;
 
-        var alreadyLinked = await _db.FinancialTransactions.AnyAsync(
-            t => t.RelatedEntityId == payment.Id
-                 && t.Type == TransactionType.Recette
-                 && t.Category == FinanceConstants.CategoryRent
-                 && t.DeletedAt == null,
-            cancellationToken);
-        if (alreadyLinked)
-            return;
+        var existing = await _db.FinancialTransactions
+            .Where(t => t.RelatedEntityId == payment.Id
+                        && t.Type == TransactionType.Recette
+                        && t.Category == FinanceConstants.CategoryRent
+                        && t.DeletedAt == null)
+            .OrderByDescending(t => t.UpdatedAt)
+            .FirstOrDefaultAsync(cancellationToken);
 
         var tenant = await _db.Tenants
             .AsNoTracking()
@@ -40,19 +39,49 @@ public class FinanceLedgerService
         var premise = contract.Premise
             ?? await _db.Premises.AsNoTracking().FirstOrDefaultAsync(p => p.Id == contract.PremiseId, cancellationToken);
 
+        var description =
+            $"Loyer {payment.Month:D2}/{payment.Year} — {tenant?.Name ?? "Locataire"} — {premise?.Name ?? contract.ContractNumber}";
+        var txDate = RentPaymentLedgerDates.TransactionDate(payment);
+        var paymentMethod = string.IsNullOrWhiteSpace(payment.PaymentMethod) ? "Espèces" : payment.PaymentMethod;
+
+        if (existing is not null)
+        {
+            var duplicates = await _db.FinancialTransactions
+                .Where(t => t.RelatedEntityId == payment.Id
+                            && t.Type == TransactionType.Recette
+                            && t.Category == FinanceConstants.CategoryRent
+                            && t.DeletedAt == null
+                            && t.Id != existing.Id)
+                .ToListAsync(cancellationToken);
+            foreach (var dup in duplicates)
+                SoftDeleteLedgerEntry(dup);
+
+            if (existing.Amount == amountCollected
+                && existing.Description == description
+                && existing.TransactionDate == txDate)
+                return;
+
+            existing.Amount = amountCollected;
+            existing.Description = description;
+            existing.TransactionDate = txDate;
+            existing.PaymentMethod = paymentMethod;
+            existing.Status = "Payé";
+            existing.MarkUpdated();
+            return;
+        }
+
         var reference = await NextReferenceAsync(TransactionType.Recette, cancellationToken);
         _db.FinancialTransactions.Add(new FinancialTransaction
         {
             Type = TransactionType.Recette,
             Category = FinanceConstants.CategoryRent,
-            Description =
-                $"Loyer {payment.Month:D2}/{payment.Year} — {tenant?.Name ?? "Locataire"} — {premise?.Name ?? contract.ContractNumber}",
+            Description = description,
             Amount = amountCollected,
-            TransactionDate = RentPaymentLedgerDates.TransactionDate(payment),
+            TransactionDate = txDate,
             Reference = reference,
             RelatedEntityId = payment.Id,
             Source = FinanceConstants.SourceLocations,
-            PaymentMethod = string.IsNullOrWhiteSpace(payment.PaymentMethod) ? "Espèces" : payment.PaymentMethod,
+            PaymentMethod = paymentMethod,
             Status = "Payé",
             RecordedBy = FinanceConstants.RecordedByLocations,
             IsSynced = false
@@ -94,6 +123,37 @@ public class FinanceLedgerService
         if (missing <= 0)
             return;
 
+        var existing = await _db.FinancialTransactions
+            .Where(t => t.RelatedEntityId == payment.Id
+                        && t.Category == FinanceConstants.CategorySalaries
+                        && t.Type == TransactionType.Depense
+                        && t.DeletedAt == null)
+            .OrderByDescending(t => t.UpdatedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        var description = $"Paie {payment.Month:D2}/{payment.Year} — {employee.FirstName} {employee.LastName}";
+
+        if (existing is not null)
+        {
+            var duplicates = await _db.FinancialTransactions
+                .Where(t => t.RelatedEntityId == payment.Id
+                            && t.Category == FinanceConstants.CategorySalaries
+                            && t.Type == TransactionType.Depense
+                            && t.DeletedAt == null
+                            && t.Id != existing.Id)
+                .ToListAsync(cancellationToken);
+            foreach (var dup in duplicates)
+                SoftDeleteLedgerEntry(dup);
+
+            if (existing.Amount == missing)
+                return;
+
+            existing.Amount = missing;
+            existing.Description = description;
+            existing.MarkUpdated();
+            return;
+        }
+
         var cashError = await ValidateExpenseAsync(missing, cancellationToken);
         if (cashError is not null)
             throw new InvalidOperationException(cashError);
@@ -133,11 +193,11 @@ public class FinanceLedgerService
                 FinanceConstants.CategoryRent,
                 cancellationToken);
 
-            var missing = payment.AmountPaid - linked;
-            if (missing <= 0 || payment.LeaseContract is null)
+            if (linked >= payment.AmountPaid || payment.LeaseContract is null)
                 continue;
 
-            await RecordRentCollectionAsync(payment, payment.LeaseContract, missing, cancellationToken);
+            await AlignRentLedgerWithPaymentAsync(
+                payment, payment.LeaseContract, cancellationToken);
             created++;
         }
 
@@ -295,46 +355,73 @@ public class FinanceLedgerService
     {
         var unauthorized = await _db.FinancialTransactions
             .Where(t => t.Type == TransactionType.Recette &&
-                        t.Category != FinanceConstants.CategoryRent)
+                        t.Category != FinanceConstants.CategoryRent &&
+                        t.DeletedAt == null)
             .ToListAsync(cancellationToken);
 
         if (unauthorized.Count == 0)
             return 0;
 
-        _db.FinancialTransactions.RemoveRange(unauthorized);
+        foreach (var tx in unauthorized)
+            SoftDeleteLedgerEntry(tx);
+
         await _db.SaveChangesAsync(cancellationToken);
         return unauthorized.Count;
     }
 
     /// <summary>
-    /// Supprime les écritures « Loyers » erronées et les recrée depuis les paiements Locations.
+    /// Aligne le ledger loyer sur les paiements sans recréer de nouveaux UUID (évite doublons cloud).
     /// </summary>
     public async Task<int> RebuildRentLedgerAsync(CancellationToken cancellationToken = default)
     {
-        var bogus = await _db.FinancialTransactions
-            .Where(t => t.Type == TransactionType.Recette && t.Category == FinanceConstants.CategoryRent)
+        var payments = await _db.RentPayments
+            .Include(p => p.LeaseContract)
+            .ThenInclude(c => c!.Premise)
+            .Where(p => p.DeletedAt == null)
             .ToListAsync(cancellationToken);
 
-        if (bogus.Count > 0)
+        var activePaymentIds = payments
+            .Where(p => p.AmountPaid > 0)
+            .Select(p => p.Id)
+            .ToHashSet();
+
+        var rentEntries = await _db.FinancialTransactions
+            .Where(t => t.Type == TransactionType.Recette
+                        && t.Category == FinanceConstants.CategoryRent
+                        && t.DeletedAt == null)
+            .ToListAsync(cancellationToken);
+
+        foreach (var tx in rentEntries)
         {
-            _db.FinancialTransactions.RemoveRange(bogus);
-            await _db.SaveChangesAsync(cancellationToken);
+            if (tx.RelatedEntityId is null || !activePaymentIds.Contains(tx.RelatedEntityId.Value))
+                SoftDeleteLedgerEntry(tx);
         }
 
-        return await ReconcileFromLocationsAsync(cancellationToken);
+        var aligned = 0;
+        foreach (var payment in payments.Where(p => p.AmountPaid > 0 && p.LeaseContract is not null))
+        {
+            await AlignRentLedgerWithPaymentAsync(payment, payment.LeaseContract!, cancellationToken);
+            aligned++;
+        }
+
+        await _db.SaveChangesAsync(cancellationToken);
+        return aligned;
     }
 
     public async Task<int> PurgeGuaranteeLedgerEntriesAsync(CancellationToken cancellationToken = default)
     {
         var entries = await _db.FinancialTransactions
-            .Where(t => t.Category == FinanceConstants.CategoryGuarantee ||
-                        t.Category == FinanceConstants.CategoryGuaranteeRefund)
+            .Where(t => (t.Category == FinanceConstants.CategoryGuarantee ||
+                         t.Category == FinanceConstants.CategoryGuaranteeRefund)
+                        && t.DeletedAt == null)
             .ToListAsync(cancellationToken);
 
         if (entries.Count == 0)
             return 0;
 
-        _db.FinancialTransactions.RemoveRange(entries);
+        foreach (var tx in entries)
+            SoftDeleteLedgerEntry(tx);
+
         await _db.SaveChangesAsync(cancellationToken);
         return entries.Count;
     }
@@ -402,7 +489,6 @@ public class FinanceLedgerService
                $"disponible : {FinanceMetrics.Fc(position.AvailableBalance)}.";
     }
 
-    /// <summary>Supprime les écritures loyer liées à un paiement (correction double encaissement).</summary>
     public async Task<int> RemoveRentLedgerEntriesForPaymentAsync(
         Guid paymentId,
         CancellationToken cancellationToken = default)
@@ -410,24 +496,41 @@ public class FinanceLedgerService
         var entries = await _db.FinancialTransactions
             .Where(t => t.RelatedEntityId == paymentId &&
                         t.Category == FinanceConstants.CategoryRent &&
-                        t.Type == TransactionType.Recette)
+                        t.Type == TransactionType.Recette &&
+                        t.DeletedAt == null)
             .ToListAsync(cancellationToken);
         if (entries.Count == 0)
             return 0;
 
-        _db.FinancialTransactions.RemoveRange(entries);
+        foreach (var entry in entries)
+            SoftDeleteLedgerEntry(entry);
+
         return entries.Count;
     }
 
-    /// <summary>Aligne le ledger sur le montant réellement encaissé (une seule recette par période).</summary>
+    /// <summary>Aligne le ledger sur le montant réellement encaissé (une seule recette par paiement).</summary>
     public async Task AlignRentLedgerWithPaymentAsync(
         RentPayment payment,
         LeaseContract contract,
         CancellationToken cancellationToken = default)
     {
-        await RemoveRentLedgerEntriesForPaymentAsync(payment.Id, cancellationToken);
-        if (payment.AmountPaid > 0)
-            await RecordRentCollectionAsync(payment, contract, payment.AmountPaid, cancellationToken);
+        if (payment.AmountPaid <= 0)
+        {
+            await RemoveRentLedgerEntriesForPaymentAsync(payment.Id, cancellationToken);
+            return;
+        }
+
+        await RecordRentCollectionAsync(payment, contract, payment.AmountPaid, cancellationToken);
+    }
+
+    private static void SoftDeleteLedgerEntry(FinancialTransaction tx)
+    {
+        if (tx.DeletedAt is not null)
+            return;
+
+        tx.DeletedAt = DateTime.UtcNow;
+        tx.IsSynced = false;
+        tx.UpdatedAt = DateTime.UtcNow;
     }
 
     private async Task<decimal> SumLinkedAmountAsync(

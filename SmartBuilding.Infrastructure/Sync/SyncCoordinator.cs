@@ -72,7 +72,7 @@ public static class SyncCoordinator
                 var samples = await context.FinancialTransactions
                     .AsNoTracking()
                     .IgnoreQueryFilters()
-                    .Where(x => !x.IsSynced && x.DeletedAt == null)
+                    .Where(x => !x.IsSynced)
                     .OrderByDescending(x => x.UpdatedAt)
                     .Take(maxSamples)
                     .Select(x => x.Description)
