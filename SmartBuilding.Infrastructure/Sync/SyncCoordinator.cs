@@ -44,7 +44,47 @@ public static class SyncCoordinator
         }
 
         await context.SaveChangesAsync(cancellationToken);
+
+        if (entities.Count > 0)
+            await adapter.MarkAsSyncedAsync(
+                context,
+                entities.Select(e => e.Id).ToList(),
+                cancellationToken);
+
         return conflicts;
+    }
+
+    public static async Task<string?> DescribeUnsyncedAsync(
+        SmartBuildingDbContext context,
+        int maxSamples,
+        CancellationToken cancellationToken)
+    {
+        var parts = new List<string>();
+        foreach (var adapter in SyncEntityRegistry.AllAdapters)
+        {
+            var count = await adapter.CountUnsyncedAsync(context, cancellationToken);
+            if (count == 0)
+                continue;
+
+            var label = adapter.EntityType;
+            if (adapter.EntityType == "FinancialTransactions")
+            {
+                var samples = await context.FinancialTransactions
+                    .AsNoTracking()
+                    .IgnoreQueryFilters()
+                    .Where(x => !x.IsSynced && x.DeletedAt == null)
+                    .OrderByDescending(x => x.UpdatedAt)
+                    .Take(maxSamples)
+                    .Select(x => x.Description)
+                    .ToListAsync(cancellationToken);
+                if (samples.Count > 0)
+                    label += $" ({string.Join("; ", samples)})";
+            }
+
+            parts.Add($"{label}: {count}");
+        }
+
+        return parts.Count == 0 ? null : string.Join(" | ", parts);
     }
 
     public static async Task<DateTime?> GetLastSuccessfulSyncAtAsync(

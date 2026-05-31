@@ -225,6 +225,10 @@ def materialize_finance(data: dict):
         if tx_dt.tzinfo is None:
             tx_dt = dj_tz.make_aware(tx_dt, dj_tz.get_current_timezone())
         obj.transaction_date = tx_dt
+    elif not obj.transaction_date:
+        from django.utils import timezone as dj_tz
+
+        obj.transaction_date = dj_tz.now()
     obj.reference = pick(data, "Reference", "reference") or ""
     obj.payment_method = pick(data, "PaymentMethod", "paymentMethod") or ""
     obj.status = pick(data, "Status", "status") or ""

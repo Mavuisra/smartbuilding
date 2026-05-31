@@ -108,6 +108,8 @@ public class SyncService : ISyncService
                     continue;
                 }
 
+                var pendingAtStart = await adapter.GetLocalChangesAsync(_context, cancellationToken);
+
                 var typePushed = await PushAllPendingAsync(
                     api,
                     baseUrl,
@@ -123,6 +125,17 @@ public class SyncService : ISyncService
                 else
                 {
                     pushed += typePushed;
+                }
+
+                // Ne pas tirer depuis le cloud juste après un push local : le JSON serveur
+                // contient souvent isSynced=false et peut annuler le marquage ExecuteUpdate.
+                if (pendingAtStart.Count > 0)
+                {
+                    _logger.LogDebug(
+                        "Pull ignoré pour {EntityType} ({Pending} en attente au départ)",
+                        entityType,
+                        pendingAtStart.Count);
+                    continue;
                 }
 
                 try
@@ -163,6 +176,13 @@ public class SyncService : ISyncService
             }
 
             var remainingPending = await SyncCoordinator.CountAllUnsyncedAsync(_context, cancellationToken);
+            if (remainingPending > 0)
+            {
+                var pendingDetail = await SyncCoordinator.DescribeUnsyncedAsync(_context, 8, cancellationToken);
+                if (!string.IsNullOrWhiteSpace(pendingDetail))
+                    failures.Add($"En attente : {pendingDetail}");
+            }
+
             log.RecordsPushed = pushed;
             log.RecordsPulled = pulled;
             log.ConflictsResolved = conflicts;
@@ -307,10 +327,14 @@ public class SyncService : ISyncService
 
         if (batch.Count == 1)
         {
+            var detail = Truncate(pushResult.Body);
+            LastPushError =
+                $"{entityType}/{batch[0].Id}: non appliqué côté serveur (applied=0). {detail}";
             _logger.LogWarning(
-                "Enregistrement {EntityType}/{Id} refusé ou ignoré par le serveur (applied=0)",
+                "Enregistrement {EntityType}/{Id} refusé ou ignoré par le serveur (applied=0): {Body}",
                 entityType,
-                batch[0].Id);
+                batch[0].Id,
+                detail);
             return -1;
         }
 

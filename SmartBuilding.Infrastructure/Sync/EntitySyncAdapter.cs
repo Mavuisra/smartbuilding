@@ -49,7 +49,7 @@ public sealed class EntitySyncAdapter<TEntity> : IEntitySyncAdapter
         var items = await _dbSet(context)
             .AsNoTracking()
             .IgnoreQueryFilters()
-            .Where(x => !x.IsSynced)
+            .Where(x => !x.IsSynced && x.DeletedAt == null)
             .OrderBy(x => x.UpdatedAt)
             .Take(500)
             .ToListAsync(cancellationToken);
@@ -113,8 +113,10 @@ public sealed class EntitySyncAdapter<TEntity> : IEntitySyncAdapter
             if (updated is null)
                 return false;
 
+            updated.IsSynced = true;
             context.Entry(local).CurrentValues.SetValues(updated);
             local.IsSynced = true;
+            context.Entry(local).Property(e => e.IsSynced).IsModified = true;
             return true;
         }
 
