@@ -13,6 +13,8 @@ namespace SmartBuilding.Infrastructure.Services;
 
 public class SyncService : ISyncService
 {
+    private const int PushBatchSize = 200;
+
     private static readonly SemaphoreSlim SyncGate = new(1, 1);
 
     private static readonly string ApiTokenPath = Path.Combine(
@@ -119,57 +121,50 @@ public class SyncService : ISyncService
                     continue;
                 }
 
-                var localChanges = await adapter.GetLocalChangesAsync(_context, cancellationToken);
-                if (manual && localChanges.Count == 0)
-                {
-                    localChanges = await adapter.GetChangesSinceAsync(
-                        _context, DateTime.MinValue, cancellationToken);
-                }
+                var typePushed = await PushAllPendingAsync(
+                    api,
+                    baseUrl,
+                    adapter,
+                    entityType,
+                    cancellationToken);
 
-                if (localChanges.Count > 0)
-                {
-                    var pushRequest = new SyncPushRequest
-                    {
-                        EntityType = entityType,
-                        Entities = localChanges.ToList(),
-                    };
-
-                    var pushResult = await PostWithAuthRetryAsync(
-                        api, baseUrl, "api/sync/push", pushRequest, cancellationToken);
-
-                    if (pushResult.IsSuccess)
-                    {
-                        pushed += localChanges.Count;
-                        await adapter.MarkAsSyncedAsync(
-                            _context, localChanges.Select(e => e.Id).ToList(), cancellationToken);
-                        await _context.SaveChangesAsync(cancellationToken);
-                    }
-                    else
-                    {
-                        hadFailure = true;
-                        var failure = $"{entityType} push: HTTP {pushResult.StatusCode} {Truncate(pushResult.Body)}";
-                        failures.Add(failure);
-                        _logger.LogWarning("Push échoué pour {EntityType}: {Detail}", entityType, failure);
-                    }
-                }
-
-                var pullPath =
-                    $"api/sync/pull?entityType={Uri.EscapeDataString(entityType)}&since={lastSync:O}";
-                var pullResult = await GetWithAuthRetryAsync<SyncPullResponse>(
-                    api, baseUrl, pullPath, cancellationToken);
-
-                if (pullResult.Data is null && pullResult.StatusCode is 401 or 403)
+                if (typePushed < 0)
                 {
                     hadFailure = true;
-                    failures.Add($"{entityType} pull: HTTP {pullResult.StatusCode} non autorisé");
-                    continue;
+                    failures.Add($"{entityType}: échec push (voir logs)");
+                }
+                else
+                {
+                    pushed += typePushed;
                 }
 
-                if (pullResult.Data?.Entities.Count > 0)
+                var pullSince = lastSync;
+                while (true)
                 {
+                    var pullPath =
+                        $"api/sync/pull?entityType={Uri.EscapeDataString(entityType)}&since={pullSince:O}";
+                    var pullResult = await GetWithAuthRetryAsync<SyncPullResponse>(
+                        api, baseUrl, pullPath, cancellationToken);
+
+                    if (pullResult.Data is null && pullResult.StatusCode is 401 or 403)
+                    {
+                        hadFailure = true;
+                        failures.Add($"{entityType} pull: HTTP {pullResult.StatusCode} non autorisé");
+                        break;
+                    }
+
+                    var entities = pullResult.Data?.Entities;
+                    if (entities is null || entities.Count == 0)
+                        break;
+
                     conflicts += await SyncCoordinator.ApplyPullAsync(
-                        _context, entityType, pullResult.Data.Entities, cancellationToken);
-                    pulled += pullResult.Data.Entities.Count;
+                        _context, entityType, entities, cancellationToken);
+                    pulled += entities.Count;
+
+                    if (entities.Count < 200)
+                        break;
+
+                    pullSince = entities.Max(e => e.UpdatedAt);
                 }
             }
 
@@ -213,6 +208,117 @@ public class SyncService : ISyncService
             else
                 _lastSyncAt = await SyncCoordinator.GetLastSuccessfulSyncAtAsync(_context, cancellationToken);
         }
+    }
+
+    /// <summary>
+    /// Envoie tous les enregistrements locaux non synchronisés par lots jusqu'à épuisement.
+    /// Retourne le nombre poussé, ou -1 en cas d'échec bloquant.
+    /// </summary>
+    private async Task<int> PushAllPendingAsync(
+        CloudApiClient api,
+        string baseUrl,
+        IEntitySyncAdapter adapter,
+        string entityType,
+        CancellationToken cancellationToken)
+    {
+        var totalPushed = 0;
+
+        while (true)
+        {
+            var pending = await adapter.GetLocalChangesAsync(_context, cancellationToken);
+            if (pending.Count == 0)
+                break;
+
+            var batch = pending.Take(PushBatchSize).ToList();
+            var batchPushed = await PushBatchWithSplitAsync(
+                api,
+                baseUrl,
+                adapter,
+                entityType,
+                batch,
+                cancellationToken);
+
+            if (batchPushed < 0)
+                return -1;
+
+            totalPushed += batchPushed;
+
+            if (batchPushed == 0 && batch.Count > 0)
+            {
+                _logger.LogWarning(
+                    "Push bloqué pour {EntityType}: {Count} enregistrement(s) non appliqué(s) côté serveur",
+                    entityType,
+                    batch.Count);
+                return -1;
+            }
+        }
+
+        return totalPushed;
+    }
+
+    private async Task<int> PushBatchWithSplitAsync(
+        CloudApiClient api,
+        string baseUrl,
+        IEntitySyncAdapter adapter,
+        string entityType,
+        IReadOnlyList<SyncEntityPayload> batch,
+        CancellationToken cancellationToken)
+    {
+        if (batch.Count == 0)
+            return 0;
+
+        var pushRequest = new SyncPushRequest
+        {
+            EntityType = entityType,
+            Entities = batch.ToList(),
+        };
+
+        var pushResult = await PostWithAuthRetryAsync(
+            api, baseUrl, "api/sync/push", pushRequest, cancellationToken);
+
+        if (!pushResult.IsSuccess)
+        {
+            _logger.LogWarning(
+                "Push HTTP {Status} pour {EntityType}: {Body}",
+                pushResult.StatusCode,
+                entityType,
+                Truncate(pushResult.Body));
+            return -1;
+        }
+
+        if (!SyncApiResponse.TryParsePushResult(pushResult.Body, out var applied, out var parseError))
+        {
+            _logger.LogWarning("Push {EntityType}: {Error}", entityType, parseError);
+            return -1;
+        }
+
+        if (applied == batch.Count)
+        {
+            await adapter.MarkAsSyncedAsync(
+                _context, batch.Select(e => e.Id).ToList(), cancellationToken);
+            return applied;
+        }
+
+        if (batch.Count == 1)
+        {
+            _logger.LogWarning(
+                "Enregistrement {EntityType}/{Id} refusé ou ignoré par le serveur (applied=0)",
+                entityType,
+                batch[0].Id);
+            return -1;
+        }
+
+        var pushed = 0;
+        foreach (var single in batch)
+        {
+            var one = await PushBatchWithSplitAsync(
+                api, baseUrl, adapter, entityType, [single], cancellationToken);
+            if (one < 0)
+                return -1;
+            pushed += one;
+        }
+
+        return pushed;
     }
 
     private async Task<CloudApiClient.HttpResult> PostWithAuthRetryAsync<T>(

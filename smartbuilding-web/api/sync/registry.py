@@ -122,12 +122,9 @@ def apply_push(entity_type: str, entities: list[dict]) -> int:
 
         try:
             store = SyncedEntityStore.objects.get(id=entity_id)
-            if store.updated_at > updated_at:
-                continue
+            data = merge_sync_payload(store.json_data, data)
         except SyncedEntityStore.DoesNotExist:
             store = SyncedEntityStore(id=entity_id, entity_type=entity_type)
-        else:
-            data = merge_sync_payload(store.json_data, data)
 
         store.entity_type = entity_type
         store.json_data = data

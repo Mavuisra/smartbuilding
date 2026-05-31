@@ -90,6 +90,11 @@ public class SmartBuildingDbContext : DbContext
             if (entry.State == EntityState.Modified)
             {
                 entry.Entity.UpdatedAt = DateTime.UtcNow;
+                var isSynced = entry.Property(e => e.IsSynced);
+                // Ne pas annuler un marquage « synchronisé » (fin de push/pull).
+                if (isSynced.IsModified && isSynced.CurrentValue)
+                    continue;
+
                 entry.Entity.IsSynced = false;
             }
             else if (entry.State == EntityState.Added)

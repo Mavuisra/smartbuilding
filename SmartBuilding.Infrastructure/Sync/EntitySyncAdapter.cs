@@ -71,13 +71,12 @@ public sealed class EntitySyncAdapter<TEntity> : IEntitySyncAdapter
         if (ids.Count == 0)
             return;
 
-        var items = await _dbSet(context)
+        await _dbSet(context)
             .IgnoreQueryFilters()
             .Where(x => ids.Contains(x.Id))
-            .ToListAsync(cancellationToken);
-
-        foreach (var item in items)
-            item.IsSynced = true;
+            .ExecuteUpdateAsync(
+                s => s.SetProperty(e => e.IsSynced, true),
+                cancellationToken);
     }
 
     public async Task<bool> ApplyRemoteAsync(

@@ -112,10 +112,16 @@ public class SynchronizationService
         [
             await RowAsync("Utilisateurs", _db.Users, ct),
             await RowAsync("Bâtiments", _db.BuildingInfos, ct),
-            await RowAsync("Équipements", _db.Equipment, ct),
+            await RowAsync("Bailleurs", _db.Landlords, ct),
+            await RowAsync("Locaux", _db.Premises, ct),
+            await RowAsync("Locataires", _db.Tenants, ct),
             await RowAsync("Contrats", _db.LeaseContracts, ct),
+            await RowAsync("Loyers", _db.RentPayments, ct),
+            await RowAsync("Équipements", _db.Equipment, ct),
             await RowAsync("Transactions", _db.FinancialTransactions, ct),
             await RowAsync("Incidents", _db.Incidents, ct),
+            await RowAsync("Fournisseurs", _db.Suppliers, ct),
+            await RowAsync("Personnel", _db.Employees, ct),
             await RowAsync("Inventaire", _db.InventoryItems, ct),
             await RowAsync("Consommations", _db.ConsumptionRecords, ct),
             await RowAsync("Visiteurs", _db.Visitors, ct)
@@ -172,6 +178,26 @@ public class SynchronizationService
             IconKind = "Cash",
             Description = t.Description ?? t.Reference ?? t.Id.ToString()[..8],
             CreatedAt = t.CreatedAt
+        }));
+
+        var tenants = await _db.Tenants.IgnoreQueryFilters()
+            .Where(x => !x.IsSynced && x.DeletedAt == null).Take(5).ToListAsync(ct);
+        rows.AddRange(tenants.Select(t => new SyncPendingRow
+        {
+            TypeLabel = "Locataire",
+            IconKind = "HomeAccount",
+            Description = t.Name,
+            CreatedAt = t.CreatedAt
+        }));
+
+        var premises = await _db.Premises.IgnoreQueryFilters()
+            .Where(x => !x.IsSynced && x.DeletedAt == null).Take(5).ToListAsync(ct);
+        rows.AddRange(premises.Select(p => new SyncPendingRow
+        {
+            TypeLabel = "Local",
+            IconKind = "OfficeBuilding",
+            Description = p.Name ?? p.Code,
+            CreatedAt = p.CreatedAt
         }));
 
         return rows.OrderByDescending(r => r.CreatedAt).Take(28).ToList();
