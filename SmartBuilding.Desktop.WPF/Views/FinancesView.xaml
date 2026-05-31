@@ -144,38 +144,54 @@
                 </UniformGrid>
 
                 <!-- Barre d'actions -->
-                <Border Grid.Row="1" Background="White" CornerRadius="8" BorderBrush="#E8EFED" BorderThickness="1"
-                        Padding="10,8" Margin="0,0,0,8">
-                    <WrapPanel>
-                        <Button Command="{Binding CollectRentCommand}" Style="{StaticResource FinancesRentButton}">
-                            <StackPanel Orientation="Horizontal">
-                                <materialDesign:PackIcon Kind="CashRegister" Margin="0,0,6,0"/>
-                                <TextBlock Text="Encaisser loyer"/>
-                            </StackPanel>
-                        </Button>
-                        <Button Command="{Binding ExportCsvCommand}" Style="{StaticResource FinancesToolbarButton}">
-                            <StackPanel Orientation="Horizontal">
-                                <materialDesign:PackIcon Kind="MicrosoftExcel" Margin="0,0,6,0"/>
-                                <TextBlock Text="Export Excel"/>
-                            </StackPanel>
-                        </Button>
-                        <Button Style="{StaticResource FinancesToolbarButton}">
-                            <StackPanel Orientation="Horizontal">
-                                <materialDesign:PackIcon Kind="FilePdfBox" Margin="0,0,6,0"/>
-                                <TextBlock Text="Export PDF"/>
-                            </StackPanel>
-                        </Button>
-                        <Button Style="{StaticResource FinancesToolbarButton}">
-                            <materialDesign:PackIcon Kind="Printer"/>
-                        </Button>
-                        <Button Command="{Binding SyncCommand}" Style="{StaticResource FinancesToolbarButton}">
-                            <StackPanel Orientation="Horizontal">
-                                <materialDesign:PackIcon Kind="Sync" Margin="0,0,6,0"/>
-                                <TextBlock Text="Synchroniser"/>
-                            </StackPanel>
-                        </Button>
-                    </WrapPanel>
-                </Border>
+                <StackPanel Grid.Row="1" Margin="0,0,0,8">
+                    <Border Background="{StaticResource PatrimoineGelSoftBrush}" CornerRadius="12"
+                            BorderBrush="#4cc26b" BorderThickness="0,0,0,3" Padding="14,12">
+                        <WrapPanel>
+                            <Button Command="{Binding CollectRentCommand}" Style="{StaticResource FinancesRentButton}">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="CashRegister" Foreground="White" Width="20" Height="20" Margin="0,0,8,0"/>
+                                    <TextBlock Text="Encaisser loyer" Foreground="White"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Command="{Binding ExportCsvCommand}" Style="{StaticResource FinancesActionButton}">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="MicrosoftExcel" Width="18" Height="18"
+                                                             Foreground="{StaticResource PatrimoineGelBrush}" Margin="0,0,8,0"/>
+                                    <TextBlock Text="Export Excel"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Command="{Binding ExportPdfCommand}" Style="{StaticResource FinancesActionButton}">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="FilePdfBox" Width="18" Height="18"
+                                                             Foreground="{StaticResource PatrimoineGelBrush}" Margin="0,0,8,0"/>
+                                    <TextBlock Text="Export PDF"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Command="{Binding PrintReportCommand}" Style="{StaticResource FinancesActionIconButton}"
+                                    ToolTip="Imprimer le journal">
+                                <materialDesign:PackIcon Kind="Printer" Width="20" Height="20"
+                                                         Foreground="{StaticResource PatrimoineGelBrush}"/>
+                            </Button>
+                            <Button Command="{Binding SyncCommand}" Style="{StaticResource FinancesActionButton}">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="Sync" Width="18" Height="18"
+                                                             Foreground="{StaticResource PatrimoineGelBrush}" Margin="0,0,8,0"/>
+                                    <TextBlock Text="Synchroniser"/>
+                                </StackPanel>
+                            </Button>
+                        </WrapPanel>
+                    </Border>
+                    <Border Style="{StaticResource FinancesStatusBanner}"
+                            Visibility="{Binding StatusMessage, Converter={StaticResource NullToVisibilityConverter}}">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="CheckCircleOutline" Width="16" Height="16"
+                                                     Foreground="{StaticResource PatrimoineGelBrush}" Margin="0,0,8,0"/>
+                            <TextBlock Text="{Binding StatusMessage}" Foreground="{StaticResource PatrimoineGelTextBrush}"
+                                       FontSize="12" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
 
                 <!-- Graphiques -->
                 <UniformGrid Grid.Row="2" Columns="3" Margin="0,0,0,8">

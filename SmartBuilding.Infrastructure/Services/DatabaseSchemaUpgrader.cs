@@ -171,7 +171,13 @@ public static class DatabaseSchemaUpgrader
 
             await EnsureDisciplinaryNotesTableAsync(connection, cancellationToken);
 
+            await EnsureLandlordsTableAsync(connection, cancellationToken);
+            await EnsureLandlordActivitiesTableAsync(connection, cancellationToken);
             await EnsureBuildingsTableAsync(connection, cancellationToken);
+            await EnsurePropertyStructureTablesAsync(connection, cancellationToken);
+            await EnsureColumnAsync(connection, "Premises", "PropertyApartmentId", "TEXT NULL", cancellationToken);
+            await EnsureColumnAsync(connection, "Buildings", "LandlordId", "TEXT NULL", cancellationToken);
+            await EnsureTenantDependentsTableAsync(connection, cancellationToken);
             await EnsureLeaseGuaranteesTableAsync(connection, cancellationToken);
             await EnsureColumnAsync(connection, "LeaseGuarantees", "DischargePdfPath", "TEXT NULL", cancellationToken);
 
@@ -191,7 +197,7 @@ public static class DatabaseSchemaUpgrader
             await EnsureColumnAsync(connection, "Premises", "ConditionNotes", "TEXT NOT NULL DEFAULT ''", cancellationToken);
             await EnsureColumnAsync(connection, "Premises", "PhotoPath", "TEXT NULL", cancellationToken);
 
-            await EnsureColumnAsync(connection, "LeaseContracts", "ContractType", "TEXT NOT NULL DEFAULT 'Bureau de travail'", cancellationToken);
+            await EnsureColumnAsync(connection, "LeaseContracts", "ContractType", "TEXT NOT NULL DEFAULT 'Résidence'", cancellationToken);
             await EnsureColumnAsync(connection, "LeaseContracts", "Clauses", "TEXT NOT NULL DEFAULT ''", cancellationToken);
             await EnsureColumnAsync(connection, "LeaseContracts", "CreatedBy", "TEXT NULL", cancellationToken);
             await EnsureColumnAsync(connection, "LeaseContracts", "ValidatedBy", "TEXT NULL", cancellationToken);
@@ -214,6 +220,8 @@ public static class DatabaseSchemaUpgrader
                 WHERE ContractType IS NULL OR ContractType = '';
                 """, cancellationToken);
 
+            await MigrateLocationTypesToResidenceAsync(connection, cancellationToken);
+
             await EnsureColumnAsync(connection, "BuildingInfos", "TimeZoneId", "TEXT NOT NULL DEFAULT 'Africa/Kinshasa'", cancellationToken);
             await EnsureColumnAsync(connection, "BuildingInfos", "Currency", "TEXT NOT NULL DEFAULT 'USD'", cancellationToken);
             await EnsureColumnAsync(connection, "BuildingInfos", "UsdExchangeRate", "REAL NOT NULL DEFAULT 2850", cancellationToken);
@@ -222,6 +230,27 @@ public static class DatabaseSchemaUpgrader
             await EnsureColumnAsync(connection, "BuildingInfos", "TimeFormat", "TEXT NOT NULL DEFAULT '24 heures'", cancellationToken);
             await EnsureColumnAsync(connection, "BuildingInfos", "MaintenanceMode", "INTEGER NOT NULL DEFAULT 0", cancellationToken);
             await EnsureColumnAsync(connection, "BuildingInfos", "LogoPath", "TEXT NULL", cancellationToken);
+            await EnsureColumnAsync(connection, "BuildingInfos", "OwnerType", "TEXT NOT NULL DEFAULT 'Particulier'", cancellationToken);
+            await EnsureColumnAsync(connection, "BuildingInfos", "LegalRepresentative", "TEXT NULL", cancellationToken);
+            await EnsureColumnAsync(connection, "BuildingInfos", "SecondaryPhone", "TEXT NULL", cancellationToken);
+            await EnsureColumnAsync(connection, "BuildingInfos", "TaxId", "TEXT NULL", cancellationToken);
+            await EnsureColumnAsync(connection, "BuildingInfos", "BankName", "TEXT NULL", cancellationToken);
+            await EnsureColumnAsync(connection, "BuildingInfos", "BankAccount", "TEXT NULL", cancellationToken);
+            await EnsureColumnAsync(connection, "BuildingInfos", "BuildingDisplayName", "TEXT NOT NULL DEFAULT ''", cancellationToken);
+            await EnsureColumnAsync(connection, "BuildingInfos", "BuildingType", "TEXT NOT NULL DEFAULT ''", cancellationToken);
+            await EnsureColumnAsync(connection, "BuildingInfos", "ApartmentCount", "INTEGER NOT NULL DEFAULT 0", cancellationToken);
+            await EnsureColumnAsync(connection, "BuildingInfos", "CommercialUnitCount", "INTEGER NOT NULL DEFAULT 0", cancellationToken);
+            await EnsureColumnAsync(connection, "BuildingInfos", "ParkingSpaces", "INTEGER NOT NULL DEFAULT 0", cancellationToken);
+            await EnsureColumnAsync(connection, "BuildingInfos", "HasElevator", "INTEGER NOT NULL DEFAULT 0", cancellationToken);
+            await EnsureColumnAsync(connection, "BuildingInfos", "YearBuilt", "INTEGER NULL", cancellationToken);
+            await EnsureColumnAsync(connection, "BuildingInfos", "EquipmentAndInstallations", "TEXT NOT NULL DEFAULT ''", cancellationToken);
+            await EnsureColumnAsync(connection, "BuildingInfos", "ManagementRules", "TEXT NOT NULL DEFAULT ''", cancellationToken);
+
+            await EnsureColumnAsync(connection, "Tenants", "IdDocumentType", "TEXT NULL", cancellationToken);
+            await EnsureColumnAsync(connection, "Tenants", "IdDocumentExpiry", "TEXT NULL", cancellationToken);
+            await EnsureColumnAsync(connection, "Tenants", "SecondaryPhone", "TEXT NULL", cancellationToken);
+            await EnsureColumnAsync(connection, "Tenants", "Employer", "TEXT NULL", cancellationToken);
+            await EnsureColumnAsync(connection, "Tenants", "PreviousAddress", "TEXT NULL", cancellationToken);
             await EnsureColumnAsync(connection, "BuildingInfos", "Phone", "TEXT NOT NULL DEFAULT '+243 81 234 5678'", cancellationToken);
             await EnsureColumnAsync(connection, "BuildingInfos", "Email", "TEXT NOT NULL DEFAULT 'contact@sbms.cd'", cancellationToken);
             await EnsureColumnAsync(connection, "BuildingInfos", "NationalId", "TEXT NOT NULL DEFAULT ''", cancellationToken);
@@ -324,6 +353,81 @@ public static class DatabaseSchemaUpgrader
             """, cancellationToken);
     }
 
+    private static async Task EnsureLandlordsTableAsync(DbConnection connection, CancellationToken cancellationToken)
+    {
+        if (await TableExistsAsync(connection, "Landlords", cancellationToken))
+            return;
+
+        await ExecuteNonQueryAsync(connection, """
+            CREATE TABLE IF NOT EXISTS "Landlords" (
+                "Id" TEXT NOT NULL CONSTRAINT "PK_Landlords" PRIMARY KEY,
+                "ReferenceNumber" TEXT NOT NULL DEFAULT '',
+                "Name" TEXT NOT NULL,
+                "LandlordType" TEXT NOT NULL DEFAULT 'Particulier',
+                "Status" TEXT NOT NULL DEFAULT 'Actif',
+                "Email" TEXT NOT NULL DEFAULT '',
+                "Phone" TEXT NOT NULL DEFAULT '',
+                "SecondaryPhone" TEXT NULL,
+                "Address" TEXT NULL,
+                "City" TEXT NULL,
+                "Country" TEXT NULL,
+                "NationalId" TEXT NULL,
+                "TaxId" TEXT NULL,
+                "ContactPerson" TEXT NULL,
+                "BankName" TEXT NULL,
+                "BankAccount" TEXT NULL,
+                "Notes" TEXT NULL,
+                "CreatedAt" TEXT NOT NULL,
+                "UpdatedAt" TEXT NOT NULL,
+                "IsSynced" INTEGER NOT NULL,
+                "DeletedAt" TEXT NULL
+            );
+            """, cancellationToken);
+    }
+
+    private static async Task EnsureLandlordActivitiesTableAsync(DbConnection connection, CancellationToken cancellationToken)
+    {
+        if (await TableExistsAsync(connection, "LandlordActivities", cancellationToken))
+            return;
+
+        await ExecuteNonQueryAsync(connection, """
+            CREATE TABLE IF NOT EXISTS "LandlordActivities" (
+                "Id" TEXT NOT NULL CONSTRAINT "PK_LandlordActivities" PRIMARY KEY,
+                "LandlordId" TEXT NOT NULL,
+                "OccurredAt" TEXT NOT NULL,
+                "Category" TEXT NOT NULL DEFAULT '',
+                "Title" TEXT NOT NULL DEFAULT '',
+                "Description" TEXT NOT NULL DEFAULT '',
+                "CreatedAt" TEXT NOT NULL,
+                "UpdatedAt" TEXT NOT NULL,
+                "IsSynced" INTEGER NOT NULL,
+                "DeletedAt" TEXT NULL
+            );
+            """, cancellationToken);
+    }
+
+    private static async Task EnsureTenantDependentsTableAsync(DbConnection connection, CancellationToken cancellationToken)
+    {
+        if (await TableExistsAsync(connection, "TenantDependents", cancellationToken))
+            return;
+
+        await ExecuteNonQueryAsync(connection, """
+            CREATE TABLE IF NOT EXISTS "TenantDependents" (
+                "Id" TEXT NOT NULL CONSTRAINT "PK_TenantDependents" PRIMARY KEY,
+                "TenantId" TEXT NOT NULL,
+                "FullName" TEXT NOT NULL,
+                "Relationship" TEXT NOT NULL DEFAULT '',
+                "DateOfBirth" TEXT NULL,
+                "NationalId" TEXT NULL,
+                "Notes" TEXT NULL,
+                "CreatedAt" TEXT NOT NULL,
+                "UpdatedAt" TEXT NOT NULL,
+                "IsSynced" INTEGER NOT NULL,
+                "DeletedAt" TEXT NULL
+            );
+            """, cancellationToken);
+    }
+
     private static async Task EnsureBuildingsTableAsync(DbConnection connection, CancellationToken cancellationToken)
     {
         if (await TableExistsAsync(connection, "Buildings", cancellationToken))
@@ -397,6 +501,65 @@ public static class DatabaseSchemaUpgrader
             """, cancellationToken);
     }
 
+    private static async Task EnsurePropertyStructureTablesAsync(DbConnection connection, CancellationToken cancellationToken)
+    {
+        if (!await TableExistsAsync(connection, "PropertyFloors", cancellationToken))
+        {
+            await ExecuteNonQueryAsync(connection, """
+                CREATE TABLE IF NOT EXISTS "PropertyFloors" (
+                    "Id" TEXT NOT NULL CONSTRAINT "PK_PropertyFloors" PRIMARY KEY,
+                    "BuildingInfoId" TEXT NOT NULL,
+                    "LevelNumber" INTEGER NOT NULL DEFAULT 0,
+                    "Label" TEXT NOT NULL DEFAULT '',
+                    "SortOrder" INTEGER NOT NULL DEFAULT 0,
+                    "CreatedAt" TEXT NOT NULL,
+                    "UpdatedAt" TEXT NOT NULL,
+                    "IsSynced" INTEGER NOT NULL,
+                    "DeletedAt" TEXT NULL
+                );
+                """, cancellationToken);
+        }
+
+        if (!await TableExistsAsync(connection, "PropertyApartments", cancellationToken))
+        {
+            await ExecuteNonQueryAsync(connection, """
+                CREATE TABLE IF NOT EXISTS "PropertyApartments" (
+                    "Id" TEXT NOT NULL CONSTRAINT "PK_PropertyApartments" PRIMARY KEY,
+                    "FloorId" TEXT NOT NULL,
+                    "Code" TEXT NOT NULL DEFAULT '',
+                    "Name" TEXT NOT NULL DEFAULT '',
+                    "UnitType" TEXT NOT NULL DEFAULT 'Appartement',
+                    "AreaSqM" REAL NOT NULL DEFAULT 0,
+                    "MonthlyRent" REAL NOT NULL DEFAULT 0,
+                    "SortOrder" INTEGER NOT NULL DEFAULT 0,
+                    "PremiseId" TEXT NULL,
+                    "CreatedAt" TEXT NOT NULL,
+                    "UpdatedAt" TEXT NOT NULL,
+                    "IsSynced" INTEGER NOT NULL,
+                    "DeletedAt" TEXT NULL
+                );
+                """, cancellationToken);
+        }
+
+        if (!await TableExistsAsync(connection, "PropertyRooms", cancellationToken))
+        {
+            await ExecuteNonQueryAsync(connection, """
+                CREATE TABLE IF NOT EXISTS "PropertyRooms" (
+                    "Id" TEXT NOT NULL CONSTRAINT "PK_PropertyRooms" PRIMARY KEY,
+                    "ApartmentId" TEXT NOT NULL,
+                    "Name" TEXT NOT NULL DEFAULT '',
+                    "RoomType" TEXT NOT NULL DEFAULT 'Chambre',
+                    "AreaSqM" REAL NOT NULL DEFAULT 0,
+                    "SortOrder" INTEGER NOT NULL DEFAULT 0,
+                    "CreatedAt" TEXT NOT NULL,
+                    "UpdatedAt" TEXT NOT NULL,
+                    "IsSynced" INTEGER NOT NULL,
+                    "DeletedAt" TEXT NULL
+                );
+                """, cancellationToken);
+        }
+    }
+
     private static async Task EnsureTenantActivitiesTableAsync(DbConnection connection, CancellationToken cancellationToken)
     {
         if (await TableExistsAsync(connection, "TenantActivities", cancellationToken))
@@ -416,6 +579,45 @@ public static class DatabaseSchemaUpgrader
                 "DeletedAt" TEXT NULL
             );
             """, cancellationToken);
+    }
+
+    /// <summary>
+    /// Ancien défaut « Bureau de travail » / « Bureau » → « Résidence » (idempotent à chaque démarrage).
+    /// </summary>
+    private static async Task MigrateLocationTypesToResidenceAsync(
+        DbConnection connection,
+        CancellationToken cancellationToken)
+    {
+        if (await TableExistsAsync(connection, "LeaseContracts", cancellationToken))
+        {
+            await ExecuteNonQueryAsync(connection, """
+                UPDATE LeaseContracts
+                SET ContractType = 'Résidence'
+                WHERE ContractType IS NULL
+                   OR TRIM(ContractType) = ''
+                   OR ContractType = 'Bureau de travail';
+                """, cancellationToken);
+        }
+
+        if (!await TableExistsAsync(connection, "Premises", cancellationToken))
+            return;
+
+        await ExecuteNonQueryAsync(connection, """
+            UPDATE Premises
+            SET PremiseType = 'Résidence'
+            WHERE PremiseType IS NULL
+               OR TRIM(PremiseType) = '';
+            """, cancellationToken);
+
+        if (await TableExistsAsync(connection, "LeaseContracts", cancellationToken))
+        {
+            await ExecuteNonQueryAsync(connection, """
+                UPDATE Premises
+                SET PremiseType = 'Résidence'
+                WHERE PremiseType = 'Bureau'
+                  AND Id IN (SELECT PremiseId FROM LeaseContracts WHERE ContractType = 'Résidence');
+                """, cancellationToken);
+        }
     }
 
     private static async Task EnsureColumnAsync(

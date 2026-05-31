@@ -61,7 +61,12 @@ public static class ModuleRegistry
                     [
                         new ShellNavChildItem("locations-create", "Créer"),
                         new ShellNavChildItem("locations-list", "Voir"),
-                        new ShellNavChildItem("locations-rent-pay", "Paiement loyer")
+                        new ShellNavChildItem("locations-rent-pay", "Paiement loyer"),
+                        new ShellNavChildItem("locations-tenants", "Locateur"),
+                        new ShellNavChildItem("locations-landlord", "Bailleur"),
+                        new ShellNavChildItem("locations-building", "Bâtiment"),
+                        new ShellNavChildItem("locations-apartments", "Appartements"),
+                        new ShellNavChildItem("locations-gestion", "Gestion")
                     ]);
                     continue;
                 }

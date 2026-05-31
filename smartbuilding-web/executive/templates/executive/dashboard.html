@@ -1,4 +1,4 @@
-﻿{% extends "executive/base.html" %}
+{% extends "executive/base.html" %}
 {% block title %}Tableau de bord PDG{% endblock %}
 {% block extra_head %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
@@ -22,38 +22,7 @@
 {% endblock %}
 {% block body %}
 <div class="app-shell">
-  <aside class="sb-sidebar">
-    <div class="brand">
-      <span class="brand-badge">SB</span>
-      <div>
-        <div>SBMS</div>
-        <small class="text-info-emphasis">Smart Building Management</small>
-      </div>
-    </div>
-
-    <div class="sb-nav-group-title">Gestion</div>
-    <a href="/" class="sb-nav-link active">Tableau de bord</a>
-    <a href="/locations/" class="sb-nav-link">Location</a>
-    <a href="/personnel/" class="sb-nav-link">Personnel</a>
-    <a href="/contrats/" class="sb-nav-link">Contrats</a>
-    <a href="/finance/" class="sb-nav-link">Finance</a>
-    <a href="/presence/" class="sb-nav-link">Présence</a>
-    <a href="/documents/" class="sb-nav-link">Documents</a>
-    <a href="/maintenance/" class="sb-nav-link">Maintenance</a>
-    <a href="/incidents/" class="sb-nav-link">Incidents</a>
-
-    <div class="sb-nav-group-title">Supervision</div>
-    <a href="/supervision/" class="sb-nav-link">Supervision</a>
-    <a href="/validations/" class="sb-nav-link">Validations</a>
-    <a href="/activites-logs/" class="sb-nav-link">Activités & Logs</a>
-    <a href="/utilisateurs/" class="sb-nav-link">Utilisateurs</a>
-    <a href="/rapports/" class="sb-nav-link">Rapports</a>
-
-    <div class="sb-nav-group-title">Système</div>
-    <a href="/synchronisation/" class="sb-nav-link">Synchronisation</a>
-    <a href="/parametres/" class="sb-nav-link">Paramètres</a>
-    <a href="/audit-securite/" class="sb-nav-link">Audit & Sécurité</a>
-  </aside>
+  {% include "executive/partials/sidebar.html" %}
 
   <main class="app-main">
     <div class="sb-topbar">
@@ -71,6 +40,7 @@
 
     <div class="sb-page-wrap">
       <div id="load-error" class="alert alert-danger d-none"></div>
+      <div id="diag-banner" class="alert alert-warning d-none mb-3" role="alert"></div>
 
       <div class="row g-2 mb-3" id="kpi-row"></div>
 
@@ -161,30 +131,25 @@
 {% endblock %}
 
 {% block scripts %}
+{% with module_slug="dashboard" %}
+{% include "executive/partials/nav_script.html" %}
+{% endwith %}
 <script>
-const token = localStorage.getItem('sbms_token');
-if (!token) window.location.href = '/login/';
-
-const user = JSON.parse(localStorage.getItem('sbms_user') || '{}');
+if (!Sbms.requireAuth()) throw new Error('auth');
+const user = Sbms.getUser();
 document.getElementById('user-label').textContent = user.fullName || user.username || '';
-document.getElementById('logout-btn').onclick = () => { localStorage.clear(); window.location.href = '/login/'; };
+document.getElementById('logout-btn').onclick = Sbms.logout;
 
 let revenueChart;
 let occupancyChart;
 
-async function apiGet(path) {
-  const res = await fetch(path, { headers: { Authorization: 'Bearer ' + token } });
-  const json = await res.json();
-  if (res.status === 401) { localStorage.clear(); window.location.href = '/login/'; }
-  if (!json.success) throw new Error(json.message || 'Erreur API');
-  return json.data;
-}
+const apiGet = Sbms.apiFetch;
 
 function kpiCard(label, value, trend = '', iconClass = 'bi bi-circle-fill', trendClass = '') {
   return `<div class="col-lg-2 col-md-4 col-6">
     <div class="sb-card p-3 kpi-card">
       <div class="kpi-header">
-        <div class="kpi-icon" style="background:#dff5e8;color:#027566"><i class="${iconClass}"></i></div>
+        <div class="kpi-icon" style="background:#e8f9ef;color:#3d6b52"><i class="${iconClass}"></i></div>
         <div class="kpi-trend ${trendClass}">${trend || ''}</div>
       </div>
       <div class="text-muted small">${label}</div>
@@ -206,8 +171,8 @@ function renderRevenueChart(series) {
       labels: series.map(x => x.label),
       datasets: [{
         data: series.map(x => x.value),
-        borderColor: '#027566',
-        backgroundColor: 'rgba(45,106,79,.14)',
+        borderColor: '#4cc26b',
+        backgroundColor: 'rgba(76,194,107,.18)',
         tension: .35,
         fill: true,
         pointRadius: 2
@@ -233,7 +198,7 @@ function renderOccupancyChart(rate) {
       labels: ['Occupés', 'Disponibles'],
       datasets: [{
         data: [rate, Math.max(0, 100-rate)],
-        backgroundColor: ['#027566', '#dff5e8'],
+        backgroundColor: ['#4cc26b', '#e8f9ef'],
         borderWidth: 0
       }]
     },
@@ -242,9 +207,29 @@ function renderOccupancyChart(rate) {
   document.getElementById('occupancyLabel').textContent = `Taux d'occupation: ${Number(rate || 0).toFixed(1)}%`;
 }
 
+function renderDiagnostics(diag) {
+  const banner = document.getElementById('diag-banner');
+  if (!banner || !diag) return;
+  if (diag.status === 'ok') {
+    banner.classList.add('d-none');
+    return;
+  }
+  const store = diag.syncStoreByType || {};
+  const storeDetail = Object.keys(store).length
+    ? ' Magasin sync : ' + Object.entries(store).map(([k, v]) => k + '=' + v).join(', ') + '.'
+    : '';
+  const syncEvt = diag.lastSyncEvent
+    ? ` Dernière sync API : ${diag.lastSyncEvent.entityType} (${diag.lastSyncEvent.recordsCount} enr.) le ${fmtDate(diag.lastSyncEvent.createdAt)}.`
+    : ' Aucune synchronisation reçue sur ce serveur.';
+  banner.className = diag.status === 'empty' ? 'alert alert-warning mb-3' : 'alert alert-info mb-3';
+  banner.innerHTML = `<strong>Données vides ou incomplètes.</strong> ${diag.hint}${storeDetail}${syncEvt}`;
+  banner.classList.remove('d-none');
+}
+
 async function loadDashboard() {
   try {
     const overview = await apiGet('/api/executive/overview/');
+    renderDiagnostics(overview.diagnostics);
     const s = overview.summary;
     const sync = overview.syncHealth;
     const validations = overview.pendingValidations || [];
@@ -315,6 +300,7 @@ async function loadDashboard() {
 }
 
 document.getElementById('refresh-btn').addEventListener('click', loadDashboard);
+setInterval(loadDashboard, 60000);
 document.getElementById('notif-btn').addEventListener('click', async () => {
   try {
     await apiGet('/api/executive/notifications/?markRead=true');

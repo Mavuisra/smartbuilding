@@ -12,7 +12,7 @@ public class LeaseContract : BaseEntity
     public DateTime EndDate { get; set; }
     public decimal MonthlyRent { get; set; }
     public decimal Deposit { get; set; }
-    public string ContractType { get; set; } = LocationConstants.ContractTypes.Office;
+    public string ContractType { get; set; } = LocationConstants.DefaultContractType;
     public string Clauses { get; set; } = string.Empty;
     public LeaseStatus Status { get; set; } = LeaseStatus.Brouillon;
     public string? CreatedBy { get; set; }

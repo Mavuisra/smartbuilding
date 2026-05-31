@@ -85,6 +85,9 @@ public partial class App : System.Windows.Application
                 {
                     cfg.SetBasePath(AppContext.BaseDirectory);
                     cfg.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
+#if DEBUG
+                    cfg.AddJsonFile("appsettings.Development.json", optional: true, reloadOnChange: true);
+#endif
                 })
                 .ConfigureServices((context, services) =>
                 {
@@ -102,9 +105,12 @@ public partial class App : System.Windows.Application
                     services.AddTransient<PersonnelService>();
                     services.AddTransient<LocationsViewModel>();
                     services.AddTransient<LocationsListViewModel>();
+                    services.AddTransient<LocationsTenantsViewModel>();
+                    services.AddTransient<LocationsPatrimoineViewModel>();
                     services.AddTransient<LocationsService>();
                     services.AddTransient<FinancesViewModel>();
                     services.AddTransient<FinancesService>();
+                    services.AddTransient<FinancesReportPdfService>();
                     services.AddTransient<TechnicalViewModel>();
                     services.AddTransient<TechnicalService>();
                     services.AddTransient<SuppliersViewModel>();
@@ -123,7 +129,9 @@ public partial class App : System.Windows.Application
                     services.AddTransient<SynchronizationService>();
                     services.AddTransient<SettingsViewModel>();
                     services.AddTransient<SettingsService>();
+                    services.AddTransient<PropertyStructureService>();
                     services.AddTransient<DocumentsViewModel>();
+                    services.AddSingleton<DocumentsUserLibraryService>();
                     services.AddTransient<DocumentsModuleService>();
                     services.AddTransient<UsersViewModel>();
                     services.AddTransient<UsersModuleService>();

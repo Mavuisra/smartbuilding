@@ -172,6 +172,104 @@
         <Setter Property="HorizontalAlignment" Value="Left"/>
     </Style>
 
+    <!-- Tableau Gestion patrimoine — palette gel #4cc26b -->
+    <Color x:Key="PatrimoineGelColor">#4cc26b</Color>
+    <SolidColorBrush x:Key="PatrimoineGelBrush" Color="{StaticResource PatrimoineGelColor}"/>
+    <SolidColorBrush x:Key="PatrimoineGelLightBrush" Color="#E8F9EF"/>
+    <SolidColorBrush x:Key="PatrimoineGelSoftBrush" Color="#F4FCF7"/>
+    <SolidColorBrush x:Key="PatrimoineGelHoverBrush" Color="#EDFAF2"/>
+    <SolidColorBrush x:Key="PatrimoineGelSelectedBrush" Color="#E0F5E8"/>
+    <SolidColorBrush x:Key="PatrimoineGelTextBrush" Color="#3D6B52"/>
+    <SolidColorBrush x:Key="PatrimoineGelMutedBrush" Color="#6B9080"/>
+
+    <Style x:Key="PatrimoineGestionColumnHeader" TargetType="DataGridColumnHeader">
+        <Setter Property="Background" Value="{StaticResource PatrimoineGelLightBrush}"/>
+        <Setter Property="Foreground" Value="{StaticResource PatrimoineGelTextBrush}"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="Padding" Value="14,12"/>
+        <Setter Property="MinHeight" Value="46"/>
+        <Setter Property="BorderThickness" Value="0,0,1,0"/>
+        <Setter Property="BorderBrush" Value="#D4EDDC"/>
+        <Setter Property="HorizontalContentAlignment" Value="Left"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+    </Style>
+
+    <Style x:Key="PatrimoineGestionCell" TargetType="DataGridCell">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+        <Setter Property="Padding" Value="12,0"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Style.Triggers>
+            <Trigger Property="IsSelected" Value="True">
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="Foreground" Value="#111827"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="PatrimoineGestionRow" TargetType="DataGridRow">
+        <Setter Property="MinHeight" Value="60"/>
+        <Setter Property="Background" Value="White"/>
+        <Setter Property="BorderThickness" Value="0,0,0,1"/>
+        <Setter Property="BorderBrush" Value="#F1F5F4"/>
+        <Setter Property="SnapsToDevicePixels" Value="True"/>
+        <Style.Triggers>
+            <Trigger Property="AlternationIndex" Value="1">
+                <Setter Property="Background" Value="#FAFCFB"/>
+            </Trigger>
+            <MultiTrigger>
+                <MultiTrigger.Conditions>
+                    <Condition Property="IsMouseOver" Value="True"/>
+                    <Condition Property="IsSelected" Value="False"/>
+                </MultiTrigger.Conditions>
+                <Setter Property="Background" Value="{StaticResource PatrimoineGelHoverBrush}"/>
+                <Setter Property="Cursor" Value="Hand"/>
+            </MultiTrigger>
+            <Trigger Property="IsSelected" Value="True">
+                <Setter Property="Background" Value="{StaticResource PatrimoineGelSelectedBrush}"/>
+                <Setter Property="BorderBrush" Value="#D4EDDC"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="PatrimoineGestionDataGrid" TargetType="DataGrid" BasedOn="{StaticResource LocationsDataGrid}">
+        <Setter Property="MinWidth" Value="0"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="GridLinesVisibility" Value="None"/>
+        <Setter Property="HeadersVisibility" Value="Column"/>
+        <Setter Property="RowHeight" Value="60"/>
+        <Setter Property="ColumnHeaderHeight" Value="46"/>
+        <Setter Property="AlternationCount" Value="2"/>
+        <Setter Property="RowStyle" Value="{StaticResource PatrimoineGestionRow}"/>
+        <Setter Property="CellStyle" Value="{StaticResource PatrimoineGestionCell}"/>
+        <Setter Property="ColumnHeaderStyle" Value="{StaticResource PatrimoineGestionColumnHeader}"/>
+        <Setter Property="RowBackground" Value="White"/>
+        <Setter Property="AlternatingRowBackground" Value="#FAFCFB"/>
+    </Style>
+
+    <Style x:Key="PatrimoineTypeChip" TargetType="Border">
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="Padding" Value="10,5"/>
+        <Setter Property="HorizontalAlignment" Value="Left"/>
+        <Setter Property="Background" Value="{StaticResource PatrimoineGelLightBrush}"/>
+    </Style>
+
+    <Style x:Key="PatrimoineActionPill" TargetType="Border">
+        <Setter Property="Background" Value="{StaticResource PatrimoineGelSoftBrush}"/>
+        <Setter Property="BorderBrush" Value="#D4EDDC"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="10"/>
+        <Setter Property="Padding" Value="4,2"/>
+        <Setter Property="HorizontalAlignment" Value="Left"/>
+    </Style>
+
+    <Style x:Key="PatrimoineGelPrimaryButton" TargetType="Button" BasedOn="{StaticResource LocationsPrimaryButton}">
+        <Setter Property="Background" Value="{StaticResource PatrimoineGelBrush}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource PatrimoineGelBrush}"/>
+    </Style>
+
     <!-- Libellés et cartes partagés (LocationsView, LocationRentFormView, etc.) -->
     <Style x:Key="LocationPageCard" TargetType="Border">
         <Setter Property="Background" Value="White"/>
@@ -239,6 +337,36 @@
         <Setter Property="FontSize" Value="11"/>
         <Setter Property="Foreground" Value="#6B7280"/>
         <Setter Property="TextWrapping" Value="Wrap"/>
+    </Style>
+
+    <Style x:Key="LocationsTenantKpiCard" TargetType="Border" BasedOn="{StaticResource LocationsKpiCard}">
+        <Setter Property="Padding" Value="14,12"/>
+        <Setter Property="Effect">
+            <Setter.Value>
+                <DropShadowEffect BlurRadius="12" ShadowDepth="1" Opacity="0.06" Color="#000000"/>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="LocationsFormFooterBar" TargetType="Border">
+        <Setter Property="Background" Value="#F8FAFC"/>
+        <Setter Property="BorderBrush" Value="#E5E7EB"/>
+        <Setter Property="BorderThickness" Value="0,1,0,0"/>
+        <Setter Property="Padding" Value="16,12"/>
+        <Setter Property="CornerRadius" Value="0,0,10,10"/>
+    </Style>
+
+    <Style x:Key="LocationsDangerOutlineButton" TargetType="Button" BasedOn="{StaticResource MaterialDesignOutlinedButton}">
+        <Setter Property="Foreground" Value="#DC2626"/>
+        <Setter Property="BorderBrush" Value="#FECACA"/>
+        <Setter Property="Background" Value="#FEF2F2"/>
+        <Setter Property="Padding" Value="14,8"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="#FEE2E2"/>
+            </Trigger>
+        </Style.Triggers>
     </Style>
 
     <Style x:Key="LocationsBwFormResetButton" TargetType="Button" BasedOn="{StaticResource MaterialDesignOutlinedButton}">

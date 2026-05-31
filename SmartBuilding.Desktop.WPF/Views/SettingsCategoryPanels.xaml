@@ -3,7 +3,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              xmlns:conv="clr-namespace:SmartBuilding.Desktop.WPF.Converters"
-             xmlns:models="clr-namespace:SmartBuilding.Desktop.WPF.Models">
+             xmlns:models="clr-namespace:SmartBuilding.Desktop.WPF.Models"
+             xmlns:views="clr-namespace:SmartBuilding.Desktop.WPF.Views">
     <UserControl.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -13,6 +14,7 @@
             <conv:InverseBoolConverter x:Key="InverseBoolConverter"/>
             <conv:StringEqualsToVisibilityConverter x:Key="StringEqualsToVisibilityConverter"/>
             <conv:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
+            <conv:IntEqualsToVisibilityConverter x:Key="IntEqualsToVisibilityConverter"/>
         </ResourceDictionary>
     </UserControl.Resources>
 
@@ -167,6 +169,24 @@
                     </Grid>
                 </Border>
 
+                <Border Background="#EFF6FF" BorderBrush="#BFDBFE" BorderThickness="1" CornerRadius="10"
+                        Padding="16,14" Margin="0,0,0,16">
+                    <DockPanel>
+                        <Button DockPanel.Dock="Right" Command="{Binding OpenModuleCommand}" CommandParameter="locations-landlord"
+                                Style="{StaticResource PropertyStructSecondaryButton}" Padding="14,9" VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="ArrowRight" Foreground="White" Margin="0,0,6,0"/>
+                                <TextBlock Text="Ouvrir Location" Foreground="White"/>
+                            </StackPanel>
+                        </Button>
+                        <StackPanel>
+                            <TextBlock Text="Patrimoine (étages, appartements, pièces)" FontWeight="SemiBold" Foreground="#1E40AF"/>
+                            <TextBlock Text="Configurez le bâtiment dans Location → Bailleur, Bâtiment ou Appartements."
+                                       FontSize="11" Foreground="#64748B" Margin="0,6,0,0" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </DockPanel>
+                </Border>
+
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="1.4*"/>
@@ -234,11 +254,55 @@
                                          Style="{StaticResource MaterialDesignOutlinedTextBox}"/>
                             </StackPanel>
                         </Grid>
-                        <StackPanel Margin="0,12,0,0">
-                            <TextBlock Text="Nombre d'étages (bâtiment)" Style="{StaticResource SettingsFieldLabel}"/>
-                            <TextBox Text="{Binding BuildingFloors, UpdateSourceTrigger=PropertyChanged}" Width="120" HorizontalAlignment="Left"
-                                     Style="{StaticResource MaterialDesignOutlinedTextBox}"/>
-                        </StackPanel>
+                        <Grid Margin="0,12,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                <TextBlock Text="Type de bailleur" Style="{StaticResource SettingsFieldLabel}"/>
+                                <ComboBox ItemsSource="{Binding OwnerTypeChoices}" SelectedItem="{Binding OwnerType}"
+                                          Style="{StaticResource MaterialDesignOutlinedComboBox}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                                <TextBlock Text="Représentant légal" Style="{StaticResource SettingsFieldLabel}"/>
+                                <TextBox Text="{Binding LegalRepresentative, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{StaticResource MaterialDesignOutlinedTextBox}"/>
+                            </StackPanel>
+                        </Grid>
+                        <Grid Margin="0,12,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                <TextBlock Text="Tél. secondaire" Style="{StaticResource SettingsFieldLabel}"/>
+                                <TextBox Text="{Binding BuildingSecondaryPhone, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{StaticResource MaterialDesignOutlinedTextBox}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                                <TextBlock Text="N° fiscal / RCCM" Style="{StaticResource SettingsFieldLabel}"/>
+                                <TextBox Text="{Binding TaxId, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{StaticResource MaterialDesignOutlinedTextBox}"/>
+                            </StackPanel>
+                        </Grid>
+                        <Grid Margin="0,12,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                <TextBlock Text="Banque" Style="{StaticResource SettingsFieldLabel}"/>
+                                <TextBox Text="{Binding BankName, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{StaticResource MaterialDesignOutlinedTextBox}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                                <TextBlock Text="Compte bancaire" Style="{StaticResource SettingsFieldLabel}"/>
+                                <TextBox Text="{Binding BankAccount, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{StaticResource MaterialDesignOutlinedTextBox}"/>
+                            </StackPanel>
+                        </Grid>
+
                     </StackPanel>
 
                     <StackPanel Grid.Column="1">

@@ -1,3 +1,5 @@
+using SmartBuilding.Shared.Money;
+
 namespace SmartBuilding.Shared.DTOs.Dashboard;
 
 public class DashboardSummaryDto
@@ -63,6 +65,8 @@ public class RecentMovementDto
     public string Description { get; set; } = string.Empty;
     public decimal Amount { get; set; }
     public string Reference { get; set; } = string.Empty;
+
+    public string AmountDisplay => BuildingMoneyFormat.Format(Amount, "USD");
 }
 
 public class ActivityItemDto

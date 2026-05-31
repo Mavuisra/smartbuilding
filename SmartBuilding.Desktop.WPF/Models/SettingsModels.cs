@@ -49,6 +49,53 @@ public sealed class SettingsPageData
     public string ThemeMode { get; init; } = "Light";
     public bool CompactTables { get; init; }
     public bool ShowKpiSparklines { get; init; } = true;
+
+    public string OwnerType { get; init; } = "Particulier";
+    public string? LegalRepresentative { get; init; }
+    public string? SecondaryPhone { get; init; }
+    public string? TaxId { get; init; }
+    public string? BankName { get; init; }
+    public string? BankAccount { get; init; }
+    public string BuildingDisplayName { get; init; } = string.Empty;
+    public string BuildingType { get; init; } = string.Empty;
+    public int ApartmentCount { get; init; }
+    public int CommercialUnitCount { get; init; }
+    public int TotalPremises { get; init; }
+    public int ParkingSpaces { get; init; }
+    public bool HasElevator { get; init; }
+    public int? YearBuilt { get; init; }
+    public string EquipmentAndInstallations { get; init; } = string.Empty;
+    public string ManagementRules { get; init; } = string.Empty;
+}
+
+public sealed class BuildingProfileInput
+{
+    public string CompanyName { get; init; } = string.Empty;
+    public string OwnerType { get; init; } = "Particulier";
+    public string? LegalRepresentative { get; init; }
+    public string Address { get; init; } = string.Empty;
+    public string City { get; init; } = string.Empty;
+    public string Country { get; init; } = string.Empty;
+    public string Phone { get; init; } = string.Empty;
+    public string? SecondaryPhone { get; init; }
+    public string Email { get; init; } = string.Empty;
+    public string Website { get; init; } = string.Empty;
+    public string NationalId { get; init; } = string.Empty;
+    public string? TaxId { get; init; }
+    public string? BankName { get; init; }
+    public string? BankAccount { get; init; }
+    public string BuildingDisplayName { get; init; } = string.Empty;
+    public string BuildingType { get; init; } = string.Empty;
+    public int TotalFloors { get; init; }
+    public int TotalPremises { get; init; }
+    public int ApartmentCount { get; init; }
+    public int CommercialUnitCount { get; init; }
+    public decimal TotalAreaSqM { get; init; }
+    public int ParkingSpaces { get; init; }
+    public bool HasElevator { get; init; }
+    public int? YearBuilt { get; init; }
+    public string EquipmentAndInstallations { get; init; } = string.Empty;
+    public string ManagementRules { get; init; } = string.Empty;
 }
 
 public sealed class SettingsCategoryItem

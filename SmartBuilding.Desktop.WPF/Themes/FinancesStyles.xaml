@@ -16,21 +16,70 @@
         <Setter Property="Margin" Value="0,0,8,0"/>
     </Style>
 
-    <Style x:Key="FinancesToolbarButton" TargetType="Button" BasedOn="{StaticResource LocationsToolbarButton}"/>
-    <Style x:Key="FinancesPrimaryButton" TargetType="Button" BasedOn="{StaticResource LocationsPrimaryButton}"/>
-    <Style x:Key="FinancesRevenueButton" TargetType="Button" BasedOn="{StaticResource LocationsPrimaryButton}">
-        <Setter Property="Background" Value="#2D6A4F"/>
+    <!-- Barre d'actions — gel #4cc26b -->
+    <Style x:Key="FinancesActionHeroButton" TargetType="Button" BasedOn="{StaticResource PatrimoineGelPrimaryButton}">
+        <Setter Property="Padding" Value="20,12"/>
+        <Setter Property="MinHeight" Value="46"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="FontWeight" Value="Bold"/>
+        <Setter Property="Margin" Value="0,0,10,6"/>
+        <Setter Property="Cursor" Value="Hand"/>
     </Style>
-    <Style x:Key="FinancesExpenseButton" TargetType="Button" BasedOn="{StaticResource LocationsToolbarButton}">
-        <Setter Property="Background" Value="#FEE2E2"/>
-        <Setter Property="Foreground" Value="#DC2626"/>
-        <Setter Property="BorderBrush" Value="#FECACA"/>
+
+    <Style x:Key="FinancesActionButton" TargetType="Button">
+        <Setter Property="Background" Value="White"/>
+        <Setter Property="Foreground" Value="{StaticResource PatrimoineGelTextBrush}"/>
+        <Setter Property="BorderBrush" Value="#B8DFC8"/>
+        <Setter Property="BorderThickness" Value="1.5"/>
+        <Setter Property="Padding" Value="16,11"/>
+        <Setter Property="MinHeight" Value="46"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Margin" Value="0,0,8,6"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="bd" Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="10" Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="bd" Property="Background" Value="{StaticResource PatrimoineGelLightBrush}"/>
+                            <Setter TargetName="bd" Property="BorderBrush" Value="{StaticResource PatrimoineGelBrush}"/>
+                            <Setter Property="Foreground" Value="{StaticResource PatrimoineGelBrush}"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="bd" Property="Background" Value="{StaticResource PatrimoineGelSelectedBrush}"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.5"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
-    <Style x:Key="FinancesRentButton" TargetType="Button" BasedOn="{StaticResource LocationsToolbarButton}">
-        <Setter Property="Background" Value="#DBEAFE"/>
-        <Setter Property="Foreground" Value="#1D4ED8"/>
-        <Setter Property="BorderBrush" Value="#BFDBFE"/>
+
+    <Style x:Key="FinancesActionIconButton" TargetType="Button" BasedOn="{StaticResource FinancesActionButton}">
+        <Setter Property="Width" Value="46"/>
+        <Setter Property="MinWidth" Value="46"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="Margin" Value="0,0,8,6"/>
     </Style>
+
+    <Style x:Key="FinancesToolbarButton" TargetType="Button" BasedOn="{StaticResource FinancesActionButton}"/>
+    <Style x:Key="FinancesPrimaryButton" TargetType="Button" BasedOn="{StaticResource PatrimoineGelPrimaryButton}"/>
+    <Style x:Key="FinancesRevenueButton" TargetType="Button" BasedOn="{StaticResource PatrimoineGelPrimaryButton}"/>
+    <Style x:Key="FinancesExpenseButton" TargetType="Button" BasedOn="{StaticResource FinancesActionButton}">
+        <Setter Property="Foreground" Value="#A67B7B"/>
+        <Setter Property="BorderBrush" Value="#E8D4D4"/>
+    </Style>
+    <Style x:Key="FinancesRentButton" TargetType="Button" BasedOn="{StaticResource FinancesActionHeroButton}"/>
+
     <Style x:Key="FinancesFilterCombo" TargetType="ComboBox" BasedOn="{StaticResource LocationsFilterCombo}"/>
     <Style x:Key="FinancesFilterSearch" TargetType="TextBox" BasedOn="{StaticResource LocationsFilterSearch}"/>
     <Style x:Key="FinancesMainTabButton" TargetType="Button" BasedOn="{StaticResource LocationsMainTabButton}">
@@ -38,29 +87,29 @@
         <Setter Property="Padding" Value="16,9"/>
         <Setter Property="Margin" Value="0,0,6,0"/>
         <Setter Property="Background" Value="#F8FAFC"/>
-        <Setter Property="BorderBrush" Value="#D1D5DB"/>
+        <Setter Property="BorderBrush" Value="#D4EDDC"/>
         <Setter Property="BorderThickness" Value="1"/>
     </Style>
     <Style x:Key="FinancesDataGrid" TargetType="DataGrid" BasedOn="{StaticResource LocationsDataGrid}">
         <Setter Property="RowBackground" Value="#FFFFFF"/>
-        <Setter Property="AlternatingRowBackground" Value="#F8FAFC"/>
+        <Setter Property="AlternatingRowBackground" Value="#FAFCFB"/>
         <Setter Property="GridLinesVisibility" Value="Horizontal"/>
-        <Setter Property="HorizontalGridLinesBrush" Value="#E2E8F0"/>
+        <Setter Property="HorizontalGridLinesBrush" Value="#E8F0EC"/>
         <Setter Property="HeadersVisibility" Value="Column"/>
         <Setter Property="CanUserReorderColumns" Value="False"/>
         <Setter Property="RowStyle">
             <Setter.Value>
                 <Style TargetType="DataGridRow">
                     <Setter Property="MinHeight" Value="34"/>
-                    <Setter Property="BorderBrush" Value="#E2E8F0"/>
+                    <Setter Property="BorderBrush" Value="#E8F0EC"/>
                     <Setter Property="BorderThickness" Value="0,0,0,1"/>
                     <Style.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter Property="Background" Value="#ECFDF5"/>
+                            <Setter Property="Background" Value="{StaticResource PatrimoineGelHoverBrush}"/>
                         </Trigger>
                         <Trigger Property="IsSelected" Value="True">
-                            <Setter Property="Background" Value="#D1FAE5"/>
-                            <Setter Property="Foreground" Value="#065F46"/>
+                            <Setter Property="Background" Value="{StaticResource PatrimoineGelSelectedBrush}"/>
+                            <Setter Property="Foreground" Value="{StaticResource PatrimoineGelTextBrush}"/>
                         </Trigger>
                     </Style.Triggers>
                 </Style>
@@ -73,8 +122,16 @@
         <Setter Property="CornerRadius" Value="8"/>
         <Setter Property="Padding" Value="12"/>
         <Setter Property="Margin" Value="0,0,0,8"/>
-        <Setter Property="BorderBrush" Value="#E8EFED"/>
+        <Setter Property="BorderBrush" Value="#D4EDDC"/>
         <Setter Property="BorderThickness" Value="1"/>
     </Style>
     <Style x:Key="FinancesCellText" TargetType="TextBlock" BasedOn="{StaticResource LocationsCellText}"/>
+    <Style x:Key="FinancesStatusBanner" TargetType="Border">
+        <Setter Property="Background" Value="{StaticResource PatrimoineGelLightBrush}"/>
+        <Setter Property="BorderBrush" Value="#D4EDDC"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="Padding" Value="12,8"/>
+        <Setter Property="Margin" Value="0,0,0,8"/>
+    </Style>
 </ResourceDictionary>

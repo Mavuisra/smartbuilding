@@ -1,3 +1,4 @@
+using System.Net;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -49,8 +50,14 @@ public static class DependencyInjection
 
         services.AddHttpClient("SmartBuildingApi", client =>
         {
-            client.BaseAddress = new Uri(configuration["Api:BaseUrl"] ?? "https://smartbuilding-0kbk.onrender.com/");
+            var baseUrl = configuration["Api:BaseUrl"] ?? "https://smartbuilding-0kbk.onrender.com/";
+            if (!baseUrl.EndsWith('/'))
+                baseUrl += "/";
+            client.BaseAddress = new Uri(baseUrl);
             client.Timeout = TimeSpan.FromSeconds(30);
+            // runserver Django = HTTP/1.1 ; évite pipelining/corruption sur connexion partagée
+            client.DefaultRequestVersion = HttpVersion.Version11;
+            client.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionExact;
         });
 
         return services;

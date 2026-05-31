@@ -119,6 +119,47 @@ public class LocationsPaymentItem
     public string StatusBadgeForeground { get; init; } = "#166534";
 }
 
+public class LocationsLandlordItem
+{
+    public Guid Id { get; init; }
+    public string ReferenceNumber { get; init; } = string.Empty;
+    public string Name { get; init; } = string.Empty;
+    public string LandlordType { get; init; } = "Particulier";
+    public string Phone { get; init; } = string.Empty;
+    public string Email { get; init; } = string.Empty;
+    public string AddressDisplay { get; init; } = "—";
+    public string ContactPerson { get; init; } = "—";
+    public int BuildingCount { get; init; }
+    public string StatusLabel { get; init; } = "Actif";
+    public string StatusBadgeBackground { get; init; } = "#DCFCE7";
+    public string StatusBadgeForeground { get; init; } = "#166534";
+}
+
+public class LocationsLandlordStats
+{
+    public int Total { get; init; }
+    public int Active { get; init; }
+    public int Companies { get; init; }
+    public int LinkedBuildings { get; init; }
+}
+
+public class TenantDependentItem
+{
+    public Guid Id { get; init; }
+    public string FullName { get; init; } = string.Empty;
+    public string Relationship { get; init; } = string.Empty;
+    public string DateOfBirthDisplay { get; init; } = "—";
+    public string NationalId { get; init; } = "—";
+}
+
+public class LocationsTenantStats
+{
+    public int Total { get; init; }
+    public int Active { get; init; }
+    public int WithActiveContract { get; init; }
+    public int LatePayments { get; init; }
+}
+
 public class LocationsTenantItem
 {
     public Guid Id { get; init; }
@@ -128,7 +169,13 @@ public class LocationsTenantItem
     public string Phone { get; init; } = string.Empty;
     public string Email { get; init; } = string.Empty;
     public string Company { get; init; } = string.Empty;
+    public string TenantCategory { get; init; } = "Particulier";
+    public string Profession { get; init; } = "—";
+    public string Nationality { get; init; } = "—";
     public int ActiveContracts { get; init; }
+    public string Initials { get; init; } = "L";
+    public string StatusBadgeBackground { get; init; } = "#DCFCE7";
+    public string StatusBadgeForeground { get; init; } = "#166534";
 }
 
 public class LocationsPickItem

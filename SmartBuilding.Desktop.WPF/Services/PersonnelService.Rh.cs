@@ -281,6 +281,88 @@ public partial class PersonnelService
         return payment.PaySlipPdfPath;
     }
 
+    public async Task<string> UpdateAttendanceAsync(
+        Guid attendanceId,
+        string? checkInTimeText,
+        string? checkOutTimeText,
+        string? statusOverride,
+        string? notes,
+        CancellationToken cancellationToken = default)
+    {
+        var attendance = await _db.Attendances
+            .Include(a => a.Employee)
+            .FirstOrDefaultAsync(a => a.Id == attendanceId, cancellationToken);
+        if (attendance is null)
+            return "Pointage introuvable.";
+
+        var day = attendance.Date.Date;
+
+        if (string.Equals(statusOverride, RhConstants.PresenceStatus.Absent, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(statusOverride, "Absent", StringComparison.OrdinalIgnoreCase))
+        {
+            attendance.CheckIn = null;
+            attendance.CheckOut = null;
+            attendance.Notes = "Absent";
+        }
+        else if (string.Equals(statusOverride, RhConstants.PresenceStatus.Leave, StringComparison.OrdinalIgnoreCase)
+                 || string.Equals(statusOverride, "En congé", StringComparison.OrdinalIgnoreCase))
+        {
+            attendance.CheckIn = null;
+            attendance.CheckOut = null;
+            attendance.Notes = string.IsNullOrWhiteSpace(notes) ? "Congé" : $"Congé: {notes.Trim()}";
+        }
+        else
+        {
+            if (!TryParseTimeOnDate(checkInTimeText, day, out var checkIn, out var checkInError))
+                return checkInError!;
+            if (!TryParseTimeOnDate(checkOutTimeText, day, out var checkOut, out var checkOutError))
+                return checkOutError!;
+
+            attendance.CheckIn = checkIn;
+            attendance.CheckOut = checkOut;
+            if (!string.IsNullOrWhiteSpace(notes))
+                attendance.Notes = notes.Trim();
+            else if (statusOverride is null)
+                attendance.Notes = attendance.CheckIn is null && attendance.CheckOut is null ? attendance.Notes : null;
+        }
+
+        PersonnelAttendanceCalculator.ApplyPresenceMetrics(attendance, attendance.Employee);
+        attendance.MarkUpdated();
+        await _db.SaveChangesAsync(cancellationToken);
+        return string.Empty;
+    }
+
+    private static bool TryParseTimeOnDate(
+        string? text,
+        DateTime day,
+        out DateTime? result,
+        out string? error)
+    {
+        error = null;
+        if (string.IsNullOrWhiteSpace(text) || text.Trim() == "—")
+        {
+            result = null;
+            return true;
+        }
+
+        var value = text.Trim().Replace('h', ':');
+        if (TimeSpan.TryParse(value, CultureInfo.InvariantCulture, out var ts))
+        {
+            result = day.Add(ts);
+            return true;
+        }
+
+        if (DateTime.TryParseExact(value, ["HH:mm", "H:mm"], CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed))
+        {
+            result = day.Add(parsed.TimeOfDay);
+            return true;
+        }
+
+        result = null;
+        error = $"Heure invalide : « {text} » (format HH:mm).";
+        return false;
+    }
+
     public async Task<IReadOnlyList<PersonnelAttendanceRow>> GetAttendanceHistoryAsync(
         Guid? employeeId = null,
         DateTime? from = null,

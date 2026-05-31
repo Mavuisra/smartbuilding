@@ -10,9 +10,9 @@
     :root {
       --sb-bg: #f4fbf7;
       --sb-card: #ffffff;
-      --sb-primary: #027566;
-      --sb-primary-700: #027566;
-      --sb-primary-soft: #dff5e8;
+      --sb-primary: #4cc26b;
+      --sb-primary-700: #3d6b52;
+      --sb-primary-soft: #f4fcf7;
       --sb-black: #0f172a;
       --sb-text: #0f172a;
       --sb-muted: #64748b;
@@ -41,7 +41,7 @@
       min-width: 0;
     }
     .navbar-sb {
-      background: #027566;
+      background: #1b3d3b;
       box-shadow: 0 8px 24px rgba(27, 61, 59, .25);
     }
     .sb-card {
@@ -88,10 +88,11 @@
     }
     .sb-sidebar {
       width: 250px;
-      background: #027566;
+      background: #1b3d3b;
       color: #f8fafc;
       padding: 18px 14px;
       border-right: 1px solid rgba(255,255,255,.08);
+      overflow-y: auto;
     }
     .sb-sidebar .brand {
       display: flex;
@@ -108,7 +109,7 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      background: #027566;
+      background: #4cc26b;
       color: #fff;
       font-weight: 800;
     }
@@ -129,16 +130,28 @@
       margin-bottom: 4px;
     }
     .sb-nav-link:hover { background: rgba(255,255,255,.18); color: #fff; }
-    .sb-nav-link.active { background: rgba(255,255,255,.28); color: #fff; }
+    .sb-nav-link.active { background: rgba(76,194,107,.35); color: #fff; font-weight: 600; }
+    .sb-nav-children { margin: 0 0 6px 10px; padding-left: 8px; border-left: 2px solid rgba(76,194,107,.4); }
+    .sb-nav-child {
+      display: block;
+      color: #d1fae5;
+      text-decoration: none;
+      padding: 5px 10px;
+      border-radius: 8px;
+      font-size: .82rem;
+      margin-bottom: 2px;
+    }
+    .sb-nav-child:hover { background: rgba(255,255,255,.12); color: #fff; }
+    .sb-nav-child.active { background: rgba(76,194,107,.45); color: #fff; font-weight: 600; }
     .text-info-emphasis { color: #dcfce7 !important; }
     .btn-primary,
     .btn-success {
-      --bs-btn-bg: #027566;
-      --bs-btn-border-color: #027566;
-      --bs-btn-hover-bg: #027566;
-      --bs-btn-hover-border-color: #027566;
-      --bs-btn-active-bg: #027566;
-      --bs-btn-active-border-color: #027566;
+      --bs-btn-bg: #4cc26b;
+      --bs-btn-border-color: #4cc26b;
+      --bs-btn-hover-bg: #3db85c;
+      --bs-btn-hover-border-color: #3db85c;
+      --bs-btn-active-bg: #35a652;
+      --bs-btn-active-border-color: #35a652;
       color: #fff;
       font-weight: 700;
     }

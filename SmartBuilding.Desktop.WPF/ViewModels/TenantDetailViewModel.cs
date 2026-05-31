@@ -4,14 +4,19 @@ using CommunityToolkit.Mvvm.Input;
 using SmartBuilding.Desktop.WPF.Helpers;
 using SmartBuilding.Desktop.WPF.Models;
 using SmartBuilding.Desktop.WPF.Services;
+using SmartBuilding.Shared.Constants;
 
 namespace SmartBuilding.Desktop.WPF.ViewModels;
 
 public partial class TenantDetailViewModel : BaseViewModel
 {
     private readonly TenantDetailService _tenantDetailService;
+    private readonly LocationsService _locationsService;
     private readonly ShellNavigationService _shellNavigation;
+    private readonly SessionService _session;
     private Guid _tenantId;
+
+    public bool CanManage => _session.HasPermission(PermissionCodes.LocationManage);
 
     [ObservableProperty] private string _pageTitle = "Fiche locataire";
     [ObservableProperty] private string _breadcrumb = "Locations / Locataire";
@@ -56,10 +61,16 @@ public partial class TenantDetailViewModel : BaseViewModel
     public ObservableCollection<TenantActivityRow> Activities { get; } = [];
     public ObservableCollection<TenantGuaranteeRow> Guarantees { get; } = [];
 
-    public TenantDetailViewModel(TenantDetailService tenantDetailService, ShellNavigationService shellNavigation)
+    public TenantDetailViewModel(
+        TenantDetailService tenantDetailService,
+        LocationsService locationsService,
+        ShellNavigationService shellNavigation,
+        SessionService session)
     {
         _tenantDetailService = tenantDetailService;
+        _locationsService = locationsService;
         _shellNavigation = shellNavigation;
+        _session = session;
     }
 
     public void Initialize(Guid tenantId)
@@ -139,5 +150,30 @@ public partial class TenantDetailViewModel : BaseViewModel
     private void SetTab(object? parameter) => SelectedTab = TabNavigationHelper.ParseIndex(parameter);
 
     [RelayCommand]
-    private async Task GoBackAsync() => await _shellNavigation.BackToLocationsAsync();
+    private async Task GoBackAsync() => await _shellNavigation.BackToTenantsAsync();
+
+    [RelayCommand]
+    private async Task EditAsync()
+    {
+        if (!CanManage) return;
+        await _shellNavigation.OpenTenantFormAsync(_tenantId);
+    }
+
+    [RelayCommand]
+    private async Task DeleteAsync()
+    {
+        if (!CanManage) return;
+        if (!SbmsDialogService.Confirm("Archiver le locataire",
+                $"Archiver {Name} ? Impossible s'il reste un contrat actif."))
+            return;
+
+        var error = await _locationsService.DeleteTenantAsync(_tenantId);
+        if (!string.IsNullOrEmpty(error))
+        {
+            ErrorMessage = error;
+            return;
+        }
+
+        await _shellNavigation.BackToTenantsAsync();
+    }
 }

@@ -4,10 +4,22 @@ from django.conf import settings
 
 
 class IsExecutive(BasePermission):
-    """PDG ou Administrateur — lecture consolidée."""
+    """Utilisateurs authentifiés — aligné sur les rôles desktop (lecture portail web)."""
+
+    DESKTOP_ROLES = {
+        "Administrateur",
+        "PDG",
+        "Comptable",
+        "Technique",
+        "Gestionnaire",
+    }
 
     def has_permission(self, request, view):
         user = request.user
         if not user or not user.is_authenticated:
             return False
-        return user.role in settings.EXECUTIVE_ROLES or user.is_superuser
+        if user.is_superuser:
+            return True
+        if user.role in self.DESKTOP_ROLES:
+            return True
+        return user.role in getattr(settings, "EXECUTIVE_ROLES", [])

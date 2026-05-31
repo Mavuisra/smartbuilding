@@ -21,6 +21,8 @@ public partial class MainShellViewModel : BaseViewModel
     private readonly PersonnelViewModel _personnelViewModel;
     private readonly LocationsViewModel _locationsViewModel;
     private readonly LocationsListViewModel _locationsListViewModel;
+    private readonly LocationsTenantsViewModel _locationsTenantsViewModel;
+    private readonly LocationsPatrimoineViewModel _locationsPatrimoineViewModel;
     private readonly FinancesViewModel _financesViewModel;
     private readonly TechnicalViewModel _technicalViewModel;
     private readonly SuppliersViewModel _suppliersViewModel;
@@ -82,6 +84,8 @@ public partial class MainShellViewModel : BaseViewModel
         PersonnelViewModel personnelViewModel,
         LocationsViewModel locationsViewModel,
         LocationsListViewModel locationsListViewModel,
+        LocationsTenantsViewModel locationsTenantsViewModel,
+        LocationsPatrimoineViewModel locationsPatrimoineViewModel,
         FinancesViewModel financesViewModel,
         TechnicalViewModel technicalViewModel,
         SuppliersViewModel suppliersViewModel,
@@ -119,6 +123,8 @@ public partial class MainShellViewModel : BaseViewModel
         _personnelViewModel = personnelViewModel;
         _locationsViewModel = locationsViewModel;
         _locationsListViewModel = locationsListViewModel;
+        _locationsTenantsViewModel = locationsTenantsViewModel;
+        _locationsPatrimoineViewModel = locationsPatrimoineViewModel;
         _financesViewModel = financesViewModel;
         _technicalViewModel = technicalViewModel;
         _suppliersViewModel = suppliersViewModel;
@@ -145,7 +151,10 @@ public partial class MainShellViewModel : BaseViewModel
             OpenContractFormAsync,
             OpenRentFormAsync,
             OpenLocationCreateAsync,
-            OpenLocationListAsync);
+            OpenLocationListAsync,
+            OpenTenantsListAsync,
+            OpenPatrimoineForTabAsync,
+            ResumeContractFormAsync);
         RebuildNavigation();
         CurrentViewModel = _dashboardViewModel;
         _ = InitializeShellAsync();
@@ -199,12 +208,12 @@ public partial class MainShellViewModel : BaseViewModel
         var vm = ActivatorUtilities.CreateInstance<TenantDetailViewModel>(_services);
         vm.Initialize(tenantId);
         CurrentViewModel = vm;
-        SelectedModuleId = "locations-list";
+        SelectedModuleId = "locations-tenants";
         await vm.LoadCommand.ExecuteAsync(null);
         await RefreshShellStatusAsync();
     }
 
-    private async Task BackToLocationsFromTenantAsync() => await OpenLocationListAsync();
+    private async Task BackToLocationsFromTenantAsync() => await OpenTenantsListAsync();
 
     private async Task OpenLocationCreateAsync()
     {
@@ -238,8 +247,43 @@ public partial class MainShellViewModel : BaseViewModel
         var vm = ActivatorUtilities.CreateInstance<LocationTenantFormViewModel>(_services);
         vm.Initialize(tenantId);
         CurrentViewModel = vm;
-        SelectedModuleId = "locations-list";
+        SelectedModuleId = "locations-tenants";
         await vm.LoadCommand.ExecuteAsync(null);
+        await RefreshShellStatusAsync();
+    }
+
+    private async Task OpenTenantsListAsync()
+    {
+        CurrentViewModel = _locationsTenantsViewModel;
+        SelectedModuleId = "locations-tenants";
+        await _locationsTenantsViewModel.LoadCommand.ExecuteAsync(null);
+        await RefreshShellStatusAsync();
+    }
+
+    private async Task OpenPatrimoineAsync(int tabIndex, string moduleId)
+    {
+        _locationsPatrimoineViewModel.Initialize(tabIndex);
+        CurrentViewModel = _locationsPatrimoineViewModel;
+        SelectedModuleId = moduleId;
+        await _locationsPatrimoineViewModel.LoadCommand.ExecuteAsync(null);
+        await RefreshShellStatusAsync();
+    }
+
+    private Task OpenPatrimoineForTabAsync(int tabIndex) => tabIndex switch
+    {
+        0 => OpenPatrimoineAsync(0, "locations-landlord"),
+        1 => OpenPatrimoineAsync(1, "locations-building"),
+        2 => OpenPatrimoineAsync(2, "locations-apartments"),
+        _ => OpenPatrimoineAsync(3, "locations-gestion")
+    };
+
+    private async Task ResumeContractFormAsync(LocationContractFormViewModel vm, Guid? selectTenantId)
+    {
+        CurrentViewModel = vm;
+        SelectedModuleId = "locations-create";
+        await vm.LoadAsync();
+        if (selectTenantId.HasValue)
+            vm.ApplyTenantSelection(selectTenantId.Value);
         await RefreshShellStatusAsync();
     }
 
@@ -260,7 +304,12 @@ public partial class MainShellViewModel : BaseViewModel
         if (string.IsNullOrWhiteSpace(moduleId))
             return;
 
-        var permissionModuleId = moduleId == "incidents" ? "technique" : moduleId;
+        var permissionModuleId = moduleId switch
+        {
+            "incidents" => "technique",
+            _ when moduleId.StartsWith("locations", StringComparison.OrdinalIgnoreCase) => "locations",
+            _ => moduleId
+        };
         var module = ModuleRegistry.Get(permissionModuleId);
         if (!ModuleRegistry.CanAccess(_session, module))
         {
@@ -312,6 +361,36 @@ public partial class MainShellViewModel : BaseViewModel
         if (moduleId == "locations-rent-pay")
         {
             await OpenRentFormAsync();
+            return;
+        }
+
+        if (moduleId == "locations-tenants")
+        {
+            await OpenTenantsListAsync();
+            return;
+        }
+
+        if (moduleId == "locations-landlord")
+        {
+            await OpenPatrimoineAsync(0, moduleId);
+            return;
+        }
+
+        if (moduleId == "locations-building")
+        {
+            await OpenPatrimoineAsync(1, moduleId);
+            return;
+        }
+
+        if (moduleId == "locations-apartments")
+        {
+            await OpenPatrimoineAsync(2, moduleId);
+            return;
+        }
+
+        if (moduleId == "locations-gestion")
+        {
+            await OpenPatrimoineAsync(3, moduleId);
             return;
         }
 

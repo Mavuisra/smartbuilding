@@ -23,11 +23,16 @@ public class DocumentsModuleService
 
     private readonly SmartBuildingDbContext _db;
     private readonly IConfiguration _configuration;
+    private readonly DocumentsUserLibraryService _userLibrary;
 
-    public DocumentsModuleService(SmartBuildingDbContext db, IConfiguration configuration)
+    public DocumentsModuleService(
+        SmartBuildingDbContext db,
+        IConfiguration configuration,
+        DocumentsUserLibraryService userLibrary)
     {
         _db = db;
         _configuration = configuration;
+        _userLibrary = userLibrary;
     }
 
     public async Task<DocumentsPageData> LoadAsync(CancellationToken cancellationToken = default)
@@ -54,6 +59,7 @@ public class DocumentsModuleService
         docs.AddRange(await LoadEmailAttachmentsAsync(cancellationToken));
         docs.AddRange(await LoadConsumptionReportsAsync(cancellationToken));
         docs.AddRange(await LoadDeletedDocumentsAsync(cancellationToken));
+        docs.AddRange(await LoadUserLibraryAsync(cancellationToken));
 
         var active = docs.Where(d => !d.IsDeleted).ToList();
         var dbPath = DesktopSqlitePaths.GetDatabaseFilePath();
@@ -121,6 +127,56 @@ public class DocumentsModuleService
                 : ["Tous bâtiments", ..buildings],
             DefaultBuilding = buildingName
         };
+    }
+
+    public Task<DocumentListItem> CreateUserFolderAsync(
+        string folderName,
+        string categoryId,
+        string building,
+        string addedBy,
+        CancellationToken cancellationToken = default) =>
+        _userLibrary.CreateFolderAsync(folderName, categoryId, building, addedBy, cancellationToken);
+
+    public Task<IReadOnlyList<DocumentListItem>> UploadUserFilesAsync(
+        IEnumerable<string> sourcePaths,
+        string categoryId,
+        string building,
+        string addedBy,
+        CancellationToken cancellationToken = default) =>
+        _userLibrary.UploadFilesAsync(sourcePaths, categoryId, building, addedBy, cancellationToken);
+
+    public string? ResolveDocumentFilePath(DocumentListItem item) =>
+        _userLibrary.ResolveFilePath(item) ?? item.FilePath;
+
+    public bool IsUserLibraryDocument(Guid id) =>
+        _userLibrary.IsUserLibraryItem(id);
+
+    private async Task<List<RawDocument>> LoadUserLibraryAsync(CancellationToken ct)
+    {
+        var items = await _userLibrary.LoadRawDocumentsAsync(ct);
+        return items.Select(d => new RawDocument
+        {
+            Id = d.Id,
+            FileName = d.FileName,
+            SourcePath = d.SourcePath,
+            FileType = d.FileType,
+            CategoryId = d.CategoryId,
+            CategoryLabel = CategoryLabel(d.CategoryId),
+            CreatedAt = d.CreatedAt,
+            UpdatedAt = d.UpdatedAt,
+            AddedBy = d.AddedBy,
+            Building = d.Building,
+            Status = d.IsFolder ? "Dossier" : "Importé",
+            SizeBytes = d.SizeBytes,
+            IsFolder = d.IsFolder,
+            PreviewTitle = d.IsFolder
+                ? d.FileName.ToUpperInvariant()
+                : Path.GetFileNameWithoutExtension(d.FileName).ToUpperInvariant(),
+            PreviewBody = d.IsFolder
+                ? "Dossier créé dans la bibliothèque SBMS."
+                : $"Fichier importé — {d.FileName}",
+            Tags = d.IsFolder ? [] : ["IMPORT"]
+        }).ToList();
     }
 
     private async Task<List<RawDocument>> LoadLeaseContractsAsync(string defaultBuilding, CancellationToken ct)

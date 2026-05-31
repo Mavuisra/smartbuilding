@@ -26,10 +26,11 @@ public sealed class EntitySyncAdapter<TEntity> : IEntitySyncAdapter
         CancellationToken cancellationToken)
     {
         var items = await _dbSet(context)
+            .AsNoTracking()
             .IgnoreQueryFilters()
             .Where(x => x.UpdatedAt > since)
             .OrderBy(x => x.UpdatedAt)
-            .Take(200)
+            .Take(500)
             .ToListAsync(cancellationToken);
 
         return items.Select(i => new SyncEntityPayload
@@ -46,10 +47,11 @@ public sealed class EntitySyncAdapter<TEntity> : IEntitySyncAdapter
         CancellationToken cancellationToken)
     {
         var items = await _dbSet(context)
+            .AsNoTracking()
             .IgnoreQueryFilters()
             .Where(x => !x.IsSynced)
             .OrderBy(x => x.UpdatedAt)
-            .Take(100)
+            .Take(500)
             .ToListAsync(cancellationToken);
 
         return items.Select(i => new SyncEntityPayload

@@ -414,6 +414,7 @@ public partial class PersonnelViewModel : BaseViewModel
 
         ApplyEmployeeDetail(detail);
         await LoadEmployeeIntoFormAsync(employeeId);
+        await LoadDetailAttendancesAsync();
         return true;
     }
 
@@ -453,8 +454,6 @@ public partial class PersonnelViewModel : BaseViewModel
         foreach (var c in d.Contracts) DetailContracts.Add(c);
         DetailSalaryPayments.Clear();
         foreach (var s in d.SalaryPayments) DetailSalaryPayments.Add(s);
-        DetailAttendances.Clear();
-        foreach (var a in d.Attendances) DetailAttendances.Add(a);
         DetailActivities.Clear();
         foreach (var a in d.Activities) DetailActivities.Add(a);
         DetailDisciplinaryNotes.Clear();

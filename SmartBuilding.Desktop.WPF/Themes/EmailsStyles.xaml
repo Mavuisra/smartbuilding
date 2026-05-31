@@ -1,16 +1,141 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="/Themes/LocationsStyles.xaml"/>
         <ResourceDictionary Source="/Themes/VisitsStyles.xaml"/>
     </ResourceDictionary.MergedDictionaries>
+
     <Style x:Key="EmailsKpiCard" TargetType="Border" BasedOn="{StaticResource VisitsKpiCard}"/>
     <Style x:Key="EmailsToolbarButton" TargetType="Button" BasedOn="{StaticResource VisitsToolbarButton}"/>
-    <Style x:Key="EmailsPrimaryButton" TargetType="Button" BasedOn="{StaticResource VisitsPrimaryButton}">
-        <Setter Property="Background" Value="#2563EB"/>
-    </Style>
-    <Style x:Key="EmailsFilterCombo" TargetType="ComboBox" BasedOn="{StaticResource VisitsFilterCombo}"/>
+    <Style x:Key="EmailsPrimaryButton" TargetType="Button" BasedOn="{StaticResource PatrimoineGelPrimaryButton}"/>
     <Style x:Key="EmailsSidebarCard" TargetType="Border" BasedOn="{StaticResource VisitsSidebarCard}"/>
     <Style x:Key="EmailsAnalyticsCard" TargetType="Border" BasedOn="{StaticResource VisitsAnalyticsCard}"/>
+
+    <Style x:Key="EmailsFilterSectionLabel" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="9"/>
+        <Setter Property="FontWeight" Value="Bold"/>
+        <Setter Property="Foreground" Value="{StaticResource PatrimoineGelMutedBrush}"/>
+        <Setter Property="Margin" Value="0,0,0,5"/>
+    </Style>
+
+    <Style x:Key="EmailsFilterSectionCard" TargetType="Border">
+        <Setter Property="Background" Value="White"/>
+        <Setter Property="BorderBrush" Value="#D4EDDC"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="Padding" Value="8,6"/>
+    </Style>
+
+    <Style x:Key="EmailsConfigSectionCard" TargetType="Border">
+        <Setter Property="Background" Value="White"/>
+        <Setter Property="BorderBrush" Value="#D4EDDC"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="Padding" Value="8,7"/>
+        <Setter Property="Margin" Value="0,0,0,6"/>
+    </Style>
+
+    <Style x:Key="EmailsFilterCombo" TargetType="ComboBox" BasedOn="{StaticResource LocationsFilterCombo}">
+        <Setter Property="Height" Value="28"/>
+        <Setter Property="MinWidth" Value="0"/>
+        <Setter Property="Width" Value="108"/>
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="Padding" Value="6,2"/>
+        <Setter Property="Margin" Value="0,0,5,0"/>
+        <Setter Property="Background" Value="{StaticResource PatrimoineGelSoftBrush}"/>
+        <Setter Property="BorderBrush" Value="#B8DFC8"/>
+        <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+
+    <Style x:Key="EmailsSortCombo" TargetType="ComboBox" BasedOn="{StaticResource EmailsFilterCombo}">
+        <Setter Property="Width" Value="118"/>
+        <Setter Property="Margin" Value="0"/>
+    </Style>
+
+    <Style x:Key="EmailsFilterRefreshButton" TargetType="Button">
+        <Setter Property="Width" Value="28"/>
+        <Setter Property="Height" Value="28"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="Margin" Value="0,0,5,0"/>
+        <Setter Property="Background" Value="{StaticResource PatrimoineGelLightBrush}"/>
+        <Setter Property="BorderBrush" Value="#B8DFC8"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="bd" Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="6">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="bd" Property="Background" Value="{StaticResource PatrimoineGelHoverBrush}"/>
+                            <Setter TargetName="bd" Property="BorderBrush" Value="{StaticResource PatrimoineGelBrush}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="EmailsFilterCheckBox" TargetType="CheckBox">
+        <Setter Property="Height" Value="28"/>
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{StaticResource PatrimoineGelTextBrush}"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="Padding" Value="8,0,8,0"/>
+        <Setter Property="Margin" Value="0,0,5,0"/>
+        <Setter Property="Cursor" Value="Hand"/>
+    </Style>
+
+    <Style x:Key="EmailsConfigTextBox" TargetType="TextBox">
+        <Setter Property="Height" Value="28"/>
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="Padding" Value="8,4"/>
+        <Setter Property="Margin" Value="0,0,0,5"/>
+        <Setter Property="Background" Value="{StaticResource PatrimoineGelSoftBrush}"/>
+        <Setter Property="BorderBrush" Value="#B8DFC8"/>
+        <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+
+    <Style x:Key="EmailsConfigCheckBox" TargetType="CheckBox" BasedOn="{StaticResource EmailsFilterCheckBox}">
+        <Setter Property="Margin" Value="0,0,0,5"/>
+        <Setter Property="Height" Value="Auto"/>
+        <Setter Property="Padding" Value="0,2"/>
+    </Style>
+
+    <Style x:Key="EmailsConfigSecondaryButton" TargetType="Button">
+        <Setter Property="Height" Value="28"/>
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{StaticResource PatrimoineGelTextBrush}"/>
+        <Setter Property="Background" Value="{StaticResource PatrimoineGelLightBrush}"/>
+        <Setter Property="BorderBrush" Value="#B8DFC8"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="bd" Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="6" Padding="10,0">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="bd" Property="Background" Value="{StaticResource PatrimoineGelHoverBrush}"/>
+                            <Setter TargetName="bd" Property="BorderBrush" Value="{StaticResource PatrimoineGelBrush}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
 
     <Style x:Key="EmailsFolderButton" TargetType="Button">
         <Setter Property="Background" Value="Transparent"/>
@@ -27,7 +152,7 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Bd" Property="Background" Value="#F1F5F9"/>
+                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource PatrimoineGelHoverBrush}"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -35,7 +160,7 @@
         </Setter>
         <Style.Triggers>
             <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                <Setter Property="Background" Value="#DBEAFE"/>
+                <Setter Property="Background" Value="{StaticResource PatrimoineGelLightBrush}"/>
                 <Setter Property="FontWeight" Value="SemiBold"/>
             </DataTrigger>
         </Style.Triggers>
@@ -49,7 +174,7 @@
         <Setter Property="Cursor" Value="Hand"/>
         <Style.Triggers>
             <DataTrigger Binding="{Binding IsRead}" Value="False">
-                <Setter Property="Background" Value="#F8FAFF"/>
+                <Setter Property="Background" Value="#F4FCF7"/>
             </DataTrigger>
         </Style.Triggers>
     </Style>

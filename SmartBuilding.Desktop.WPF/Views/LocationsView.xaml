@@ -605,7 +605,7 @@
                             <TextBox Grid.Row="1" Grid.Column="1" Margin="8,0,0,12" Style="{StaticResource MaterialDesignOutlinedTextBox}"
                                      materialDesign:HintAssist.Hint="Étage" Text="{Binding FormFloor, UpdateSourceTrigger=PropertyChanged}"/>
                             <TextBox Grid.Row="2" Grid.Column="0" Margin="0,0,8,12" Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                     materialDesign:HintAssist.Hint="Type (Bureau, Appartement...)" Text="{Binding FormType, UpdateSourceTrigger=PropertyChanged}"/>
+                                     materialDesign:HintAssist.Hint="Type (Résidence, Appartement...)" Text="{Binding FormType, UpdateSourceTrigger=PropertyChanged}"/>
                             <TextBox Grid.Row="2" Grid.Column="1" Margin="8,0,0,12" Style="{StaticResource MaterialDesignOutlinedTextBox}"
                                      materialDesign:HintAssist.Hint="Surface (m²)" Text="{Binding FormAreaText, UpdateSourceTrigger=PropertyChanged}"/>
                             <TextBox Grid.Row="3" Grid.Column="0" Margin="0,0,8,12" Style="{StaticResource MaterialDesignOutlinedTextBox}"

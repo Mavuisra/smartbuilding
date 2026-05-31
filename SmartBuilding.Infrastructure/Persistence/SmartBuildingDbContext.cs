@@ -31,9 +31,12 @@ public class SmartBuildingDbContext : DbContext
     public DbSet<MaintenanceRecord> MaintenanceRecords => Set<MaintenanceRecord>();
     public DbSet<RepairRecord> RepairRecords => Set<RepairRecord>();
     public DbSet<TechnicalAlert> TechnicalAlerts => Set<TechnicalAlert>();
+    public DbSet<Landlord> Landlords => Set<Landlord>();
+    public DbSet<LandlordActivity> LandlordActivities => Set<LandlordActivity>();
     public DbSet<Building> Buildings => Set<Building>();
     public DbSet<Premise> Premises => Set<Premise>();
     public DbSet<Tenant> Tenants => Set<Tenant>();
+    public DbSet<TenantDependent> TenantDependents => Set<TenantDependent>();
     public DbSet<LeaseGuarantee> LeaseGuarantees => Set<LeaseGuarantee>();
     public DbSet<TenantActivity> TenantActivities => Set<TenantActivity>();
     public DbSet<LeaseContract> LeaseContracts => Set<LeaseContract>();
@@ -54,6 +57,9 @@ public class SmartBuildingDbContext : DbContext
     public DbSet<SyncLog> SyncLogs => Set<SyncLog>();
     public DbSet<SystemLog> SystemLogs => Set<SystemLog>();
     public DbSet<BuildingInfo> BuildingInfos => Set<BuildingInfo>();
+    public DbSet<PropertyFloor> PropertyFloors => Set<PropertyFloor>();
+    public DbSet<PropertyApartment> PropertyApartments => Set<PropertyApartment>();
+    public DbSet<PropertyRoom> PropertyRooms => Set<PropertyRoom>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

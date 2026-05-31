@@ -19,7 +19,12 @@ public class Tenant : BaseEntity
     public string? Address { get; set; }
     public string TenantCategory { get; set; } = "Particulier";
     public string? NationalId { get; set; }
+    public string? IdDocumentType { get; set; }
+    public DateTime? IdDocumentExpiry { get; set; }
     public DateTime? DateOfBirth { get; set; }
+    public string? SecondaryPhone { get; set; }
+    public string? Employer { get; set; }
+    public string? PreviousAddress { get; set; }
     public string Gender { get; set; } = string.Empty;
     public string MaritalStatus { get; set; } = string.Empty;
     public string? SpouseName { get; set; }
@@ -31,4 +36,5 @@ public class Tenant : BaseEntity
 
     public ICollection<LeaseContract> LeaseContracts { get; set; } = [];
     public ICollection<TenantActivity> Activities { get; set; } = [];
+    public ICollection<TenantDependent> Dependents { get; set; } = [];
 }

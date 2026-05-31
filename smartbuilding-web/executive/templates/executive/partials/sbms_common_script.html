@@ -1,0 +1,60 @@
+<script>
+/** Utilitaires SBMS — auth JWT, API, permissions (parité desktop). */
+window.Sbms = window.Sbms || {};
+
+Sbms.getToken = () => localStorage.getItem('sbms_token');
+Sbms.getUser = () => {
+  try { return JSON.parse(localStorage.getItem('sbms_user') || '{}'); }
+  catch { return {}; }
+};
+
+Sbms.hasPermission = (code) => {
+  const user = Sbms.getUser();
+  if (user.role === 'Administrateur' || user.role === 'PDG') return true;
+  const perms = user.permissions || [];
+  if (!code) return true;
+  return perms.includes(code);
+};
+
+Sbms.requireAuth = () => {
+  if (!Sbms.getToken() && !window.location.pathname.startsWith('/login')) {
+    window.location.href = '/login/';
+    return false;
+  }
+  return true;
+};
+
+Sbms.apiFetch = async (path, options = {}) => {
+  const res = await fetch(path, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: 'Bearer ' + Sbms.getToken(),
+      ...(options.headers || {}),
+    },
+  });
+  const contentType = res.headers.get('Content-Type') || '';
+  let json = null;
+  if (contentType.includes('application/json')) {
+    json = await res.json();
+  } else {
+    throw new Error(`Réponse invalide (${res.status})`);
+  }
+  if (res.status === 401) {
+    localStorage.clear();
+    window.location.href = '/login/';
+    throw new Error('Session expirée');
+  }
+  if (!json.success) {
+    const err = new Error(json.message || 'Erreur API');
+    err.status = res.status;
+    throw err;
+  }
+  return json.data;
+};
+
+Sbms.logout = () => {
+  localStorage.clear();
+  window.location.href = '/login/';
+};
+</script>

@@ -45,12 +45,12 @@ public partial class LocationsListViewModel : BaseViewModel
     [ObservableProperty] private string _formName = string.Empty;
     [ObservableProperty] private string _formBuilding = string.Empty;
     [ObservableProperty] private string _formFloor = string.Empty;
-    [ObservableProperty] private string _formType = "Bureau";
+    [ObservableProperty] private string _formType = LocationConstants.DefaultPremiseType;
     [ObservableProperty] private string _formRentText = "0";
 
     [ObservableProperty] private Guid _editContractId;
     [ObservableProperty] private string _formContractNumber = string.Empty;
-    [ObservableProperty] private string _formContractType = LocationConstants.ContractTypes.Office;
+    [ObservableProperty] private string _formContractType = LocationConstants.DefaultContractType;
     [ObservableProperty] private string _formStartDate = string.Empty;
     [ObservableProperty] private string _formEndDate = string.Empty;
     [ObservableProperty] private string _formContractRentText = "0";
@@ -98,15 +98,7 @@ public partial class LocationsListViewModel : BaseViewModel
 
     public ObservableCollection<string> CurrentStatusFilters { get; } = [];
 
-    public ObservableCollection<string> ContractTypes { get; } =
-    [
-        LocationConstants.ContractTypes.Office,
-        LocationConstants.ContractTypes.MeetingRoom,
-        LocationConstants.ContractTypes.ConferenceRoom,
-        LocationConstants.ContractTypes.Residential,
-        LocationConstants.ContractTypes.Commercial,
-        LocationConstants.ContractTypes.Coworking
-    ];
+    public ObservableCollection<string> ContractTypes { get; } = new(LocationConstants.ContractTypes.All);
 
     public ObservableCollection<string> PaymentStatuses { get; } =
     [
@@ -364,7 +356,7 @@ public partial class LocationsListViewModel : BaseViewModel
         FormName = string.Empty;
         FormBuilding = string.Empty;
         FormFloor = string.Empty;
-        FormType = "Bureau";
+        FormType = LocationConstants.DefaultPremiseType;
         FormRentText = "0";
         IsPremiseFormOpen = true;
     }

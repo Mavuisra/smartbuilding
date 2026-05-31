@@ -217,13 +217,25 @@ public class PersonnelAttendanceHistoryRow
 
 public class PersonnelAttendanceRow
 {
+    public Guid Id { get; init; }
+    public DateTime Date { get; init; }
     public string DateDisplay { get; init; } = string.Empty;
     public string CheckInDisplay { get; init; } = "—";
     public string CheckOutDisplay { get; init; } = "—";
     public string StatusLabel { get; init; } = string.Empty;
     public string StatusColor { get; init; } = "#64748B";
+    public string PresenceStatus { get; init; } = string.Empty;
     public string WorkedHoursDisplay { get; init; } = "—";
     public string LateDisplay { get; init; } = "—";
+    public string? Notes { get; init; }
+}
+
+public static class PersonnelAttendancePeriods
+{
+    public const string Day = "Jour";
+    public const string Week = "Semaine";
+    public const string Month = "Mois";
+    public const string Year = "Année";
 }
 
 public class PersonnelActivityRow

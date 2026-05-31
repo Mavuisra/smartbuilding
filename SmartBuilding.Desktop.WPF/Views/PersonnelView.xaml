@@ -933,9 +933,18 @@
                                             </StackPanel>
                                         </Button>
                                     </UniformGrid>
-                                    <TextBlock Text="Historique récent (30 jours)" FontWeight="SemiBold" Foreground="#1B3D3B" Margin="0,0,0,8"/>
+                                    <Grid Margin="0,0,0,10">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="{Binding DetailAttendanceHistoryCaption}" FontWeight="SemiBold" Foreground="#1B3D3B" VerticalAlignment="Center"/>
+                                        <ComboBox Grid.Column="1" ItemsSource="{Binding DetailAttendancePeriodChoices}" SelectedItem="{Binding DetailAttendancePeriod}"
+                                                  Style="{StaticResource MaterialDesignOutlinedComboBox}" MinWidth="140"
+                                                  materialDesign:HintAssist.Hint="Période"/>
+                                    </Grid>
                                     <DataGrid ItemsSource="{Binding DetailAttendances}" Style="{StaticResource LocationsDataGrid}"
-                                              materialDesign:DataGridAssist.CellPadding="8,4" IsReadOnly="True" MaxHeight="280">
+                                              materialDesign:DataGridAssist.CellPadding="8,4" IsReadOnly="True" MaxHeight="320">
                                         <DataGrid.Columns>
                                             <DataGridTextColumn Header="DATE" Binding="{Binding DateDisplay}" Width="100"/>
                                             <DataGridTextColumn Header="ARRIVÉE" Binding="{Binding CheckInDisplay}" Width="80"/>
@@ -946,6 +955,17 @@
                                                 <DataGridTemplateColumn.CellTemplate>
                                                     <DataTemplate>
                                                         <TextBlock Text="{Binding StatusLabel}" FontWeight="SemiBold" FontSize="11" Foreground="{Binding StatusColor}"/>
+                                                    </DataTemplate>
+                                                </DataGridTemplateColumn.CellTemplate>
+                                            </DataGridTemplateColumn>
+                                            <DataGridTemplateColumn Header="" Width="52"
+                                                                    Visibility="{Binding DataContext.CanManagePersonnel, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                <DataGridTemplateColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <Button Command="{Binding DataContext.OpenEditAttendanceCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                CommandParameter="{Binding}" Style="{StaticResource LocationsIconActionButton}" ToolTip="Modifier le pointage">
+                                                            <materialDesign:PackIcon Kind="PencilOutline" Width="16" Height="16" Foreground="#2D6A4F"/>
+                                                        </Button>
                                                     </DataTemplate>
                                                 </DataGridTemplateColumn.CellTemplate>
                                             </DataGridTemplateColumn>
@@ -1073,12 +1093,12 @@
                         <TextBlock Text="{Binding FormError}" Foreground="#DC2626" TextWrapping="Wrap"/>
                     </Border>
                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
-                        <Button Command="{Binding EnterEmployeeDetailEditModeCommand}" Style="{StaticResource MaterialDesignOutlinedButton}"
-                                Padding="20,10" Margin="0,0,10,0"
+                        <Button Command="{Binding EnterEmployeeDetailEditModeCommand}" Style="{StaticResource SbmsLoginPrimaryButton}"
+                                Padding="24,12" Margin="0,0,10,0"
                                 Visibility="{Binding IsEmployeeDetailEditMode, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
                             <StackPanel Orientation="Horizontal">
-                                <materialDesign:PackIcon Kind="PencilOutline" Margin="0,0,8,0"/>
-                                <TextBlock Text="Modifier les informations"/>
+                                <materialDesign:PackIcon Kind="PencilOutline" Foreground="White" Margin="0,0,8,0"/>
+                                <TextBlock Text="Modifier les informations" Foreground="White" FontWeight="SemiBold"/>
                             </StackPanel>
                         </Button>
                         <Button Command="{Binding CancelEmployeeDetailEditCommand}" Style="{StaticResource MaterialDesignOutlinedButton}"
@@ -1099,6 +1119,59 @@
         <ProgressBar Grid.Row="1" IsIndeterminate="True" Height="3" VerticalAlignment="Top"
                      Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibilityConverter}}"
                      Foreground="{StaticResource SbmsAccentGreenBrush}"/>
+
+        <!-- Dialog modification pointage -->
+        <Grid Grid.Row="0" Grid.RowSpan="2" Panel.ZIndex="65"
+              Visibility="{Binding IsAttendanceEditOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Border Background="#800F172A"/>
+            <Border Background="White" CornerRadius="16" MaxWidth="440" MinWidth="320" Width="400"
+                    VerticalAlignment="Center" HorizontalAlignment="Center" Margin="24" Padding="0">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="32" ShadowDepth="0" Opacity="0.22" Color="#0F172A"/>
+                </Border.Effect>
+                <StackPanel Margin="24,20">
+                    <DockPanel Margin="0,0,0,16">
+                        <Button DockPanel.Dock="Right" Command="{Binding CloseAttendanceEditCommand}"
+                                Style="{StaticResource MaterialDesignIconButton}">
+                            <materialDesign:PackIcon Kind="Close"/>
+                        </Button>
+                        <StackPanel>
+                            <TextBlock Text="Modifier le pointage" FontSize="20" FontWeight="Bold" Foreground="#1B3D3B"/>
+                            <TextBlock Text="{Binding EditAttendanceDateDisplay}" FontSize="13" Foreground="#64748B" Margin="0,4,0,0"/>
+                        </StackPanel>
+                    </DockPanel>
+                    <Border Background="#FEF2F2" BorderBrush="#FECACA" BorderThickness="1" CornerRadius="8"
+                            Padding="12,8" Margin="0,0,0,12"
+                            Visibility="{Binding AttendanceEditError, Converter={StaticResource NullToVisibilityConverter}}">
+                        <TextBlock Text="{Binding AttendanceEditError}" Foreground="#DC2626" TextWrapping="Wrap"/>
+                    </Border>
+                    <UniformGrid Columns="2" Margin="0,0,0,10">
+                        <TextBox Margin="0,0,6,0" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                 materialDesign:HintAssist.Hint="Arrivée (HH:mm)"
+                                 Text="{Binding EditCheckInText, UpdateSourceTrigger=PropertyChanged}"/>
+                        <TextBox Margin="6,0,0,0" Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                 materialDesign:HintAssist.Hint="Départ (HH:mm)"
+                                 Text="{Binding EditCheckOutText, UpdateSourceTrigger=PropertyChanged}"/>
+                    </UniformGrid>
+                    <ComboBox ItemsSource="{Binding AttendanceEditStatusChoices}" SelectedItem="{Binding EditAttendanceStatus}"
+                              Style="{StaticResource MaterialDesignOutlinedComboBox}" Margin="0,0,0,10"
+                              materialDesign:HintAssist.Hint="Statut"/>
+                    <TextBox Style="{StaticResource MaterialDesignOutlinedTextBox}" Margin="0,0,0,16"
+                             materialDesign:HintAssist.Hint="Remarque / motif (congé)"
+                             Text="{Binding EditAttendanceNotes, UpdateSourceTrigger=PropertyChanged}"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Command="{Binding CloseAttendanceEditCommand}" Content="Annuler"
+                                Style="{StaticResource MaterialDesignOutlinedButton}" Padding="18,10" Margin="0,0,10,0"/>
+                        <Button Command="{Binding SaveAttendanceEditCommand}" Style="{StaticResource SbmsLoginPrimaryButton}" Padding="22,10">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="ContentSaveOutline" Foreground="White" Margin="0,0,8,0"/>
+                                <TextBlock Text="Enregistrer" Foreground="White" FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
 
         <!-- Popup pointage -->
         <Grid Grid.Row="0" Grid.RowSpan="2" Panel.ZIndex="60"

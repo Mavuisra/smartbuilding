@@ -98,6 +98,23 @@ public partial class SettingsViewModel : BaseViewModel
     [ObservableProperty] private string _buildingEmail = string.Empty;
     [ObservableProperty] private string _buildingWebsite = string.Empty;
     [ObservableProperty] private string _buildingNationalId = string.Empty;
+    [ObservableProperty] private string _ownerType = "Particulier";
+    [ObservableProperty] private string _legalRepresentative = string.Empty;
+    [ObservableProperty] private string _buildingSecondaryPhone = string.Empty;
+    [ObservableProperty] private string _taxId = string.Empty;
+    [ObservableProperty] private string _bankName = string.Empty;
+    [ObservableProperty] private string _bankAccount = string.Empty;
+    [ObservableProperty] private string _buildingDisplayName = string.Empty;
+    [ObservableProperty] private string _buildingType = string.Empty;
+    [ObservableProperty] private int _apartmentCount;
+    [ObservableProperty] private int _commercialUnitCount;
+    [ObservableProperty] private int _totalPremisesConfig;
+    [ObservableProperty] private decimal _buildingAreaSqMValue;
+    [ObservableProperty] private int _parkingSpaces;
+    [ObservableProperty] private bool _hasElevator;
+    [ObservableProperty] private string _yearBuiltText = string.Empty;
+    [ObservableProperty] private string _equipmentText = string.Empty;
+    [ObservableProperty] private string _managementRulesText = string.Empty;
     [ObservableProperty] private string _companyLocationBadge = "—";
     [ObservableProperty] private int _buildingFloors;
     [ObservableProperty] private string _premisesCountDisplay = "0";
@@ -114,6 +131,12 @@ public partial class SettingsViewModel : BaseViewModel
     [ObservableProperty] private bool _showKpiSparklines = true;
     [ObservableProperty] private string _categoryTitle = "Général";
     [ObservableProperty] private string _categoryDescription = "Configuration globale de l'application";
+
+    public ObservableCollection<string> OwnerTypeChoices { get; } =
+    [
+        "Particulier",
+        "Société"
+    ];
 
     public ObservableCollection<string> TimeZones { get; } = [];
     public ObservableCollection<string> AccentColorOptions { get; } = [];
@@ -245,6 +268,23 @@ public partial class SettingsViewModel : BaseViewModel
             BuildingEmail = data.BuildingEmail;
             BuildingWebsite = data.BuildingWebsite;
             BuildingNationalId = data.BuildingNationalId;
+            OwnerType = data.OwnerType;
+            LegalRepresentative = data.LegalRepresentative ?? string.Empty;
+            BuildingSecondaryPhone = data.SecondaryPhone ?? string.Empty;
+            TaxId = data.TaxId ?? string.Empty;
+            BankName = data.BankName ?? string.Empty;
+            BankAccount = data.BankAccount ?? string.Empty;
+            BuildingDisplayName = data.BuildingDisplayName;
+            BuildingType = data.BuildingType;
+            ApartmentCount = data.ApartmentCount;
+            CommercialUnitCount = data.CommercialUnitCount;
+            TotalPremisesConfig = data.TotalPremises;
+            BuildingAreaSqMValue = data.BuildingAreaSqM;
+            ParkingSpaces = data.ParkingSpaces;
+            HasElevator = data.HasElevator;
+            YearBuiltText = data.YearBuilt?.ToString() ?? string.Empty;
+            EquipmentText = data.EquipmentAndInstallations;
+            ManagementRulesText = data.ManagementRules;
             UpdateCompanyLocationBadge();
             BuildingFloors = data.BuildingFloors;
             PremisesCountDisplay = data.PremisesCount.ToString();
@@ -316,16 +356,7 @@ public partial class SettingsViewModel : BaseViewModel
                 MaintenanceMode,
                 LogoPath);
 
-            await _settingsService.SaveCompanyProfileAsync(
-                CompanyName,
-                BuildingAddress,
-                BuildingCity,
-                BuildingCountry,
-                BuildingPhone,
-                BuildingEmail,
-                BuildingWebsite,
-                BuildingNationalId,
-                BuildingFloors);
+            await _settingsService.SaveBuildingProfileAsync(BuildBuildingProfileInput());
 
             await _settingsService.SaveAppearancePrefsAsync(
                 FromThemeModeLabel(SelectedThemeMode),
@@ -350,13 +381,21 @@ public partial class SettingsViewModel : BaseViewModel
         }
     }
 
+    public void FocusCategory(string categoryId)
+    {
+        if (string.IsNullOrWhiteSpace(categoryId))
+            return;
+        SelectedCategoryId = categoryId;
+        UpdateCategoryHeader(categoryId);
+        ErrorMessage = null;
+    }
+
     [RelayCommand]
     private void SelectCategory(string? categoryId)
     {
         if (string.IsNullOrWhiteSpace(categoryId))
             return;
-        SelectedCategoryId = categoryId;
-        ErrorMessage = null;
+        FocusCategory(categoryId);
     }
 
     [RelayCommand]
@@ -393,17 +432,8 @@ public partial class SettingsViewModel : BaseViewModel
         ErrorMessage = null;
         try
         {
-            await _settingsService.SaveCompanyProfileAsync(
-                CompanyName,
-                BuildingAddress,
-                BuildingCity,
-                BuildingCountry,
-                BuildingPhone,
-                BuildingEmail,
-                BuildingWebsite,
-                BuildingNationalId,
-                BuildingFloors);
-            StatusMessage = "Société enregistrée — interface et documents mis à jour.";
+            await _settingsService.SaveBuildingProfileAsync(BuildBuildingProfileInput());
+            StatusMessage = "Coordonnées bailleur enregistrées — quittances mises à jour.";
             await LoadAsync();
         }
         catch (Exception ex)
@@ -648,6 +678,43 @@ public partial class SettingsViewModel : BaseViewModel
         _ => nameof(AppThemeMode.Light)
     };
 
+    private BuildingProfileInput BuildBuildingProfileInput()
+    {
+        int? yearBuilt = int.TryParse(YearBuiltText, out var y) && y > 1800 && y <= DateTime.Now.Year + 2
+            ? y
+            : null;
+
+        return new BuildingProfileInput
+        {
+            CompanyName = CompanyName,
+            OwnerType = OwnerType,
+            LegalRepresentative = string.IsNullOrWhiteSpace(LegalRepresentative) ? null : LegalRepresentative,
+            Address = BuildingAddress,
+            City = BuildingCity,
+            Country = BuildingCountry,
+            Phone = BuildingPhone,
+            SecondaryPhone = string.IsNullOrWhiteSpace(BuildingSecondaryPhone) ? null : BuildingSecondaryPhone,
+            Email = BuildingEmail,
+            Website = BuildingWebsite,
+            NationalId = BuildingNationalId,
+            TaxId = string.IsNullOrWhiteSpace(TaxId) ? null : TaxId,
+            BankName = string.IsNullOrWhiteSpace(BankName) ? null : BankName,
+            BankAccount = string.IsNullOrWhiteSpace(BankAccount) ? null : BankAccount,
+            BuildingDisplayName = BuildingDisplayName,
+            BuildingType = BuildingType,
+            TotalFloors = BuildingFloors,
+            TotalPremises = TotalPremisesConfig,
+            ApartmentCount = ApartmentCount,
+            CommercialUnitCount = CommercialUnitCount,
+            TotalAreaSqM = BuildingAreaSqMValue,
+            ParkingSpaces = ParkingSpaces,
+            HasElevator = HasElevator,
+            YearBuilt = yearBuilt,
+            EquipmentAndInstallations = EquipmentText,
+            ManagementRules = ManagementRulesText
+        };
+    }
+
     private void UpdateCategoryHeader(string categoryId)
     {
         var item = Categories.FirstOrDefault(c =>
@@ -656,7 +723,7 @@ public partial class SettingsViewModel : BaseViewModel
         CategoryDescription = categoryId switch
         {
             "general" => "Nom, devise, langue, logo et emplacement des données locales",
-            "buildings" => "Coordonnées bailleur sur les quittances PDF (Kinshasa, Gombe)",
+            "buildings" => "Coordonnées du bailleur sur les quittances — patrimoine dans le module Location",
             "utilisateurs" => "Comptes, rôles et activité des utilisateurs",
             "permissions" => "Droits d'accès par rôle et module",
             "emails" => "Boîtes mail et communication intégrée",

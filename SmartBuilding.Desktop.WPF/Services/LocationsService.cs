@@ -150,7 +150,9 @@ public partial class LocationsService
         premise.Name = premise.Name.Trim();
         premise.Floor = premise.Floor.Trim();
         premise.Building = premise.Building.Trim();
-        premise.PremiseType = string.IsNullOrWhiteSpace(premise.PremiseType) ? "Bureau" : premise.PremiseType.Trim();
+        premise.PremiseType = string.IsNullOrWhiteSpace(premise.PremiseType)
+            ? LocationConstants.DefaultPremiseType
+            : premise.PremiseType.Trim();
         premise.IsSynced = false;
 
         _db.Premises.Add(premise);
@@ -270,6 +272,28 @@ public partial class LocationsService
         tenant.Email = tenant.Email.Trim();
         tenant.Phone = tenant.Phone.Trim();
         tenant.Company = tenant.Company?.Trim();
+        tenant.Address = tenant.Address?.Trim();
+        tenant.Nationality = tenant.Nationality?.Trim();
+        tenant.Profession = tenant.Profession?.Trim();
+        tenant.NationalId = tenant.NationalId?.Trim();
+        tenant.IdDocumentType = tenant.IdDocumentType?.Trim();
+        tenant.IdDocumentExpiry = tenant.IdDocumentExpiry;
+        tenant.SecondaryPhone = tenant.SecondaryPhone?.Trim();
+        tenant.Employer = tenant.Employer?.Trim();
+        tenant.PreviousAddress = tenant.PreviousAddress?.Trim();
+        tenant.EmergencyContactName = tenant.EmergencyContactName?.Trim();
+        tenant.EmergencyContactPhone = tenant.EmergencyContactPhone?.Trim();
+        tenant.Notes = tenant.Notes?.Trim();
+        tenant.TenantCategory = string.IsNullOrWhiteSpace(tenant.TenantCategory)
+            ? LocationConstants.TenantCategories.Individual
+            : tenant.TenantCategory.Trim();
+        tenant.DateOfBirth = tenant.DateOfBirth;
+        tenant.Gender = tenant.Gender?.Trim() ?? string.Empty;
+        tenant.MaritalStatus = tenant.MaritalStatus?.Trim() ?? string.Empty;
+        tenant.SpouseName = tenant.SpouseName?.Trim();
+        tenant.ChildrenCount = tenant.ChildrenCount;
+        tenant.BusinessActivity = tenant.BusinessActivity?.Trim();
+        tenant.PersonCount = tenant.PersonCount > 0 ? tenant.PersonCount : 1;
         tenant.RentalStatus = string.IsNullOrWhiteSpace(tenant.RentalStatus)
             ? LocationConstants.TenantStatus.Active
             : tenant.RentalStatus.Trim();
@@ -329,7 +353,7 @@ public partial class LocationsService
             EndDate = endDate.Date,
             MonthlyRent = monthlyRent,
             Deposit = deposit,
-            ContractType = string.IsNullOrWhiteSpace(contractType) ? LocationConstants.ContractTypes.Office : contractType.Trim(),
+            ContractType = string.IsNullOrWhiteSpace(contractType) ? LocationConstants.DefaultContractType : contractType.Trim(),
             Clauses = clauses?.Trim() ?? string.Empty,
             Status = LeaseStatus.EnAttenteValidation,
             IsSynced = false
@@ -699,7 +723,7 @@ public partial class LocationsService
             Name = p.Name,
             Building = string.IsNullOrWhiteSpace(p.Building) ? defaultBuilding : p.Building,
             Floor = string.IsNullOrWhiteSpace(p.Floor) ? "—" : p.Floor,
-            PremiseType = string.IsNullOrWhiteSpace(p.PremiseType) ? "Bureau" : p.PremiseType,
+            PremiseType = string.IsNullOrWhiteSpace(p.PremiseType) ? LocationConstants.DefaultPremiseType : p.PremiseType,
             TenantId = contract?.TenantId ?? Guid.Empty,
             TenantName = contract?.Tenant?.Name ?? "—",
             TenantPhone = contract?.Tenant?.Phone ?? "—",

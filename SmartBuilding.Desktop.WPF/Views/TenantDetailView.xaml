@@ -33,21 +33,43 @@
         </Grid.RowDefinitions>
 
         <!-- En-tête page -->
-        <Border Grid.Row="0" Background="White" Padding="20,14" BorderBrush="#E8EFED" BorderThickness="0,0,0,1">
-            <DockPanel>
-                <Button DockPanel.Dock="Left" Command="{Binding GoBackCommand}" Style="{StaticResource LocationsToolbarButton}"
-                        Margin="0,0,16,0" VerticalAlignment="Center">
-                    <StackPanel Orientation="Horizontal">
-                        <materialDesign:PackIcon Kind="ArrowLeft" Margin="0,0,6,0"/>
-                        <TextBlock Text="Retour aux locations"/>
+        <Border Grid.Row="0" Background="White" Padding="0" BorderBrush="#E8EFED" BorderThickness="0,0,0,1">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="4"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <Border Grid.Row="0" Background="#2D6A4F"/>
+                <DockPanel Grid.Row="1" Margin="20,14">
+                    <Button DockPanel.Dock="Left" Command="{Binding GoBackCommand}" Style="{StaticResource LocationsToolbarButton}"
+                            Margin="0,0,16,0" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="ArrowLeft" Margin="0,0,6,0"/>
+                            <TextBlock Text="Retour aux locataires"/>
+                        </StackPanel>
+                    </Button>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Breadcrumb}" FontSize="11" Foreground="{StaticResource SbmsTextMutedBrush}"/>
+                        <TextBlock Text="{Binding PageTitle}" FontSize="22" FontWeight="Bold" Foreground="#1B3D3B"/>
+                        <TextBlock Text="{Binding SummaryLine}" FontSize="12" Foreground="#64748B" Margin="0,2,0,0"/>
                     </StackPanel>
-                </Button>
-                <StackPanel VerticalAlignment="Center">
-                    <TextBlock Text="{Binding Breadcrumb}" FontSize="11" Foreground="{StaticResource SbmsTextMutedBrush}"/>
-                    <TextBlock Text="{Binding PageTitle}" FontSize="22" FontWeight="Bold" Foreground="#1B3D3B"/>
-                    <TextBlock Text="{Binding SummaryLine}" FontSize="12" Foreground="#64748B" Margin="0,2,0,0"/>
-                </StackPanel>
-            </DockPanel>
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center"
+                                Visibility="{Binding CanManage, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <Button Command="{Binding EditCommand}" Style="{StaticResource LocationsPrimaryButton}" Margin="0,0,8,0">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="PencilOutline" Width="16" Height="16" Margin="0,0,6,0"/>
+                                <TextBlock Text="Modifier"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Command="{Binding DeleteCommand}" Style="{StaticResource LocationsDangerOutlineButton}">
+                            <StackPanel Orientation="Horizontal">
+                                <materialDesign:PackIcon Kind="ArchiveOutline" Width="16" Height="16" Margin="0,0,6,0"/>
+                                <TextBlock Text="Archiver"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </DockPanel>
+            </Grid>
         </Border>
 
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="16,12">
@@ -59,10 +81,19 @@
 
                 <!-- Carte profil -->
                 <StackPanel Grid.Column="0" Margin="0,0,12,0">
-                    <Border Background="White" CornerRadius="10" BorderBrush="#E8EFED" BorderThickness="1" Padding="20">
+                    <Border Background="White" CornerRadius="12" BorderBrush="#E8EFED" BorderThickness="1" Padding="20">
+                        <Border.Effect>
+                            <DropShadowEffect BlurRadius="14" ShadowDepth="1" Opacity="0.06" Color="#000000"/>
+                        </Border.Effect>
                         <StackPanel HorizontalAlignment="Center">
-                            <Border Width="88" Height="88" CornerRadius="44" Background="#E8F5EE" Margin="0,0,0,12">
-                                <TextBlock Text="{Binding Initials}" FontSize="28" FontWeight="Bold" Foreground="#2D6A4F"
+                            <Border Width="92" Height="92" CornerRadius="46" Margin="0,0,0,12">
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                        <GradientStop Color="#E8F5EE" Offset="0"/>
+                                        <GradientStop Color="#D1FAE5" Offset="1"/>
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                                <TextBlock Text="{Binding Initials}" FontSize="30" FontWeight="Bold" Foreground="#2D6A4F"
                                            HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
                             <TextBlock Text="{Binding Name}" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" TextAlignment="Center"/>

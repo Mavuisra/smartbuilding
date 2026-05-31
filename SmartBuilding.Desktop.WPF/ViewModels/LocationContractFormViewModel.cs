@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SmartBuilding.Domain.Entities.Location;
 using SmartBuilding.Desktop.WPF.Helpers;
 using SmartBuilding.Desktop.WPF.Models;
 using SmartBuilding.Desktop.WPF.Services;
@@ -26,7 +27,7 @@ public partial class LocationContractFormViewModel : BaseViewModel
     [ObservableProperty] private DateTime _formEnd = DateTime.Today.AddYears(1);
     [ObservableProperty] private string _formRentText = "0";
     [ObservableProperty] private string _formDepositText = "0";
-    [ObservableProperty] private string _formContractType = "Bureau de travail";
+    [ObservableProperty] private string _formContractType = LocationConstants.DefaultContractType;
     [ObservableProperty] private string _formPaymentFrequency = "Mensuelle";
     [ObservableProperty] private string _formPaymentMethod = "Virement bancaire";
     [ObservableProperty] private string _formClauses = "Accès 24/7, entretien inclus, internet inclus";
@@ -53,7 +54,7 @@ public partial class LocationContractFormViewModel : BaseViewModel
 
     public ObservableCollection<LocationsPickItem> AvailablePremises { get; } = [];
     public ObservableCollection<LocationsPickItem> Tenants { get; } = [];
-    public ObservableCollection<string> ContractTypes { get; } = ["Bureau de travail", "Appartement", "Salle de réunion", "Salle conférence", "Commerce", "Entrepôt"];
+    public ObservableCollection<string> ContractTypes { get; } = new(LocationConstants.ContractTypes.All);
     public ObservableCollection<string> PaymentFrequencies { get; } = ["Mensuelle", "Trimestrielle", "Semestrielle", "Annuelle"];
     public ObservableCollection<string> PaymentMethods { get; } = ["Virement bancaire", "Mobile money", "Espèces", "Chèque"];
 
@@ -103,7 +104,7 @@ public partial class LocationContractFormViewModel : BaseViewModel
             FormEnd = DateTime.Today.AddYears(1);
             FormRentText = "0";
             FormDepositText = "0";
-            FormContractType = ContractTypes.First();
+            FormContractType = LocationConstants.DefaultContractType;
             FormPaymentFrequency = PaymentFrequencies.First();
             FormPaymentMethod = PaymentMethods.First();
             FormClauses = "Accès 24/7, entretien inclus, internet inclus";
@@ -128,11 +129,6 @@ public partial class LocationContractFormViewModel : BaseViewModel
                 FormError = "Aucun locataire. Ajoutez d'abord un locataire.";
 
             await LoadPremiseStatsAsync();
-            await LoadQuickBuildingsAsync();
-            await ResetQuickTenantFieldsAsync();
-            await ResetQuickPremiseFieldsAsync();
-            IsTenantQuickPanelVisible = false;
-            IsPremiseQuickPanelVisible = false;
             RefreshContractSummaryDisplays();
         }
         finally
@@ -143,6 +139,25 @@ public partial class LocationContractFormViewModel : BaseViewModel
 
     [RelayCommand]
     private async Task GoBackAsync() => await _shellNavigation.BackToLocationsAsync();
+
+    /// <summary>Ouvre la fiche complète locateur (menu Location → Locateur).</summary>
+    [RelayCommand]
+    private async Task OpenCreateTenantFormAsync()
+    {
+        _shellNavigation.BeginContractSubFlow(this);
+        await _shellNavigation.OpenTenantFormAsync(null);
+    }
+
+    /// <summary>Ouvre le patrimoine — onglet Appartements (étages / unités / pièces).</summary>
+    [RelayCommand]
+    private async Task OpenCreatePremiseInPatrimoineAsync()
+    {
+        _shellNavigation.BeginContractSubFlow(this);
+        await _shellNavigation.OpenPatrimoineTabAsync(2);
+    }
+
+    public void ApplyTenantSelection(Guid tenantId) =>
+        FormSelectedTenant = Tenants.FirstOrDefault(t => t.Id == tenantId);
 
     [RelayCommand]
     private void GoToStep(object? parameter)

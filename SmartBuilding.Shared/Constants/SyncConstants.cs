@@ -9,9 +9,14 @@ public static class SyncConstants
     public static readonly IReadOnlyList<string> EntityTypes =
     [
         "Users", "Employees", "Attendances", "SalaryPayments", "DisciplinaryNotes",
-        "Buildings", "RentPayments", "TenantActivities", "LeaseGuarantees",
-        "Equipment", "Premises", "Tenants",
-        "LeaseContracts", "FinancialTransactions", "Suppliers", "Incidents",
-        "ConsumptionRecords", "Visitors", "VisitorAppointments", "InventoryItems"
+        "Buildings", "BuildingInfos", "Landlords", "LandlordActivities",
+        "PropertyFloors", "PropertyApartments", "PropertyRooms",
+        "RentPayments", "TenantActivities", "LeaseGuarantees", "TenantDependents",
+        "Equipment", "MaintenanceRecords", "RepairRecords", "TechnicalAlerts",
+        "Premises", "Tenants", "LeaseContracts",
+        "FinancialTransactions", "Suppliers", "SupplierContracts", "SupplierPayments",
+        "Incidents", "IncidentInterventions",
+        "ConsumptionRecords", "Visitors", "VisitorAppointments",
+        "InventoryItems", "InventoryMaintenanceRecords"
     ];
 }

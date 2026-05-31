@@ -112,6 +112,22 @@ public class SettingsService
             BuildingWebsite = building.Website,
             BuildingNationalId = building.NationalId,
             BuildingFloors = building.TotalFloors,
+            OwnerType = building.OwnerType,
+            LegalRepresentative = building.LegalRepresentative,
+            SecondaryPhone = building.SecondaryPhone,
+            TaxId = building.TaxId,
+            BankName = building.BankName,
+            BankAccount = building.BankAccount,
+            BuildingDisplayName = building.BuildingDisplayName,
+            BuildingType = building.BuildingType,
+            ApartmentCount = building.ApartmentCount,
+            CommercialUnitCount = building.CommercialUnitCount,
+            TotalPremises = building.TotalPremises,
+            ParkingSpaces = building.ParkingSpaces,
+            HasElevator = building.HasElevator,
+            YearBuilt = building.YearBuilt,
+            EquipmentAndInstallations = building.EquipmentAndInstallations,
+            ManagementRules = building.ManagementRules,
             PremisesCount = premisesCount,
             BuildingAreaSqM = building.TotalAreaSqM,
             EmailsCount = emailsCount,
@@ -216,6 +232,24 @@ public class SettingsService
         int totalFloors,
         CancellationToken cancellationToken = default)
     {
+        await SaveBuildingProfileAsync(new BuildingProfileInput
+        {
+            CompanyName = companyName,
+            Address = address,
+            City = city,
+            Country = country,
+            Phone = phone,
+            Email = email,
+            Website = website,
+            NationalId = nationalId,
+            TotalFloors = totalFloors
+        }, cancellationToken);
+    }
+
+    public async Task SaveBuildingProfileAsync(
+        BuildingProfileInput input,
+        CancellationToken cancellationToken = default)
+    {
         var building = await _db.BuildingInfos.FirstOrDefaultAsync(cancellationToken);
         if (building is null)
         {
@@ -223,17 +257,36 @@ public class SettingsService
             _db.BuildingInfos.Add(building);
         }
 
-        building.Name = string.IsNullOrWhiteSpace(companyName)
+        building.Name = string.IsNullOrWhiteSpace(input.CompanyName)
             ? Domain.Entities.Building.BuildingInfoDefaults.CompanyName
-            : companyName.Trim();
-        building.Address = address.Trim();
-        building.City = city.Trim();
-        building.Country = country.Trim();
-        building.Phone = phone.Trim();
-        building.Email = email.Trim();
-        building.Website = website.Trim();
-        building.NationalId = nationalId.Trim();
-        building.TotalFloors = Math.Max(0, totalFloors);
+            : input.CompanyName.Trim();
+        building.OwnerType = string.IsNullOrWhiteSpace(input.OwnerType)
+            ? "Particulier"
+            : input.OwnerType.Trim();
+        building.LegalRepresentative = input.LegalRepresentative?.Trim();
+        building.Address = input.Address.Trim();
+        building.City = input.City.Trim();
+        building.Country = input.Country.Trim();
+        building.Phone = input.Phone.Trim();
+        building.SecondaryPhone = input.SecondaryPhone?.Trim();
+        building.Email = input.Email.Trim();
+        building.Website = input.Website.Trim();
+        building.NationalId = input.NationalId.Trim();
+        building.TaxId = input.TaxId?.Trim();
+        building.BankName = input.BankName?.Trim();
+        building.BankAccount = input.BankAccount?.Trim();
+        building.BuildingDisplayName = input.BuildingDisplayName.Trim();
+        building.BuildingType = input.BuildingType.Trim();
+        building.TotalFloors = Math.Max(0, input.TotalFloors);
+        building.TotalPremises = Math.Max(0, input.TotalPremises);
+        building.ApartmentCount = Math.Max(0, input.ApartmentCount);
+        building.CommercialUnitCount = Math.Max(0, input.CommercialUnitCount);
+        building.TotalAreaSqM = Math.Max(0, input.TotalAreaSqM);
+        building.ParkingSpaces = Math.Max(0, input.ParkingSpaces);
+        building.HasElevator = input.HasElevator;
+        building.YearBuilt = input.YearBuilt;
+        building.EquipmentAndInstallations = input.EquipmentAndInstallations.Trim();
+        building.ManagementRules = input.ManagementRules.Trim();
         if (string.IsNullOrWhiteSpace(building.TimeZoneId))
             building.TimeZoneId = "Africa/Kinshasa";
         if (string.IsNullOrWhiteSpace(building.Currency))

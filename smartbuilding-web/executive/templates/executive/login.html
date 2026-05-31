@@ -10,7 +10,7 @@
   }
   .sb-login-hero {
     position: relative;
-    background: #027566;
+    background: linear-gradient(160deg, #1b3d3b 0%, #2d6a4f 50%, #4cc26b 100%);
     color: #fff;
     padding: 42px 36px;
     display: flex;
@@ -81,7 +81,7 @@
     align-items: center;
     justify-content: center;
     background: #d1fae5;
-    color: #027566;
+    color: #4cc26b;
     font-size: 1.4rem;
   }
   .sb-login-title {
@@ -111,18 +111,18 @@
     color: #0f172a;
   }
   .sb-input:focus {
-    border-color: #027566;
+    border-color: #4cc26b;
     box-shadow: 0 0 0 .18rem rgba(2, 117, 102, .14);
   }
   .sb-login-btn {
     border: 0;
     border-radius: 10px;
-    background: #027566;
+    background: linear-gradient(160deg, #1b3d3b 0%, #2d6a4f 50%, #4cc26b 100%);
     color: #fff;
     font-weight: 700;
     padding: .68rem 1rem;
   }
-  .sb-login-btn:hover { background: #027566; }
+  .sb-login-btn:hover { background: #3db85c; }
   .sb-login-footer {
     margin-top: 12px;
     display: flex;
@@ -141,7 +141,7 @@
     width: 7px;
     height: 7px;
     border-radius: 50%;
-    background: #027566;
+    background: linear-gradient(160deg, #1b3d3b 0%, #2d6a4f 50%, #4cc26b 100%);
   }
   @media (max-width: 992px) {
     .sb-login-shell { grid-template-columns: 1fr; }
@@ -219,7 +219,14 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
     }
 
     localStorage.setItem('sbms_token', json.data.token);
-    localStorage.setItem('sbms_user', JSON.stringify(json.data));
+    localStorage.setItem('sbms_user', JSON.stringify({
+      userId: json.data.userId,
+      username: json.data.username,
+      fullName: json.data.fullName,
+      role: json.data.role,
+      permissions: json.data.permissions || [],
+      expiresAt: json.data.expiresAt,
+    }));
     window.location.href = '/';
   } catch (ex) {
     err.textContent = ex?.message || 'Connexion impossible';

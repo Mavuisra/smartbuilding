@@ -68,7 +68,7 @@ public partial class LocationsViewModel : BaseViewModel
     [ObservableProperty] private LocationsContractItem? _selectedContractSummary;
     [ObservableProperty] private DateTime _contractStart = DateTime.Today;
     [ObservableProperty] private DateTime _contractEnd = DateTime.Today.AddYears(1);
-    [ObservableProperty] private string _contractType = "Bureau de travail";
+    [ObservableProperty] private string _contractType = LocationConstants.DefaultContractType;
     [ObservableProperty] private string _paymentFrequency = "Mensuelle";
     [ObservableProperty] private string _paymentMethod = "Virement bancaire";
     [ObservableProperty] private string _contractRentText = "0";
@@ -97,7 +97,7 @@ public partial class LocationsViewModel : BaseViewModel
     [ObservableProperty] private string _formName = string.Empty;
     [ObservableProperty] private string _formBuilding = string.Empty;
     [ObservableProperty] private string _formFloor = string.Empty;
-    [ObservableProperty] private string _formType = "Bureau";
+    [ObservableProperty] private string _formType = LocationConstants.DefaultPremiseType;
     [ObservableProperty] private string _formAreaText = "0";
     [ObservableProperty] private string _formRentText = "0";
     [ObservableProperty] private string? _formError;
@@ -121,7 +121,7 @@ public partial class LocationsViewModel : BaseViewModel
     public ObservableCollection<string> Statuses { get; } = [AllStatuses, "Occupé", "Disponible"];
     public ObservableCollection<string> PaymentFilters { get; } = [AllPayments, "Payé", "En retard", "En attente"];
     public ObservableCollection<int> PageSizeOptions { get; } = [10, 20, 50];
-    public ObservableCollection<string> ContractTypes { get; } = ["Bureau de travail", "Appartement", "Salle de réunion", "Salle conférence", "Commerce", "Entrepôt"];
+    public ObservableCollection<string> ContractTypes { get; } = new(LocationConstants.ContractTypes.All);
     public ObservableCollection<string> PaymentFrequencies { get; } = ["Mensuelle", "Trimestrielle", "Semestrielle", "Annuelle"];
     public ObservableCollection<string> PaymentMethods { get; } = ["Virement bancaire", "Mobile money", "Espèces", "Chèque"];
     public ObservableCollection<string> MainTabs { get; } =
@@ -471,7 +471,7 @@ public partial class LocationsViewModel : BaseViewModel
         FormName = string.Empty;
         FormBuilding = Buildings.Count > 1 ? Buildings[1] : string.Empty;
         FormFloor = string.Empty;
-        FormType = "Bureau";
+        FormType = LocationConstants.DefaultPremiseType;
         FormAreaText = "0";
         FormRentText = "0";
         IsAddFormOpen = true;

@@ -244,49 +244,85 @@
                                         </StackPanel>
                                     </DockPanel>
                                 </Border>
-                                <Border DockPanel.Dock="Top" Background="White" BorderBrush="#E2E8F0" BorderThickness="1"
-                                        CornerRadius="8" Padding="8" Margin="6,0,6,8" Height="520">
+                                <Border DockPanel.Dock="Top" Background="{StaticResource PatrimoineGelSoftBrush}"
+                                        BorderBrush="#D4EDDC" BorderThickness="1" CornerRadius="8"
+                                        Padding="6" Margin="6,0,6,8" MaxHeight="400">
                                     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                                         <StackPanel>
-                                            <TextBlock Text="Connexion Gmail" FontWeight="SemiBold" FontSize="11" Foreground="#1B3D3B"/>
-                                            <TextBlock Text="{Binding EmailConfigStatus}" FontSize="10" Foreground="#64748B" Margin="0,2,0,8"/>
-                                            <TextBox materialDesign:HintAssist.Hint="Adresse Gmail"
-                                                     Text="{Binding EmailAddressInput, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,6"/>
-                                            <TextBox materialDesign:HintAssist.Hint="Mot de passe d'application Google"
-                                                     Text="{Binding EmailAppPasswordInput, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,6"/>
-                                            <Grid Margin="0,0,0,6">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="70"/>
-                                                </Grid.ColumnDefinitions>
-                                                <TextBox materialDesign:HintAssist.Hint="Serveur IMAP"
-                                                         Text="{Binding ImapHostInput, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,6,0"/>
-                                                <TextBox Grid.Column="1" materialDesign:HintAssist.Hint="Port"
-                                                         Text="{Binding ImapPortInput, UpdateSourceTrigger=PropertyChanged}"/>
-                                            </Grid>
-                                            <Grid Margin="0,0,0,6">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="70"/>
-                                                </Grid.ColumnDefinitions>
-                                                <TextBox materialDesign:HintAssist.Hint="Serveur SMTP"
-                                                         Text="{Binding SmtpHostInput, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,6,0"/>
-                                                <TextBox Grid.Column="1" materialDesign:HintAssist.Hint="Port"
-                                                         Text="{Binding SmtpPortInput, UpdateSourceTrigger=PropertyChanged}"/>
-                                            </Grid>
-                                            <CheckBox Content="SSL/TLS activé" IsChecked="{Binding UseSslInput}" Margin="0,0,0,6"/>
-                                            <TextBox materialDesign:HintAssist.Hint="Mots-clés filtres (optionnel, séparés par virgule)"
-                                                     Text="{Binding EmailFilterKeywordsInput, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="*"/>
-                                                </Grid.ColumnDefinitions>
-                                                <Button Grid.Column="0" Content="Enregistrer" Command="{Binding SaveEmailConfigCommand}"
-                                                        Style="{StaticResource EmailsToolbarButton}" Margin="0,0,4,0"/>
-                                                <Button Grid.Column="1" Content="Tester + Sync" Command="{Binding TestEmailConfigCommand}"
-                                                        Style="{StaticResource EmailsPrimaryButton}" Margin="4,0,0,0"/>
-                                            </Grid>
+                                            <StackPanel Orientation="Horizontal" Margin="2,2,2,6">
+                                                <Border Width="28" Height="28" CornerRadius="6"
+                                                        Background="{StaticResource PatrimoineGelLightBrush}" Margin="0,0,8,0">
+                                                    <materialDesign:PackIcon Kind="Gmail" Width="16" Height="16"
+                                                                             Foreground="{StaticResource PatrimoineGelBrush}"
+                                                                             HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </Border>
+                                                <StackPanel VerticalAlignment="Center">
+                                                    <TextBlock Text="Connexion Gmail" FontWeight="SemiBold" FontSize="11"
+                                                               Foreground="{StaticResource PatrimoineGelTextBrush}"/>
+                                                    <TextBlock Text="{Binding EmailConfigStatus}" FontSize="10"
+                                                               Foreground="{StaticResource PatrimoineGelMutedBrush}"/>
+                                                </StackPanel>
+                                            </StackPanel>
+
+                                            <Border Style="{StaticResource EmailsConfigSectionCard}">
+                                                <StackPanel>
+                                                    <TextBlock Text="COMPTE" Style="{StaticResource EmailsFilterSectionLabel}"/>
+                                                    <TextBox Style="{StaticResource EmailsConfigTextBox}"
+                                                             materialDesign:HintAssist.Hint="Adresse Gmail"
+                                                             Text="{Binding EmailAddressInput, UpdateSourceTrigger=PropertyChanged}"/>
+                                                    <TextBox Style="{StaticResource EmailsConfigTextBox}"
+                                                             materialDesign:HintAssist.Hint="Mot de passe d'application"
+                                                             Text="{Binding EmailAppPasswordInput, UpdateSourceTrigger=PropertyChanged}"/>
+                                                </StackPanel>
+                                            </Border>
+
+                                            <Border Style="{StaticResource EmailsConfigSectionCard}" Margin="0">
+                                                <StackPanel>
+                                                    <TextBlock Text="SERVEUR" Style="{StaticResource EmailsFilterSectionLabel}"/>
+                                                    <Grid Margin="0,0,0,5">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="56"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBox Style="{StaticResource EmailsConfigTextBox}"
+                                                                 materialDesign:HintAssist.Hint="IMAP"
+                                                                 Text="{Binding ImapHostInput, UpdateSourceTrigger=PropertyChanged}"
+                                                                 Margin="0,0,5,0"/>
+                                                        <TextBox Grid.Column="1" Style="{StaticResource EmailsConfigTextBox}"
+                                                                 materialDesign:HintAssist.Hint="Port"
+                                                                 Text="{Binding ImapPortInput, UpdateSourceTrigger=PropertyChanged}"/>
+                                                    </Grid>
+                                                    <Grid Margin="0,0,0,5">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="56"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBox Style="{StaticResource EmailsConfigTextBox}"
+                                                                 materialDesign:HintAssist.Hint="SMTP"
+                                                                 Text="{Binding SmtpHostInput, UpdateSourceTrigger=PropertyChanged}"
+                                                                 Margin="0,0,5,0"/>
+                                                        <TextBox Grid.Column="1" Style="{StaticResource EmailsConfigTextBox}"
+                                                                 materialDesign:HintAssist.Hint="Port"
+                                                                 Text="{Binding SmtpPortInput, UpdateSourceTrigger=PropertyChanged}"/>
+                                                    </Grid>
+                                                    <CheckBox Content="SSL/TLS activé" IsChecked="{Binding UseSslInput}"
+                                                              Style="{StaticResource EmailsConfigCheckBox}"/>
+                                                    <TextBox Style="{StaticResource EmailsConfigTextBox}"
+                                                             materialDesign:HintAssist.Hint="Mots-clés (optionnel)"
+                                                             Text="{Binding EmailFilterKeywordsInput, UpdateSourceTrigger=PropertyChanged}"/>
+                                                    <Grid Margin="0,2,0,0">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <Button Grid.Column="0" Content="Enregistrer" Command="{Binding SaveEmailConfigCommand}"
+                                                                Style="{StaticResource EmailsConfigSecondaryButton}" Margin="0,0,4,0"/>
+                                                        <Button Grid.Column="1" Content="Tester + Sync" Command="{Binding TestEmailConfigCommand}"
+                                                                Style="{StaticResource EmailsPrimaryButton}" Margin="4,0,0,0"
+                                                                Padding="6,0" Height="28" FontSize="11"/>
+                                                    </Grid>
+                                                </StackPanel>
+                                            </Border>
                                         </StackPanel>
                                     </ScrollViewer>
                                 </Border>
@@ -433,22 +469,51 @@
                         <!-- LISTE -->
                         <Border Grid.Column="1" BorderBrush="#E8EFED" BorderThickness="0,0,1,0" Padding="2">
                             <DockPanel>
-                                <Border DockPanel.Dock="Top" Padding="12,10" BorderBrush="#E8EFED" BorderThickness="0,0,0,1">
-                                    <DockPanel>
-                                            <ComboBox DockPanel.Dock="Right" ItemsSource="{Binding SortOptions}" SelectedItem="{Binding SelectedSort}"
-                                                  Style="{StaticResource EmailsFilterCombo}" Width="120" Margin="4,0,0,0"/>
-                                        <WrapPanel>
-                                            <Button Command="{Binding RefreshCommand}" Style="{StaticResource EmailsToolbarButton}" Padding="8,4">
-                                                <materialDesign:PackIcon Kind="Refresh"/>
-                                            </Button>
-                                            <ComboBox ItemsSource="{Binding CategoryFilters}" SelectedItem="{Binding FilterCategory}"
-                                                      Style="{StaticResource EmailsFilterCombo}" Width="100" Margin="4,0"/>
-                                            <ComboBox ItemsSource="{Binding PriorityFilters}" SelectedItem="{Binding FilterPriority}"
-                                                      Style="{StaticResource EmailsFilterCombo}" Width="90" Margin="4,0"/>
-                                            <CheckBox Content="Non lus" IsChecked="{Binding FilterUnreadOnly}" VerticalAlignment="Center" Margin="4,0"/>
-                                            <CheckBox Content="PJ" IsChecked="{Binding FilterAttachmentsOnly}" VerticalAlignment="Center" Margin="4,0"/>
-                                        </WrapPanel>
-                                    </DockPanel>
+                                <Border DockPanel.Dock="Top" Background="{StaticResource PatrimoineGelSoftBrush}"
+                                        BorderBrush="#D4EDDC" BorderThickness="0,0,0,1" Padding="10,8">
+                                    <Grid VerticalAlignment="Center">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <Border Grid.Column="0" Style="{StaticResource EmailsFilterSectionCard}" Margin="0,0,8,0">
+                                            <StackPanel>
+                                                <TextBlock Text="FILTRES" Style="{StaticResource EmailsFilterSectionLabel}"/>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <Button Command="{Binding RefreshCommand}" Style="{StaticResource EmailsFilterRefreshButton}"
+                                                            ToolTip="Actualiser">
+                                                        <materialDesign:PackIcon Kind="Refresh" Width="16" Height="16"
+                                                                                 Foreground="{StaticResource PatrimoineGelBrush}"/>
+                                                    </Button>
+                                                    <ComboBox ItemsSource="{Binding CategoryFilters}" SelectedItem="{Binding FilterCategory}"
+                                                              Style="{StaticResource EmailsFilterCombo}"/>
+                                                    <ComboBox ItemsSource="{Binding PriorityFilters}" SelectedItem="{Binding FilterPriority}"
+                                                              Style="{StaticResource EmailsFilterCombo}"/>
+                                                    <Border Background="{StaticResource PatrimoineGelSoftBrush}"
+                                                            BorderBrush="#B8DFC8" BorderThickness="1" CornerRadius="6"
+                                                            Padding="4,0" Margin="0,0,5,0" Height="28">
+                                                        <CheckBox Content="Non lus" IsChecked="{Binding FilterUnreadOnly}"
+                                                                  Style="{StaticResource EmailsFilterCheckBox}" Margin="0"/>
+                                                    </Border>
+                                                    <Border Background="{StaticResource PatrimoineGelSoftBrush}"
+                                                            BorderBrush="#B8DFC8" BorderThickness="1" CornerRadius="6"
+                                                            Padding="4,0" Height="28">
+                                                        <CheckBox Content="PJ" IsChecked="{Binding FilterAttachmentsOnly}"
+                                                                  Style="{StaticResource EmailsFilterCheckBox}" Margin="0"/>
+                                                    </Border>
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <Border Grid.Column="1" Style="{StaticResource EmailsFilterSectionCard}">
+                                            <StackPanel>
+                                                <TextBlock Text="AFFICHAGE" Style="{StaticResource EmailsFilterSectionLabel}"/>
+                                                <ComboBox ItemsSource="{Binding SortOptions}" SelectedItem="{Binding SelectedSort}"
+                                                          Style="{StaticResource EmailsSortCombo}"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </Grid>
                                 </Border>
                                 <ListBox ItemsSource="{Binding FilteredEmails}" SelectedItem="{Binding SelectedEmail}"
                                          BorderThickness="0" Background="Transparent">
@@ -671,7 +736,7 @@
                                 <Run Text="{Binding CachedEmailCount}"/><Run Text=" emails en cache"/>
                             </TextBlock>
                             <Button Command="{Binding SyncEmailsCommand}" Style="{StaticResource EmailsPrimaryButton}"
-                                    Background="#2D6A4F" HorizontalAlignment="Stretch">
+                                    HorizontalAlignment="Stretch">
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                                     <materialDesign:PackIcon Kind="Sync" Margin="0,0,8,0"/>
                                     <TextBlock Text="Synchroniser maintenant"/>

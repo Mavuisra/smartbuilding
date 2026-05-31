@@ -14,7 +14,9 @@ public partial class LocationsService
     private readonly RentReceiptPdfService _receiptPdf = new();
 
     public async Task<Tenant?> GetTenantAsync(Guid id, CancellationToken cancellationToken = default) =>
-        await _db.Tenants.FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
+        await _db.Tenants
+            .Include(t => t.Dependents.Where(d => d.DeletedAt == null))
+            .FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
 
     public async Task<Premise?> GetPremiseAsync(Guid id, CancellationToken cancellationToken = default) =>
         await _db.Premises.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
@@ -78,6 +80,11 @@ public partial class LocationsService
         existing.Address = tenant.Address?.Trim();
         existing.TenantCategory = tenant.TenantCategory.Trim();
         existing.NationalId = tenant.NationalId?.Trim();
+        existing.IdDocumentType = tenant.IdDocumentType?.Trim();
+        existing.IdDocumentExpiry = tenant.IdDocumentExpiry;
+        existing.SecondaryPhone = tenant.SecondaryPhone?.Trim();
+        existing.Employer = tenant.Employer?.Trim();
+        existing.PreviousAddress = tenant.PreviousAddress?.Trim();
         existing.DateOfBirth = tenant.DateOfBirth;
         existing.Gender = tenant.Gender.Trim();
         existing.MaritalStatus = tenant.MaritalStatus.Trim();
@@ -371,7 +378,17 @@ public partial class LocationsService
         existing.Equipment = building.Equipment?.Trim() ?? existing.Equipment;
         existing.Zones = building.Zones?.Trim() ?? existing.Zones;
         existing.Notes = building.Notes?.Trim();
+        existing.LandlordId = building.LandlordId;
         existing.MarkUpdated();
+        if (building.LandlordId.HasValue)
+        {
+            await LogLandlordActivityAsync(
+                building.LandlordId.Value,
+                "Bâtiment",
+                "Bâtiment mis à jour",
+                $"Lien patrimoine : {existing.Name}",
+                cancellationToken);
+        }
         return await _db.SaveChangesWithMessageAsync(cancellationToken);
     }
 

@@ -57,17 +57,9 @@ public static class ThemeResourceHelper
             return;
 
         var pageBrush = GetBrush("SbmsPageBackgroundBrush");
-        var cardBrush = GetBrush("SbmsCardBrush");
-        var borderBrush = GetBrush("SbmsBorderBrush");
 
         main.Background = pageBrush ?? main.Background;
         main.ShellPanel.Background = pageBrush ?? Brushes.Transparent;
-
-        if (main.TreasuryHeaderBar is not null)
-        {
-            main.TreasuryHeaderBar.Background = cardBrush ?? Brushes.White;
-            main.TreasuryHeaderBar.BorderBrush = borderBrush ?? main.TreasuryHeaderBar.BorderBrush;
-        }
     }
 
     public static Brush? GetBrush(string key) =>

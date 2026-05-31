@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LiveChartsCore;
@@ -16,10 +17,12 @@ namespace SmartBuilding.Desktop.WPF.ViewModels;
 public partial class FinancesViewModel : BaseViewModel
 {
     private readonly FinancesService _financesService;
+    private readonly FinancesReportPdfService _financesPdf;
     private readonly ISyncService _syncService;
     private readonly ShellNavigationService _shellNavigation;
     private readonly AppConfigurationService _appConfiguration;
     private List<FinanceTransactionItem> _allTransactions = [];
+    private FinancePageData? _pageData;
 
     public const string AllPeriods = "Ce mois";
     public const string AllTypes = "Tous types";
@@ -83,12 +86,14 @@ public partial class FinancesViewModel : BaseViewModel
         ["Toutes", "Revenus", "Dépenses", "Loyers", "Factures", "Remboursements"];
     public FinancesViewModel(
         FinancesService financesService,
+        FinancesReportPdfService financesPdf,
         ISyncService syncService,
         ShellNavigationService shellNavigation,
         AppConfigurationService appConfiguration,
         SessionService session)
     {
         _financesService = financesService;
+        _financesPdf = financesPdf;
         _syncService = syncService;
         _shellNavigation = shellNavigation;
         _appConfiguration = appConfiguration;
@@ -105,6 +110,7 @@ public partial class FinancesViewModel : BaseViewModel
         try
         {
             var data = await _financesService.LoadAsync();
+            _pageData = data;
             _allTransactions = data.Transactions.ToList();
 
             MonthlyRevenueDisplay = Fc(data.RentCollected);
@@ -196,8 +202,64 @@ public partial class FinancesViewModel : BaseViewModel
     [RelayCommand]
     private void ExportCsv()
     {
-        var path = FinancesExportService.ExportCsv(_allTransactions);
-        StatusMessage = $"Export CSV : {path}";
+        var list = GetFilteredTransactions();
+        if (list.Count == 0)
+        {
+            StatusMessage = "Aucune transaction à exporter avec les filtres actuels.";
+            return;
+        }
+
+        var path = FinancesExportService.ExportCsv(list);
+        TryOpenFile(path);
+        StatusMessage = $"Export Excel enregistré ({list.Count} lignes).";
+    }
+
+    [RelayCommand]
+    private void ExportPdf()
+    {
+        var list = GetFilteredTransactions();
+        if (list.Count == 0)
+        {
+            StatusMessage = "Aucune transaction à exporter avec les filtres actuels.";
+            return;
+        }
+
+        if (_pageData is null)
+        {
+            StatusMessage = "Données financières non chargées.";
+            return;
+        }
+
+        var path = _financesPdf.ExportTransactionsReport(_pageData, list, "Rapport financier SBMS");
+        TryOpenFile(path);
+        StatusMessage = $"Export PDF généré ({list.Count} transactions).";
+    }
+
+    [RelayCommand]
+    private void PrintReport()
+    {
+        var list = GetFilteredTransactions();
+        if (list.Count == 0)
+        {
+            StatusMessage = "Aucune transaction à imprimer avec les filtres actuels.";
+            return;
+        }
+
+        StatusMessage = FinancesExportService.PrintTransactionsList(list, "SBMS — Finances")
+            ? $"Impression envoyée ({list.Count} lignes)."
+            : "Impression annulée.";
+    }
+
+    private static void TryOpenFile(string path)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+        }
+        catch
+        {
+            // Fichier créé ; ouverture OS optionnelle
+        }
     }
 
     [RelayCommand]
@@ -273,7 +335,7 @@ public partial class FinancesViewModel : BaseViewModel
         ApplyFilters();
     }
 
-    private void ApplyFilters()
+    private List<FinanceTransactionItem> GetFilteredTransactions()
     {
         var today = DateTime.Today;
         var monthStart = new DateTime(today.Year, today.Month, 1);
@@ -296,7 +358,12 @@ public partial class FinancesViewModel : BaseViewModel
              t.Category.Contains(query, StringComparison.OrdinalIgnoreCase) ||
              t.Source.Contains(query, StringComparison.OrdinalIgnoreCase)));
 
-        var list = filtered.OrderByDescending(t => t.TransactionDate).ToList();
+        return filtered.OrderByDescending(t => t.TransactionDate).ToList();
+    }
+
+    private void ApplyFilters()
+    {
+        var list = GetFilteredTransactions();
         FilteredTotal = list.Count;
         TotalPages = Math.Max(1, (int)Math.Ceiling(list.Count / (double)PageSize));
         if (CurrentPage > TotalPages) CurrentPage = TotalPages;

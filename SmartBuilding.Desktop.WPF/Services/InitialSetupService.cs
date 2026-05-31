@@ -216,33 +216,11 @@ public sealed class InitialSetupService
             var baseUrl = (_configuration["Api:BaseUrl"] ?? string.Empty).Trim();
             if (string.IsNullOrWhiteSpace(baseUrl))
                 return (false, "URL API cloud non configurée.");
-            if (!baseUrl.EndsWith("/"))
-                baseUrl += "/";
 
-            using var http = new HttpClient
-            {
-                BaseAddress = new Uri(baseUrl),
-                Timeout = TimeSpan.FromSeconds(20)
-            };
-            var response = await http.PostAsJsonAsync(
-                "api/auth/login/",
-                new { username, password },
-                cancellationToken);
-            if (!response.IsSuccessStatusCode)
-                return (false, $"HTTP {(int)response.StatusCode}");
-
-            using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-            using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
-            if (!doc.RootElement.TryGetProperty("success", out var successEl) || !successEl.GetBoolean())
-                return (false, "Réponse login invalide.");
-
-            if (!doc.RootElement.TryGetProperty("data", out var dataEl)
-                || !dataEl.TryGetProperty("token", out var tokenEl))
-                return (false, "Token JWT absent dans la réponse.");
-
-            var token = tokenEl.GetString();
+            var token = await SmartBuilding.Infrastructure.Http.CloudApiAuth.TryLoginAsync(
+                baseUrl, username, password, cancellationToken);
             if (string.IsNullOrWhiteSpace(token))
-                return (false, "Token JWT vide.");
+                return (false, "Identifiants cloud refusés (vérifiez admin / Admin@2026).");
 
             PersistApiToken(token);
             return (true, "Authentification cloud OK.");

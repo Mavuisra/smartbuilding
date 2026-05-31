@@ -1,20 +1,20 @@
-using System.Net.Http.Headers;
-using System.Net.Http.Json;
 using System.IO;
 using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using SmartBuilding.Application.Interfaces;
 using SmartBuilding.Domain.Entities.Sync;
+using SmartBuilding.Infrastructure.Http;
 using SmartBuilding.Infrastructure.Persistence;
 using SmartBuilding.Infrastructure.Sync;
-using SmartBuilding.Shared.Constants;
 using SmartBuilding.Shared.DTOs.Sync;
 
 namespace SmartBuilding.Infrastructure.Services;
 
 public class SyncService : ISyncService
 {
+    private static readonly SemaphoreSlim SyncGate = new(1, 1);
+
     private static readonly string ApiTokenPath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "SBMS",
@@ -22,7 +22,6 @@ public class SyncService : ISyncService
 
     private readonly SmartBuildingDbContext _context;
     private readonly INetworkService _network;
-    private readonly IHttpClientFactory _httpClientFactory;
     private readonly IConfiguration _configuration;
     private readonly ILogger<SyncService> _logger;
 
@@ -34,19 +33,19 @@ public class SyncService : ISyncService
     public SyncService(
         SmartBuildingDbContext context,
         INetworkService network,
-        IHttpClientFactory httpClientFactory,
         IConfiguration configuration,
         ILogger<SyncService> logger)
     {
         _context = context;
         _network = network;
-        _httpClientFactory = httpClientFactory;
         _configuration = configuration;
         _logger = logger;
     }
 
     public Task<bool> IsOnlineAsync(CancellationToken cancellationToken = default) =>
-        _network.CanReachApiAsync(_configuration["Api:BaseUrl"] ?? "https://smartbuilding-0kbk.onrender.com", cancellationToken);
+        _network.CanReachApiAsync(
+            _configuration["Api:BaseUrl"] ?? "https://smartbuilding-0kbk.onrender.com",
+            cancellationToken);
 
     public async Task EnsureMetadataLoadedAsync(CancellationToken cancellationToken = default)
     {
@@ -54,6 +53,21 @@ public class SyncService : ISyncService
     }
 
     public async Task<SyncResult> SyncAsync(bool manual = false, CancellationToken cancellationToken = default)
+    {
+        if (!await SyncGate.WaitAsync(0, cancellationToken))
+            return new SyncResult(false, 0, 0, 0, "Synchronisation déjà en cours.");
+
+        try
+        {
+            return await SyncCoreAsync(manual, cancellationToken);
+        }
+        finally
+        {
+            SyncGate.Release();
+        }
+    }
+
+    private async Task<SyncResult> SyncCoreAsync(bool manual, CancellationToken cancellationToken)
     {
         if (IsSyncing)
             return new SyncResult(false, 0, 0, 0, "Synchronisation déjà en cours.");
@@ -73,9 +87,26 @@ public class SyncService : ISyncService
         {
             _lastSyncAt ??= await SyncCoordinator.GetLastSuccessfulSyncAtAsync(_context, cancellationToken);
             var lastSync = _lastSyncAt ?? DateTime.MinValue;
-            var client = CreateHttpClient();
-            if (client.DefaultRequestHeaders.Authorization is null)
-                await RefreshApiTokenWithFallbackAsync(client, cancellationToken);
+            var baseUrl = GetApiBaseUrl();
+
+            var token = _configuration["Api:Token"];
+            if (string.IsNullOrWhiteSpace(token))
+                token = LoadTokenFromLocalStore();
+
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                token = await CloudApiAuth.LoginAsync(baseUrl, cancellationToken);
+                if (string.IsNullOrWhiteSpace(token))
+                {
+                    return new SyncResult(
+                        false, 0, 0, 0,
+                        "Connexion API refusée — vérifiez que Django tourne (port 8000) et exécutez: python manage.py seed_smartbuilding");
+                }
+
+                PersistApiToken(token);
+            }
+
+            using var api = new CloudApiClient(baseUrl, token);
 
             foreach (var entityType in SyncEntityRegistry.SyncableTypes)
             {
@@ -83,74 +114,62 @@ public class SyncService : ISyncService
                 if (adapter is null)
                 {
                     hadFailure = true;
-                    var failure = $"{entityType}: adaptateur desktop manquant";
-                    failures.Add(failure);
+                    failures.Add($"{entityType}: adaptateur desktop manquant");
                     _logger.LogWarning("Adaptateur sync manquant pour {EntityType}", entityType);
                     continue;
                 }
 
                 var localChanges = await adapter.GetLocalChangesAsync(_context, cancellationToken);
-                // Bootstrap cloud: sur sync manuelle, si rien n'est marqué "local change",
-                // on envoie un snapshot complet pour éviter un web vide.
                 if (manual && localChanges.Count == 0)
                 {
                     localChanges = await adapter.GetChangesSinceAsync(
-                        _context,
-                        DateTime.MinValue,
-                        cancellationToken);
+                        _context, DateTime.MinValue, cancellationToken);
                 }
+
                 if (localChanges.Count > 0)
                 {
-                    var pushRequest = new SyncPushRequest { EntityType = entityType, Entities = localChanges.ToList() };
-                    var pushResponse = await client.PostAsJsonAsync("api/sync/push", pushRequest, cancellationToken);
-                    if (pushResponse.StatusCode == System.Net.HttpStatusCode.Unauthorized
-                        && await RefreshApiTokenWithFallbackAsync(client, cancellationToken))
+                    var pushRequest = new SyncPushRequest
                     {
-                        pushResponse = await client.PostAsJsonAsync("api/sync/push", pushRequest, cancellationToken);
-                    }
-                    if (pushResponse.IsSuccessStatusCode)
+                        EntityType = entityType,
+                        Entities = localChanges.ToList(),
+                    };
+
+                    var pushResult = await PostWithAuthRetryAsync(
+                        api, baseUrl, "api/sync/push", pushRequest, cancellationToken);
+
+                    if (pushResult.IsSuccess)
                     {
                         pushed += localChanges.Count;
-                        await adapter.MarkAsSyncedAsync(_context, localChanges.Select(e => e.Id).ToList(), cancellationToken);
+                        await adapter.MarkAsSyncedAsync(
+                            _context, localChanges.Select(e => e.Id).ToList(), cancellationToken);
                         await _context.SaveChangesAsync(cancellationToken);
                     }
                     else
                     {
                         hadFailure = true;
-                        var body = await ReadErrorBodyAsync(pushResponse, cancellationToken);
-                        var failure = $"{entityType} push: HTTP {(int)pushResponse.StatusCode} {pushResponse.StatusCode} {body}";
+                        var failure = $"{entityType} push: HTTP {pushResult.StatusCode} {Truncate(pushResult.Body)}";
                         failures.Add(failure);
-                        _logger.LogWarning("Push échoué pour {EntityType}: {Status} {Body}", entityType, pushResponse.StatusCode, body);
+                        _logger.LogWarning("Push échoué pour {EntityType}: {Detail}", entityType, failure);
                     }
                 }
 
-                var pullResponse = await client.GetAsync(
-                    $"api/sync/pull?entityType={Uri.EscapeDataString(entityType)}&since={lastSync:O}",
-                    cancellationToken);
-                if (pullResponse.StatusCode == System.Net.HttpStatusCode.Unauthorized
-                    && await RefreshApiTokenWithFallbackAsync(client, cancellationToken))
-                {
-                    pullResponse = await client.GetAsync(
-                        $"api/sync/pull?entityType={Uri.EscapeDataString(entityType)}&since={lastSync:O}",
-                        cancellationToken);
-                }
+                var pullPath =
+                    $"api/sync/pull?entityType={Uri.EscapeDataString(entityType)}&since={lastSync:O}";
+                var pullResult = await GetWithAuthRetryAsync<SyncPullResponse>(
+                    api, baseUrl, pullPath, cancellationToken);
 
-                if (!pullResponse.IsSuccessStatusCode)
+                if (pullResult.Data is null && pullResult.StatusCode is 401 or 403)
                 {
                     hadFailure = true;
-                    var body = await ReadErrorBodyAsync(pullResponse, cancellationToken);
-                    var failure = $"{entityType} pull: HTTP {(int)pullResponse.StatusCode} {pullResponse.StatusCode} {body}";
-                    failures.Add(failure);
-                    _logger.LogWarning("Pull échoué pour {EntityType}: {Status} {Body}", entityType, pullResponse.StatusCode, body);
+                    failures.Add($"{entityType} pull: HTTP {pullResult.StatusCode} non autorisé");
                     continue;
                 }
 
-                var pullData = await pullResponse.Content.ReadFromJsonAsync<SyncPullResponse>(cancellationToken);
-                if (pullData?.Entities.Count > 0)
+                if (pullResult.Data?.Entities.Count > 0)
                 {
                     conflicts += await SyncCoordinator.ApplyPullAsync(
-                        _context, entityType, pullData.Entities, cancellationToken);
-                    pulled += pullData.Entities.Count;
+                        _context, entityType, pullResult.Data.Entities, cancellationToken);
+                    pulled += pullResult.Data.Entities.Count;
                 }
             }
 
@@ -162,7 +181,9 @@ public class SyncService : ISyncService
             if (!hadFailure)
             {
                 _lastSyncAt = DateTime.UtcNow;
-                _logger.LogInformation("Sync OK: pushed={Pushed}, pulled={Pulled}, conflicts={Conflicts}", pushed, pulled, conflicts);
+                _logger.LogInformation(
+                    "Sync OK: pushed={Pushed}, pulled={Pulled}, conflicts={Conflicts}",
+                    pushed, pulled, conflicts);
                 return new SyncResult(true, pushed, pulled, conflicts, null);
             }
 
@@ -194,77 +215,94 @@ public class SyncService : ISyncService
         }
     }
 
-    private HttpClient CreateHttpClient()
-    {
-        var client = _httpClientFactory.CreateClient("SmartBuildingApi");
-        var token = _configuration["Api:Token"];
-        if (string.IsNullOrWhiteSpace(token))
-            token = LoadTokenFromLocalStore();
-        if (!string.IsNullOrEmpty(token))
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        return client;
-    }
-
-    private async Task<bool> RefreshApiTokenWithFallbackAsync(HttpClient client, CancellationToken cancellationToken)
-    {
-        // Même logique robuste que l'initial setup: fallback admin/admin.
-        var authenticated = await TryAuthenticateCloudAsync("admin", "admin", cancellationToken);
-        if (!authenticated.Success || string.IsNullOrWhiteSpace(authenticated.Token))
-            return false;
-
-        client.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", authenticated.Token);
-        PersistApiToken(authenticated.Token);
-        return true;
-    }
-
-    private async Task<(bool Success, string? Token)> TryAuthenticateCloudAsync(
-        string username,
-        string password,
+    private async Task<CloudApiClient.HttpResult> PostWithAuthRetryAsync<T>(
+        CloudApiClient api,
+        string baseUrl,
+        string path,
+        T body,
         CancellationToken cancellationToken)
     {
+        var result = await api.PostJsonAsync(path, body, cancellationToken);
+        if (result.StatusCode is not 401 and not 403)
+            return result;
+
+        var token = await RefreshTokenAsync(baseUrl, cancellationToken);
+        if (token is null)
+            return result;
+
+        api.SetBearerToken(token);
+        return await api.PostJsonAsync(path, body, cancellationToken);
+    }
+
+    private async Task<(int StatusCode, T? Data)> GetWithAuthRetryAsync<T>(
+        CloudApiClient api,
+        string baseUrl,
+        string path,
+        CancellationToken cancellationToken)
+    {
+        var first = await api.GetAsync(path, cancellationToken);
+        if (first.StatusCode is not 401 and not 403)
+            return (first.StatusCode, Deserialize<T>(first.Body));
+
+        var token = await RefreshTokenAsync(baseUrl, cancellationToken);
+        if (token is null)
+            return (first.StatusCode, default);
+
+        api.SetBearerToken(token);
+        var retry = await api.GetAsync(path, cancellationToken);
+        return (retry.StatusCode, Deserialize<T>(retry.Body));
+    }
+
+    private async Task<string?> RefreshTokenAsync(string baseUrl, CancellationToken cancellationToken)
+    {
+        ClearPersistedApiToken();
+        var token = await CloudApiAuth.LoginAsync(baseUrl, cancellationToken);
+        if (!string.IsNullOrWhiteSpace(token))
+            PersistApiToken(token);
+        return token;
+    }
+
+    private static T? Deserialize<T>(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+            return default;
         try
         {
-            using var authClient = _httpClientFactory.CreateClient("SmartBuildingApi");
-            authClient.DefaultRequestHeaders.Authorization = null;
-            var response = await authClient.PostAsJsonAsync(
-                "api/auth/login/",
-                new { username, password },
-                cancellationToken);
-            if (!response.IsSuccessStatusCode)
-                return (false, null);
-
-            await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-            using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
-            if (!doc.RootElement.TryGetProperty("success", out var successEl) || !successEl.GetBoolean())
-                return (false, null);
-            if (!doc.RootElement.TryGetProperty("data", out var dataEl))
-                return (false, null);
-            if (!dataEl.TryGetProperty("token", out var tokenEl))
-                return (false, null);
-
-            var token = tokenEl.GetString();
-            return string.IsNullOrWhiteSpace(token) ? (false, null) : (true, token);
+            return JsonSerializer.Deserialize<T>(json, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true,
+            });
         }
         catch
         {
-            return (false, null);
+            return default;
         }
     }
 
-    private static async Task<string> ReadErrorBodyAsync(HttpResponseMessage response, CancellationToken cancellationToken)
+    private string GetApiBaseUrl()
+    {
+        var baseUrl = _configuration["Api:BaseUrl"] ?? "http://127.0.0.1:8000/";
+        return baseUrl.EndsWith('/') ? baseUrl : baseUrl + "/";
+    }
+
+    private static string Truncate(string? body)
+    {
+        if (string.IsNullOrWhiteSpace(body))
+            return "";
+        body = body.Replace(Environment.NewLine, " ").Trim();
+        return body.Length > 300 ? body[..300] + "..." : body;
+    }
+
+    private static void ClearPersistedApiToken()
     {
         try
         {
-            var body = await response.Content.ReadAsStringAsync(cancellationToken);
-            if (string.IsNullOrWhiteSpace(body))
-                return "";
-            body = body.Replace(Environment.NewLine, " ").Trim();
-            return body.Length > 300 ? body[..300] + "..." : body;
+            if (File.Exists(ApiTokenPath))
+                File.Delete(ApiTokenPath);
         }
         catch
         {
-            return "";
+            // ignore
         }
     }
 
@@ -294,7 +332,7 @@ public class SyncService : ISyncService
         }
         catch
         {
-            // Ne bloque pas la synchronisation si l'écriture locale échoue.
+            // ignore
         }
     }
 }

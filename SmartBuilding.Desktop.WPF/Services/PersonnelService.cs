@@ -596,18 +596,67 @@ public partial class PersonnelService
         return ("Actif", "#22C55E");
     }
 
+    public async Task<IReadOnlyList<PersonnelAttendanceRow>> GetEmployeeAttendancesAsync(
+        Guid employeeId,
+        string period,
+        CancellationToken cancellationToken = default)
+    {
+        var employee = await _db.Employees.FirstOrDefaultAsync(e => e.Id == employeeId, cancellationToken);
+        if (employee is null)
+            return [];
+
+        var (from, to, _) = ResolveAttendancePeriod(period);
+        var rows = await _db.Attendances
+            .Where(a => a.EmployeeId == employeeId && a.Date.Date >= from.Date && a.Date.Date <= to.Date)
+            .OrderByDescending(a => a.Date)
+            .ToListAsync(cancellationToken);
+
+        return rows.Select(a => MapAttendanceRow(a, employee)).ToList();
+    }
+
+    public static (DateTime From, DateTime To, string CaptionSuffix) ResolveAttendancePeriod(string period)
+    {
+        var today = DateTime.Today;
+        return period switch
+        {
+            PersonnelAttendancePeriods.Day => (today, today, $"aujourd'hui ({FormatDate(today)})"),
+            PersonnelAttendancePeriods.Week => ResolveWeekRange(today),
+            PersonnelAttendancePeriods.Month => (
+                new DateTime(today.Year, today.Month, 1),
+                new DateTime(today.Year, today.Month, DateTime.DaysInMonth(today.Year, today.Month)),
+                $"{today.ToString("MMMM yyyy", CultureInfo.GetCultureInfo("fr-FR"))}"),
+            PersonnelAttendancePeriods.Year => (
+                new DateTime(today.Year, 1, 1),
+                new DateTime(today.Year, 12, 31),
+                $"année {today.Year}"),
+            _ => (today.AddDays(-29), today, "30 derniers jours")
+        };
+    }
+
+    private static (DateTime From, DateTime To, string CaptionSuffix) ResolveWeekRange(DateTime today)
+    {
+        var daysSinceMonday = ((int)today.DayOfWeek + 6) % 7;
+        var monday = today.AddDays(-daysSinceMonday);
+        var sunday = monday.AddDays(6);
+        return (monday, sunday, $"semaine du {FormatDate(monday)} au {FormatDate(sunday)}");
+    }
+
     private static PersonnelAttendanceRow MapAttendanceRow(Attendance a, Employee e)
     {
         var presence = ResolvePresence(e, a);
         return new PersonnelAttendanceRow
         {
+            Id = a.Id,
+            Date = a.Date.Date,
             DateDisplay = FormatDate(a.Date),
             CheckInDisplay = a.CheckIn.HasValue ? a.CheckIn.Value.ToString("HH:mm") : "—",
             CheckOutDisplay = a.CheckOut.HasValue ? a.CheckOut.Value.ToString("HH:mm") : "—",
             StatusLabel = presence.Label,
             StatusColor = presence.Color,
+            PresenceStatus = a.PresenceStatus,
             WorkedHoursDisplay = a.WorkedHours > 0 ? $"{a.WorkedHours:N1} h" : "—",
-            LateDisplay = a.LateMinutes > 0 ? $"{a.LateMinutes} min" : "—"
+            LateDisplay = a.LateMinutes > 0 ? $"{a.LateMinutes} min" : "—",
+            Notes = a.Notes
         };
     }
 

@@ -3,7 +3,7 @@
 {% block extra_head %}
 <style>
   .module-hero {
-    background: #027566;
+    background: linear-gradient(135deg, #1b3d3b 0%, #2d6a4f 55%, #4cc26b 100%);
     border-radius: 18px;
     color: #fff;
     padding: 22px;
@@ -21,7 +21,7 @@
     padding: 14px;
   }
   .module-kpi small { color: var(--sb-muted); font-weight: 700; text-transform: uppercase; font-size: .72rem; }
-  .module-kpi strong { display:block; color:#027566; font-size:1.35rem; margin-top:4px; }
+  .module-kpi strong { display:block; color:#3d6b52; font-size:1.35rem; margin-top:4px; }
   .module-toolbar { display:flex; justify-content:space-between; align-items:center; gap:12px; margin:14px 0; }
   .module-search { max-width:420px; border-radius:12px; border:1px solid var(--sb-border); padding:.58rem .8rem; }
   .action-btn { border-radius:999px; padding:.25rem .65rem; font-size:.78rem; font-weight:700; border:0; }
@@ -33,38 +33,7 @@
 {% endblock %}
 {% block body %}
 <div class="app-shell">
-  <aside class="sb-sidebar">
-    <div class="brand">
-      <span class="brand-badge">SB</span>
-      <div>
-        <div>SBMS</div>
-        <small class="text-info-emphasis">Smart Building Management</small>
-      </div>
-    </div>
-
-    <div class="sb-nav-group-title">Gestion</div>
-    <a href="/" class="sb-nav-link">Tableau de bord</a>
-    <a href="/locations/" class="sb-nav-link {% if module_slug == 'locations' %}active{% endif %}">Location</a>
-    <a href="/personnel/" class="sb-nav-link {% if module_slug == 'personnel' %}active{% endif %}">Personnel</a>
-    <a href="/contrats/" class="sb-nav-link {% if module_slug == 'contrats' %}active{% endif %}">Contrats</a>
-    <a href="/finance/" class="sb-nav-link {% if module_slug == 'finance' %}active{% endif %}">Finance</a>
-    <a href="/presence/" class="sb-nav-link {% if module_slug == 'presence' %}active{% endif %}">Présence</a>
-    <a href="/documents/" class="sb-nav-link {% if module_slug == 'documents' %}active{% endif %}">Documents</a>
-    <a href="/maintenance/" class="sb-nav-link {% if module_slug == 'maintenance' %}active{% endif %}">Maintenance</a>
-    <a href="/incidents/" class="sb-nav-link {% if module_slug == 'incidents' %}active{% endif %}">Incidents</a>
-
-    <div class="sb-nav-group-title">Supervision</div>
-    <a href="/supervision/" class="sb-nav-link {% if module_slug == 'supervision' %}active{% endif %}">Supervision</a>
-    <a href="/validations/" class="sb-nav-link {% if module_slug == 'validations' %}active{% endif %}">Validations</a>
-    <a href="/activites-logs/" class="sb-nav-link {% if module_slug == 'activites-logs' %}active{% endif %}">Activités & Logs</a>
-    <a href="/utilisateurs/" class="sb-nav-link {% if module_slug == 'utilisateurs' %}active{% endif %}">Utilisateurs</a>
-    <a href="/rapports/" class="sb-nav-link {% if module_slug == 'rapports' %}active{% endif %}">Rapports</a>
-
-    <div class="sb-nav-group-title">Système</div>
-    <a href="/synchronisation/" class="sb-nav-link {% if module_slug == 'synchronisation' %}active{% endif %}">Synchronisation</a>
-    <a href="/parametres/" class="sb-nav-link {% if module_slug == 'parametres' %}active{% endif %}">Paramètres</a>
-    <a href="/audit-securite/" class="sb-nav-link {% if module_slug == 'audit-securite' %}active{% endif %}">Audit & Sécurité</a>
-  </aside>
+  {% include "executive/partials/sidebar.html" %}
 
   <main class="app-main">
     <div class="sb-topbar">
@@ -82,7 +51,7 @@
       <div class="module-hero mb-3">
         <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
           <div>
-            <div class="text-uppercase small opacity-75">{{ module.group }}</div>
+            <div class="text-uppercase small opacity-75">{{ module.group }}{% if module.parent_title %} · {{ module.parent_title }}{% endif %}</div>
             <h1 class="h3 fw-bold mb-1">{{ module.title }}</h1>
             <div class="opacity-75">{{ module.subtitle }}</div>
           </div>
@@ -113,29 +82,16 @@
 </div>
 {% endblock %}
 {% block scripts %}
+{% include "executive/partials/nav_script.html" %}
 <script>
-const token = localStorage.getItem('sbms_token');
-if (!token) window.location.href = '/login/';
-document.getElementById('logout-btn').onclick = () => { localStorage.clear(); window.location.href = '/login/'; };
+if (!Sbms.requireAuth()) throw new Error('auth');
+document.getElementById('logout-btn').onclick = Sbms.logout;
 
 const slug = '{{ module_slug }}';
 let currentRows = [];
 let currentColumns = [];
 
-async function apiFetch(path, options = {}) {
-  const res = await fetch(path, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: 'Bearer ' + token,
-      ...(options.headers || {})
-    }
-  });
-  const json = await res.json();
-  if (res.status === 401) { localStorage.clear(); window.location.href = '/login/'; }
-  if (!json.success) throw new Error(json.message || 'Erreur API');
-  return json.data;
-}
+const apiFetch = Sbms.apiFetch;
 
 function formatValue(value) {
   if (value === null || value === undefined || value === '') return '—';
@@ -211,7 +167,11 @@ async function loadModule() {
     renderKpis(data.kpis);
     renderTable(data.rows);
   } catch (e) {
-    err.textContent = e.message;
+    if (e.status === 403) {
+      err.textContent = 'Accès refusé : votre rôle ne permet pas d\'ouvrir ce module.';
+    } else {
+      err.textContent = e.message;
+    }
     err.classList.remove('d-none');
   }
 }

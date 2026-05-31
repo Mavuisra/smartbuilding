@@ -191,42 +191,10 @@
             </Border>
 
             <Grid Grid.Column="1" Background="{DynamicResource SbmsPageBackgroundBrush}">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
-                <Border x:Name="TreasuryHeaderBar" Grid.Row="0"
-                        Background="{DynamicResource SbmsCardBrush}"
-                        BorderBrush="{DynamicResource SbmsBorderBrush}"
-                        BorderThickness="0,0,0,1" Padding="16,10">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <materialDesign:PackIcon Kind="WalletOutline" Width="22" Height="22" Foreground="#2D6A4F" Margin="0,0,10,0"/>
-                            <StackPanel>
-                                <TextBlock FontSize="12" Foreground="#64748B" Text="Disponible ce mois (loyers du mois − dépenses du mois)"/>
-                                <TextBlock Text="{Binding TreasuryAvailableDisplay}" FontSize="18" FontWeight="Bold" Foreground="#1B3D3B"/>
-                            </StackPanel>
-                        </StackPanel>
-                        <StackPanel Grid.Column="1" Margin="24,0,0,0" VerticalAlignment="Center">
-                            <TextBlock Text="{Binding TreasuryDetailDisplay}" FontSize="12" Foreground="#475569"/>
-                            <TextBlock Text="Seuls les loyers encaissés via Locations alimentent le budget. Aucune autre recette n'est autorisée."
-                                       FontSize="11" Foreground="#94A3B8" Margin="0,4,0,0" TextWrapping="Wrap"/>
-                            <TextBlock Text="Trésorerie épuisée — aucune nouvelle dépense possible."
-                                       FontSize="11" FontWeight="SemiBold" Foreground="#DC2626" Margin="0,4,0,0"
-                                       Visibility="{Binding IsTreasuryDepleted, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                        </StackPanel>
-                    </Grid>
-                </Border>
-                <Grid Grid.Row="1">
-                    <ContentControl Content="{Binding CurrentViewModel}"/>
-                    <Border Background="#08000000"
-                            IsHitTestVisible="{Binding IsCurrentViewBusy}"
-                            Visibility="{Binding IsCurrentViewBusy, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                </Grid>
+                <ContentControl Content="{Binding CurrentViewModel}"/>
+                <Border Background="#08000000"
+                        IsHitTestVisible="{Binding IsCurrentViewBusy}"
+                        Visibility="{Binding IsCurrentViewBusy, Converter={StaticResource BoolToVisibilityConverter}}"/>
             </Grid>
         </Grid>
     </Grid>

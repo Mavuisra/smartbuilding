@@ -1,14 +1,111 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
     <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="/Themes/LocationsStyles.xaml"/>
         <ResourceDictionary Source="/Themes/VisitsStyles.xaml"/>
     </ResourceDictionary.MergedDictionaries>
+
     <Style x:Key="DocumentsKpiCard" TargetType="Border" BasedOn="{StaticResource VisitsKpiCard}"/>
     <Style x:Key="DocumentsToolbarButton" TargetType="Button" BasedOn="{StaticResource VisitsToolbarButton}"/>
-    <Style x:Key="DocumentsPrimaryButton" TargetType="Button" BasedOn="{StaticResource VisitsPrimaryButton}">
-        <Setter Property="Background" Value="#2D6A4F"/>
+    <Style x:Key="DocumentsPrimaryButton" TargetType="Button" BasedOn="{StaticResource PatrimoineGelPrimaryButton}"/>
+
+    <Style x:Key="DocumentsFilterSectionLabel" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="9"/>
+        <Setter Property="FontWeight" Value="Bold"/>
+        <Setter Property="Foreground" Value="{StaticResource PatrimoineGelMutedBrush}"/>
+        <Setter Property="Margin" Value="0,0,0,5"/>
     </Style>
-    <Style x:Key="DocumentsFilterCombo" TargetType="ComboBox" BasedOn="{StaticResource VisitsFilterCombo}"/>
+
+    <Style x:Key="DocumentsFilterSectionCard" TargetType="Border">
+        <Setter Property="Background" Value="White"/>
+        <Setter Property="BorderBrush" Value="#D4EDDC"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="Padding" Value="8,6"/>
+    </Style>
+
+    <Style x:Key="DocumentsFilterCombo" TargetType="ComboBox" BasedOn="{StaticResource LocationsFilterCombo}">
+        <Setter Property="Height" Value="28"/>
+        <Setter Property="MinWidth" Value="0"/>
+        <Setter Property="Width" Value="102"/>
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="Padding" Value="6,2"/>
+        <Setter Property="Margin" Value="0,0,5,0"/>
+        <Setter Property="Background" Value="{StaticResource PatrimoineGelSoftBrush}"/>
+        <Setter Property="BorderBrush" Value="#B8DFC8"/>
+        <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+
+    <Style x:Key="DocumentsFilterActionButton" TargetType="Button">
+        <Setter Property="Height" Value="28"/>
+        <Setter Property="MinWidth" Value="72"/>
+        <Setter Property="Padding" Value="8,0"/>
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{StaticResource PatrimoineGelTextBrush}"/>
+        <Setter Property="Background" Value="{StaticResource PatrimoineGelLightBrush}"/>
+        <Setter Property="BorderBrush" Value="#B8DFC8"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="bd" Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="6" Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="bd" Property="Background" Value="{StaticResource PatrimoineGelHoverBrush}"/>
+                            <Setter TargetName="bd" Property="BorderBrush" Value="{StaticResource PatrimoineGelBrush}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="DocumentsSortCombo" TargetType="ComboBox" BasedOn="{StaticResource DocumentsFilterCombo}">
+        <Setter Property="Width" Value="118"/>
+        <Setter Property="Margin" Value="0,0,6,0"/>
+    </Style>
+
+    <Style x:Key="DocumentsViewToggleButton" TargetType="Button">
+        <Setter Property="Height" Value="28"/>
+        <Setter Property="MinWidth" Value="58"/>
+        <Setter Property="Padding" Value="10,0"/>
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{StaticResource PatrimoineGelMutedBrush}"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="bd" Background="{TemplateBinding Background}" CornerRadius="6"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="bd" Property="Background" Value="{StaticResource PatrimoineGelHoverBrush}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="DocumentsViewToggleButtonActive" TargetType="Button" BasedOn="{StaticResource DocumentsViewToggleButton}">
+        <Setter Property="Foreground" Value="White"/>
+        <Setter Property="Background" Value="{StaticResource PatrimoineGelBrush}"/>
+        <Setter Property="FontWeight" Value="Bold"/>
+    </Style>
+
     <Style x:Key="DocumentsSidebarCard" TargetType="Border" BasedOn="{StaticResource VisitsSidebarCard}"/>
 
     <Style x:Key="DocumentsCategoryButton" TargetType="Button">
@@ -34,7 +131,7 @@
         </Setter>
         <Style.Triggers>
             <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                <Setter Property="Background" Value="#E8F5EE"/>
+                <Setter Property="Background" Value="{StaticResource PatrimoineGelLightBrush}"/>
                 <Setter Property="FontWeight" Value="SemiBold"/>
             </DataTrigger>
         </Style.Triggers>
@@ -52,7 +149,7 @@
         <Setter Property="Cursor" Value="Hand"/>
         <Style.Triggers>
             <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                <Setter Property="BorderBrush" Value="#2D6A4F"/>
+                <Setter Property="BorderBrush" Value="{StaticResource PatrimoineGelBrush}"/>
                 <Setter Property="BorderThickness" Value="2"/>
             </DataTrigger>
         </Style.Triggers>

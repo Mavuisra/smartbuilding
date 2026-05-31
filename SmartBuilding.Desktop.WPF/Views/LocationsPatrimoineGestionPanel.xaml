@@ -1,0 +1,498 @@
+<UserControl x:Class="SmartBuilding.Desktop.WPF.Views.LocationsPatrimoineGestionPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:conv="clr-namespace:SmartBuilding.Desktop.WPF.Converters">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Themes/LocationsStyles.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        <conv:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        <conv:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
+        <conv:HexToBrushConverter x:Key="HexToBrushConverter"/>
+        <conv:IntEqualsToVisibilityConverter x:Key="IntEqualsToVisibilityConverter"/>
+        <Style x:Key="GestionKpiCard" TargetType="Border" BasedOn="{StaticResource LocationsTenantKpiCard}"/>
+        <Style x:Key="GestionKpiIconGel" TargetType="Border" BasedOn="{StaticResource LocationsKpiIconBox}">
+            <Setter Property="Background" Value="{StaticResource PatrimoineGelLightBrush}"/>
+        </Style>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <StackPanel>
+        <!-- Tableau de bord KPI -->
+        <UniformGrid Columns="5" Margin="0,0,0,14">
+            <Border Style="{StaticResource GestionKpiCard}" Margin="0,0,5,0">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Border Style="{StaticResource GestionKpiIconGel}">
+                        <materialDesign:PackIcon Kind="HomeGroup" Foreground="{StaticResource PatrimoineGelBrush}"/>
+                    </Border>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="Unités" FontSize="10" Foreground="{StaticResource PatrimoineGelMutedBrush}"/>
+                        <TextBlock Text="{Binding GestionKpiTotalUnits}" FontSize="22" FontWeight="Bold" Foreground="{StaticResource PatrimoineGelTextBrush}"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+            <Border Style="{StaticResource GestionKpiCard}" Margin="3,0">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Border Style="{StaticResource GestionKpiIconGel}">
+                        <materialDesign:PackIcon Kind="DoorOpen" Foreground="{StaticResource PatrimoineGelBrush}"/>
+                    </Border>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="Libres" FontSize="10" Foreground="{StaticResource PatrimoineGelMutedBrush}"/>
+                        <TextBlock Text="{Binding GestionKpiAvailable}" FontSize="22" FontWeight="Bold" Foreground="{StaticResource PatrimoineGelBrush}"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+            <Border Style="{StaticResource GestionKpiCard}" Margin="3,0">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Border Style="{StaticResource GestionKpiIconGel}" Background="#F5EBEB">
+                        <materialDesign:PackIcon Kind="AccountKey" Foreground="#A67B7B"/>
+                    </Border>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="Occupés" FontSize="10" Foreground="{StaticResource PatrimoineGelMutedBrush}"/>
+                        <TextBlock Text="{Binding GestionKpiOccupied}" FontSize="22" FontWeight="Bold" Foreground="#A67B7B"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+            <Border Style="{StaticResource GestionKpiCard}" Margin="3,0">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Border Style="{StaticResource GestionKpiIconGel}" Background="#EEF1F5">
+                        <materialDesign:PackIcon Kind="Layers" Foreground="#7B8A9A"/>
+                    </Border>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="Étages" FontSize="10" Foreground="{StaticResource PatrimoineGelMutedBrush}"/>
+                        <TextBlock Text="{Binding GestionKpiFloors}" FontSize="22" FontWeight="Bold" Foreground="#6B8299"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+            <Border Style="{StaticResource GestionKpiCard}" Margin="5,0,0,0">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Border Style="{StaticResource GestionKpiIconGel}">
+                        <materialDesign:PackIcon Kind="CashMultiple" Foreground="{StaticResource PatrimoineGelBrush}"/>
+                    </Border>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="Loyers / m²" FontSize="10" Foreground="{StaticResource PatrimoineGelMutedBrush}"/>
+                        <TextBlock Text="{Binding GestionKpiTotalRentDisplay}" FontSize="14" FontWeight="Bold" Foreground="{StaticResource PatrimoineGelTextBrush}" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Text="{Binding GestionKpiTotalAreaDisplay}" FontSize="10" Foreground="#94A3B8"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </UniformGrid>
+
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="2.2*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Tableau -->
+            <Border Grid.Column="0" Background="White" CornerRadius="14" BorderBrush="#D4EDDC" BorderThickness="1"
+                    Margin="0,0,10,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Bandeau titre tableau -->
+                    <Border Grid.Row="0" Background="{StaticResource PatrimoineGelSoftBrush}" CornerRadius="14,14,0,0"
+                            Padding="16,14" BorderBrush="#4cc26b" BorderThickness="0,0,0,3">
+                        <DockPanel>
+                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                                <Border Background="{StaticResource PatrimoineGelLightBrush}" CornerRadius="8" Padding="10,6" Margin="0,0,10,0"
+                                        BorderBrush="#D4EDDC" BorderThickness="1">
+                                    <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource PatrimoineGelTextBrush}">
+                                        <Run Text="{Binding GestionDisplayedCount, Mode=OneWay}"/>
+                                        <Run Text=" unité(s)"/>
+                                    </TextBlock>
+                                </Border>
+                                <Button Command="{Binding AddGestionUnitInStructureCommand}" Style="{StaticResource PatrimoineGelPrimaryButton}"
+                                        Padding="14,9" Margin="0,0,8,0"
+                                        Visibility="{Binding CanManage, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="Plus" Width="16" Height="16" Margin="0,0,6,0" Foreground="White"/>
+                                        <TextBlock Text="Nouvelle unité" FontWeight="SemiBold" Foreground="White"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button Command="{Binding RefreshGestionCommand}" Style="{StaticResource LocationsToolbarButton}"
+                                        Background="White" BorderBrush="#D4EDDC">
+                                    <materialDesign:PackIcon Kind="Refresh" Width="18" Height="18" Foreground="{StaticResource PatrimoineGelBrush}"/>
+                                </Button>
+                            </StackPanel>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="Inventaire des locaux" FontSize="16" FontWeight="Bold" Foreground="{StaticResource PatrimoineGelTextBrush}"/>
+                                <TextBlock Text="Bâtiments, appartements et statuts d'occupation" FontSize="11" Foreground="{StaticResource PatrimoineGelMutedBrush}" Margin="0,4,0,0"/>
+                            </StackPanel>
+                        </DockPanel>
+                    </Border>
+
+                    <!-- Filtres -->
+                    <Border Grid.Row="1" Padding="14,12" Background="{StaticResource PatrimoineGelSoftBrush}" BorderBrush="#D4EDDC" BorderThickness="0,0,0,1">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Orientation="Horizontal">
+                                <Border Background="White" CornerRadius="10" BorderBrush="#E2E8F0" BorderThickness="1" Padding="2" Margin="0,0,8,0">
+                                    <TextBox Width="240" BorderThickness="0" Background="Transparent"
+                                             materialDesign:HintAssist.Hint="Rechercher code, nom, étage…"
+                                             Text="{Binding GestionSearchQuery, UpdateSourceTrigger=PropertyChanged}">
+                                        <TextBox.Style>
+                                            <Style TargetType="TextBox" BasedOn="{StaticResource LocationsFilterSearch}">
+                                                <Setter Property="BorderThickness" Value="0"/>
+                                            </Style>
+                                        </TextBox.Style>
+                                    </TextBox>
+                                </Border>
+                                <ComboBox Width="140" Style="{StaticResource LocationsFilterCombo}"
+                                          ItemsSource="{Binding GestionTypeFilters}" SelectedItem="{Binding GestionFilterType}"
+                                          materialDesign:HintAssist.Hint="Type d'unité"/>
+                                <ComboBox Width="130" Margin="8,0,0,0" Style="{StaticResource LocationsFilterCombo}"
+                                          ItemsSource="{Binding GestionStatusFilters}" SelectedItem="{Binding GestionFilterStatus}"
+                                          materialDesign:HintAssist.Hint="Occupation"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                <materialDesign:PackIcon Kind="FilterVariant" Width="16" Height="16" Foreground="#94A3B8" Margin="0,0,6,0"/>
+                                <TextBlock Text="Filtres actifs" FontSize="11" Foreground="#64748B" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <Grid Grid.Row="2" MinHeight="360">
+                        <DataGrid x:Name="GestionUnitsGrid" ItemsSource="{Binding GestionUnits}"
+                                  SelectedItem="{Binding SelectedGestionUnit, Mode=TwoWay}"
+                                  Style="{StaticResource PatrimoineGestionDataGrid}"
+                                  AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True"
+                                  SelectionMode="Single" SelectionUnit="FullRow"
+                                  materialDesign:DataGridAssist.CellPadding="14,8"
+                                  MouseDoubleClick="GestionUnitsGrid_OnMouseDoubleClick">
+                            <DataGrid.Columns>
+                                <DataGridTemplateColumn Header="UNITÉ / LOCAL" Width="2.2*" MinWidth="220">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Grid VerticalAlignment="Center">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Border Width="44" Height="44" CornerRadius="12" Margin="0,0,14,0">
+                                                    <Border.Style>
+                                                        <Style TargetType="Border">
+                                                            <Setter Property="Background" Value="{StaticResource PatrimoineGelLightBrush}"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsCommercial}" Value="True">
+                                                                    <Setter Property="Background" Value="#EEF1F5"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Border.Style>
+                                                    <TextBlock Text="{Binding Initials}" FontWeight="Bold" FontSize="14"
+                                                               HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="Foreground" Value="{StaticResource PatrimoineGelBrush}"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding IsCommercial}" Value="True">
+                                                                        <Setter Property="Foreground" Value="#6B8299"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                </Border>
+                                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="14" Foreground="#0F172A"/>
+                                                    <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                                        <Border Background="#F1F5F9" CornerRadius="4" Padding="6,2" Margin="0,0,6,0">
+                                                            <TextBlock Text="{Binding Code}" FontSize="10" FontWeight="SemiBold" Foreground="#475569"/>
+                                                        </Border>
+                                                        <materialDesign:PackIcon Kind="Stairs" Width="12" Height="12" Foreground="#94A3B8" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                                        <TextBlock Text="{Binding FloorDisplay}" FontSize="11" Foreground="#64748B" VerticalAlignment="Center"/>
+                                                    </StackPanel>
+                                                </StackPanel>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+
+                                <DataGridTemplateColumn Header="BÂTIMENT" Width="1.1*" MinWidth="100">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <materialDesign:PackIcon Kind="OfficeBuilding" Width="16" Height="16" Foreground="#64748B" Margin="0,0,8,0"/>
+                                                <TextBlock Text="{Binding BuildingName}" FontSize="12" FontWeight="Medium" Foreground="#334155" TextTrimming="CharacterEllipsis"/>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+
+                                <DataGridTemplateColumn Header="TYPE" Width="120">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Border>
+                                                <Border.Style>
+                                                    <Style TargetType="Border" BasedOn="{StaticResource PatrimoineTypeChip}">
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsCommercial}" Value="True">
+                                                                <Setter Property="Background" Value="#EEF1F5"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Border.Style>
+                                                <TextBlock Text="{Binding UnitType}" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource PatrimoineGelTextBrush}">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsCommercial}" Value="True">
+                                                                    <Setter Property="Foreground" Value="#6B8299"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </Border>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+
+                                <DataGridTemplateColumn Header="SURFACE" Width="95">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding AreaDisplay}" FontSize="13" FontWeight="SemiBold" Foreground="#475569" VerticalAlignment="Center"/>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+
+                                <DataGridTemplateColumn Header="LOYER / MOIS" Width="115">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding RentDisplay}" FontSize="13" FontWeight="Bold" Foreground="{StaticResource PatrimoineGelTextBrush}" VerticalAlignment="Center"/>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+
+                                <DataGridTemplateColumn Header="PIÈCES" Width="72">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Border Background="#F1F5F9" CornerRadius="8" Padding="8,4" HorizontalAlignment="Left" MinWidth="36">
+                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                                    <materialDesign:PackIcon Kind="FloorPlan" Width="14" Height="14" Foreground="#64748B" Margin="0,0,4,0"/>
+                                                    <TextBlock Text="{Binding RoomCount}" FontWeight="Bold" FontSize="12" Foreground="#334155"/>
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+
+                                <DataGridTemplateColumn Header="STATUT" Width="108">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Border CornerRadius="20" Padding="12,6" HorizontalAlignment="Left"
+                                                    Background="{Binding OccupancyBadgeBackground, Converter={StaticResource HexToBrushConverter}}">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <Ellipse Width="6" Height="6" Margin="0,0,6,0" VerticalAlignment="Center"
+                                                             Fill="{Binding OccupancyBadgeForeground, Converter={StaticResource HexToBrushConverter}}"/>
+                                                    <TextBlock Text="{Binding OccupancyLabel}" FontSize="10" FontWeight="Bold"
+                                                               Foreground="{Binding OccupancyBadgeForeground, Converter={StaticResource HexToBrushConverter}}"/>
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+
+                                <DataGridTemplateColumn Header="ACTIONS" Width="148">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Border Style="{StaticResource PatrimoineActionPill}">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <Button Style="{StaticResource LocationsIconActionButton}" ToolTip="Voir le détail"
+                                                            Command="{Binding DataContext.OpenGestionUnitDetailCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                            CommandParameter="{Binding}">
+                                                        <materialDesign:PackIcon Kind="EyeOutline" Width="17" Height="17" Foreground="{StaticResource PatrimoineGelBrush}"/>
+                                                    </Button>
+                                                    <Button Style="{StaticResource LocationsIconActionButton}" ToolTip="Modifier"
+                                                            Command="{Binding DataContext.EditGestionUnitInStructureCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                            CommandParameter="{Binding}">
+                                                        <materialDesign:PackIcon Kind="PencilOutline" Width="17" Height="17" Foreground="{StaticResource PatrimoineGelMutedBrush}"/>
+                                                    </Button>
+                                                    <Button Style="{StaticResource LocationsIconActionButton}" ToolTip="Supprimer"
+                                                            Command="{Binding DataContext.DeleteGestionUnitCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                            CommandParameter="{Binding}">
+                                                        <materialDesign:PackIcon Kind="DeleteOutline" Width="17" Height="17" Foreground="#A67B7B"/>
+                                                    </Button>
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+
+                                <DataGridTemplateColumn Header="" Width="*" MinWidth="12" IsReadOnly="True">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate><Border/></DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                    <DataGridTemplateColumn.CellStyle>
+                                        <Style TargetType="DataGridCell" BasedOn="{StaticResource LocationsDataGridFillerCell}"/>
+                                    </DataGridTemplateColumn.CellStyle>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <!-- État vide -->
+                        <Border Background="{StaticResource PatrimoineGelSoftBrush}" CornerRadius="0,0,12,12"
+                                Visibility="{Binding GestionDisplayedCount, Converter={StaticResource IntEqualsToVisibilityConverter}, ConverterParameter=0}">
+                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Margin="32">
+                                <Border Width="72" Height="72" CornerRadius="36" Background="{StaticResource PatrimoineGelLightBrush}" Margin="0,0,0,16">
+                                    <materialDesign:PackIcon Kind="HomePlusOutline" Width="36" Height="36" Foreground="{StaticResource PatrimoineGelBrush}"
+                                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <TextBlock Text="Aucune unité à afficher" FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource PatrimoineGelTextBrush}" HorizontalAlignment="Center"/>
+                                <TextBlock Text="Ajoutez des appartements dans l'onglet Appartements ou modifiez vos filtres."
+                                           FontSize="12" Foreground="{StaticResource PatrimoineGelMutedBrush}" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="280" Margin="0,8,0,16"/>
+                                <Button Command="{Binding AddGestionUnitInStructureCommand}" Style="{StaticResource PatrimoineGelPrimaryButton}" Padding="18,10">
+                                    <TextBlock Text="Créer une unité"/>
+                                </Button>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Chargement -->
+                        <Border Background="#B0FFFFFF"
+                                Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                                <ProgressBar IsIndeterminate="True" Width="220" Height="4" Foreground="{StaticResource PatrimoineGelBrush}"/>
+                                <TextBlock Text="Chargement du patrimoine…" Margin="0,12,0,0" Foreground="#64748B" FontWeight="Medium"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <Border Grid.Row="3" Padding="14,10" Background="{StaticResource PatrimoineGelLightBrush}" BorderBrush="#D4EDDC" BorderThickness="0,1,0,0" CornerRadius="0,0,14,14">
+                        <DockPanel>
+                            <materialDesign:PackIcon Kind="GestureDoubleTap" DockPanel.Dock="Right" Width="18" Height="18" Foreground="{StaticResource PatrimoineGelBrush}" VerticalAlignment="Center"/>
+                            <TextBlock FontSize="11" Foreground="{StaticResource PatrimoineGelTextBrush}" VerticalAlignment="Center">
+                                <Run Text="Astuce :"/>
+                                <Run Text="cliquez sur une ligne ou double-cliquez pour ouvrir la fiche détail à droite." FontWeight="SemiBold"/>
+                            </TextBlock>
+                        </DockPanel>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <!-- Fiche détail -->
+            <Border Grid.Column="1" Background="White" CornerRadius="14" BorderBrush="#D4EDDC" BorderThickness="1" Padding="0">
+                <Grid>
+                    <Border Background="{StaticResource PatrimoineGelSoftBrush}" CornerRadius="14,14,0,0" Padding="18,16"
+                            BorderBrush="#4cc26b" BorderThickness="0,0,0,3">
+                        <Grid>
+                            <Button HorizontalAlignment="Right" VerticalAlignment="Top"
+                                    Command="{Binding CloseGestionUnitDetailCommand}"
+                                    Style="{StaticResource LocationsIconActionButton}" Background="White" BorderBrush="#D4EDDC"
+                                    Visibility="{Binding HasSelectedGestionUnit, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <materialDesign:PackIcon Kind="Close" Foreground="{StaticResource PatrimoineGelMutedBrush}" Width="16" Height="16"/>
+                            </Button>
+                            <StackPanel Margin="0,0,32,0">
+                                <TextBlock Text="{Binding DetailUnitTitle}" FontSize="16" FontWeight="Bold" Foreground="{StaticResource PatrimoineGelTextBrush}" TextWrapping="Wrap"/>
+                                <TextBlock Text="{Binding DetailUnitSubtitle}" FontSize="11" Foreground="{StaticResource PatrimoineGelMutedBrush}" Margin="0,6,0,0" TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <StackPanel Margin="18,72,18,18"
+                                Visibility="{Binding HasSelectedGestionUnit, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <Border Background="#F8FAFC" CornerRadius="10" Padding="14,12" Margin="0,0,0,12">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Margin="0,0,6,0">
+                                    <TextBlock Text="Statut" FontSize="10" Foreground="#64748B"/>
+                                    <Border CornerRadius="8" Padding="8,4" Margin="0,4,0,0" HorizontalAlignment="Left"
+                                            Background="{Binding SelectedGestionUnit.OccupancyBadgeBackground, Converter={StaticResource HexToBrushConverter}}">
+                                        <TextBlock Text="{Binding SelectedGestionUnit.OccupancyLabel}" FontWeight="SemiBold" FontSize="11"
+                                                   Foreground="{Binding SelectedGestionUnit.OccupancyBadgeForeground, Converter={StaticResource HexToBrushConverter}}"/>
+                                    </Border>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Margin="6,0,0,0">
+                                    <TextBlock Text="Loyer mensuel" FontSize="10" Foreground="#64748B"/>
+                                    <TextBlock Text="{Binding SelectedGestionUnit.RentDisplay}" FontSize="16" FontWeight="Bold" Foreground="{StaticResource PatrimoineGelTextBrush}" Margin="0,4,0,0"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <TextBlock Text="Caractéristiques" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource PatrimoineGelTextBrush}" Margin="0,0,0,8"/>
+                        <UniformGrid Columns="2" Margin="0,0,0,14">
+                            <StackPanel Margin="0,0,6,8">
+                                <TextBlock Text="Surface" FontSize="10" Foreground="#64748B"/>
+                                <TextBlock Text="{Binding SelectedGestionUnit.AreaDisplay}" FontWeight="SemiBold" Foreground="#111827"/>
+                            </StackPanel>
+                            <StackPanel Margin="6,0,0,8">
+                                <TextBlock Text="Pièces" FontSize="10" Foreground="#64748B"/>
+                                <TextBlock Text="{Binding SelectedGestionUnit.RoomCount}" FontWeight="SemiBold" Foreground="#111827"/>
+                            </StackPanel>
+                            <StackPanel Margin="0,0,6,0">
+                                <TextBlock Text="Code local" FontSize="10" Foreground="#64748B"/>
+                                <TextBlock Text="{Binding SelectedGestionUnit.Code}" FontWeight="SemiBold" Foreground="#111827"/>
+                            </StackPanel>
+                            <StackPanel Margin="6,0,0,0">
+                                <TextBlock Text="Étage" FontSize="10" Foreground="#64748B"/>
+                                <TextBlock Text="{Binding SelectedGestionUnit.FloorDisplay}" FontWeight="SemiBold" Foreground="#111827"/>
+                            </StackPanel>
+                        </UniformGrid>
+
+                        <TextBlock Text="Composition" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource PatrimoineGelTextBrush}" Margin="0,0,0,6"/>
+                        <Border Background="{StaticResource PatrimoineGelLightBrush}" BorderBrush="#D4EDDC" BorderThickness="1" CornerRadius="10" Padding="12,10" Margin="0,0,0,16">
+                            <TextBlock Text="{Binding SelectedGestionUnit.RoomsSummary}" TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource PatrimoineGelTextBrush}"/>
+                        </Border>
+
+                        <Button Command="{Binding EditGestionUnitInStructureCommand}" CommandParameter="{Binding SelectedGestionUnit}"
+                                Style="{StaticResource PatrimoineGelPrimaryButton}" Padding="16,11" Margin="0,0,0,8"
+                                Visibility="{Binding CanManage, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <materialDesign:PackIcon Kind="Pencil" Width="16" Height="16" Margin="0,0,8,0"/>
+                                <TextBlock Text="Modifier dans Appartements" FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Command="{Binding DeleteGestionUnitCommand}" CommandParameter="{Binding SelectedGestionUnit}"
+                                Style="{StaticResource MaterialDesignOutlinedButton}" Foreground="#A67B7B" BorderBrush="#E8D4D4"
+                                Padding="16,10"
+                                Visibility="{Binding CanManage, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <materialDesign:PackIcon Kind="DeleteOutline" Width="16" Height="16" Margin="0,0,8,0"/>
+                                <TextBlock Text="Supprimer l'unité"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Margin="24"
+                                Visibility="{Binding HasSelectedGestionUnit, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
+                        <materialDesign:PackIcon Kind="HomeSearchOutline" Width="48" Height="48" Foreground="#C5D9CE" HorizontalAlignment="Center"/>
+                        <TextBlock Text="Aucune unité sélectionnée" FontSize="13" Foreground="#94A3B8" HorizontalAlignment="Center" Margin="0,12,0,0"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+    </StackPanel>
+</UserControl>

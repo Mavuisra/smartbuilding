@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Win32;
 using LiveChartsCore;
 using LiveChartsCore.SkiaSharpView;
 using LiveChartsCore.SkiaSharpView.Painting;
@@ -177,12 +178,78 @@ public partial class DocumentsViewModel : BaseViewModel
             : "Aucune notification critique.";
 
     [RelayCommand]
-    private void CreateFolder() =>
-        StatusMessage = "Création de dossier prête. Renseignez le nom du dossier (prochaine étape).";
+    private async Task CreateFolderAsync()
+    {
+        var name = SbmsDialogService.PromptText(
+            "Nouveau dossier",
+            "Nom du dossier à créer :",
+            "Nouveau dossier");
+        if (string.IsNullOrWhiteSpace(name))
+            return;
+
+        IsBusy = true;
+        try
+        {
+            var folder = await _documentsService.CreateUserFolderAsync(
+                name,
+                GetUploadCategoryId(),
+                GetUploadBuilding(),
+                UserName);
+            StatusMessage = $"Dossier « {folder.FileName} » créé.";
+            var folderId = folder.Id;
+            await LoadAsync();
+            SelectDocument(_allDocuments.FirstOrDefault(d => d.Id == folderId));
+        }
+        catch (Exception ex)
+        {
+            SbmsDialogService.ShowError("Dossier", ex.Message);
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
 
     [RelayCommand]
-    private void UploadDocument() =>
-        StatusMessage = "Upload activé. Déposez vos fichiers dans ce module (étape suivante).";
+    private async Task UploadDocumentAsync()
+    {
+        var dialog = new OpenFileDialog
+        {
+            Title = "Importer des documents",
+            Filter = "Documents|*.pdf;*.doc;*.docx;*.xls;*.xlsx;*.csv;*.png;*.jpg;*.jpeg;*.webp|Tous les fichiers|*.*",
+            Multiselect = true
+        };
+        if (dialog.ShowDialog() != true || dialog.FileNames.Length == 0)
+            return;
+
+        IsBusy = true;
+        try
+        {
+            var uploaded = await _documentsService.UploadUserFilesAsync(
+                dialog.FileNames,
+                GetUploadCategoryId(),
+                GetUploadBuilding(),
+                UserName);
+            if (uploaded.Count == 0)
+            {
+                StatusMessage = "Aucun fichier importé.";
+                return;
+            }
+
+            StatusMessage = $"{uploaded.Count} fichier(s) importé(s).";
+            var firstId = uploaded[0].Id;
+            await LoadAsync();
+            SelectDocument(_allDocuments.FirstOrDefault(d => d.Id == firstId));
+        }
+        catch (Exception ex)
+        {
+            SbmsDialogService.ShowError("Import", ex.Message);
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
 
     [RelayCommand]
     private void ShowMoreTags() =>
@@ -207,17 +274,46 @@ public partial class DocumentsViewModel : BaseViewModel
     private async Task DownloadDocumentAsync(DocumentListItem? doc)
     {
         doc ??= SelectedDocument;
-        if (doc is null) return;
+        if (doc is null)
+            return;
+
+        if (doc.IsFolder)
+        {
+            SbmsDialogService.ShowInfo("Télécharger", "Un dossier ne peut pas être téléchargé. Sélectionnez un fichier.");
+            return;
+        }
 
         var source = await EnsureOpenablePathAsync(doc);
-        var downloads = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-            "Downloads",
-            "SBMS-Documents");
-        Directory.CreateDirectory(downloads);
-        var target = Path.Combine(downloads, Path.GetFileName(source));
-        File.Copy(source, target, overwrite: true);
-        StatusMessage = $"Copié dans: {target}";
+        if (!File.Exists(source))
+        {
+            SbmsDialogService.ShowWarning("Télécharger", "Fichier introuvable sur le disque.");
+            return;
+        }
+
+        var saveDialog = new SaveFileDialog
+        {
+            Title = "Enregistrer le document",
+            FileName = Path.GetFileName(source),
+            Filter = BuildSaveFilter(Path.GetExtension(source))
+        };
+        if (saveDialog.ShowDialog() != true)
+            return;
+
+        File.Copy(source, saveDialog.FileName, overwrite: true);
+        StatusMessage = $"Document enregistré : {saveDialog.FileName}";
+
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = Path.GetDirectoryName(saveDialog.FileName)!,
+                UseShellExecute = true
+            });
+        }
+        catch
+        {
+            // Ouverture du dossier optionnelle
+        }
     }
 
     [RelayCommand]
@@ -373,8 +469,32 @@ public partial class DocumentsViewModel : BaseViewModel
         return DateTime.MinValue;
     }
 
-    private static async Task<string> EnsureOpenablePathAsync(DocumentListItem doc)
+    private string GetUploadCategoryId() =>
+        SelectedCategoryId is "all" or "corbeille" ? "archives" : SelectedCategoryId;
+
+    private string GetUploadBuilding()
     {
+        if (FilterBuilding != AllBuildings)
+            return FilterBuilding;
+        return BuildingFilters.Count > 1 ? BuildingFilters[1] : "—";
+    }
+
+    private static string BuildSaveFilter(string ext) => ext.ToLowerInvariant() switch
+    {
+        ".pdf" => "PDF (*.pdf)|*.pdf",
+        ".doc" or ".docx" => "Word|*.doc;*.docx",
+        ".xls" or ".xlsx" => "Excel|*.xls;*.xlsx",
+        ".csv" => "CSV|*.csv",
+        ".png" or ".jpg" or ".jpeg" or ".webp" => "Images|*.png;*.jpg;*.jpeg;*.webp",
+        _ => "Tous les fichiers|*.*"
+    };
+
+    private async Task<string> EnsureOpenablePathAsync(DocumentListItem doc)
+    {
+        var resolved = _documentsService.ResolveDocumentFilePath(doc);
+        if (!string.IsNullOrWhiteSpace(resolved) && File.Exists(resolved))
+            return resolved;
+
         if (!string.IsNullOrWhiteSpace(doc.FilePath) && File.Exists(doc.FilePath))
             return doc.FilePath;
 

@@ -72,6 +72,25 @@ def materialize_user(data: dict):
     user.save()
 
 
+@register("BuildingInfos")
+def materialize_building_info(data: dict):
+    """Profil patrimoine desktop → table Building côté web."""
+    uid = pick(data, "Id", "id")
+    if not uid:
+        return
+    obj, _ = Building.objects.get_or_create(id=uid)
+    map_base_fields(obj, data)
+    obj.name = (
+        pick(data, "BuildingDisplayName", "buildingDisplayName")
+        or pick(data, "Name", "name")
+        or "Patrimoine SBMS"
+    )
+    obj.address = pick(data, "Address", "address") or ""
+    obj.city = pick(data, "City", "city") or ""
+    obj.floors = parse_int(pick(data, "TotalFloors", "totalFloors", "Floors", "floors"), 1)
+    obj.save()
+
+
 @register("Buildings")
 def materialize_building(data: dict):
     uid = pick(data, "Id", "id")
@@ -175,6 +194,18 @@ def materialize_rent_payment(data: dict):
     obj.save()
 
 
+def _parse_tx_type(value) -> int:
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str):
+        low = value.lower()
+        if low in ("depense", "dépense", "expense", "2"):
+            return FinancialTransaction.TxType.DEPENSE
+        if low in ("recette", "income", "revenue", "1"):
+            return FinancialTransaction.TxType.RECETTE
+    return parse_int(value, FinancialTransaction.TxType.RECETTE)
+
+
 @register("FinancialTransactions")
 def materialize_finance(data: dict):
     uid = pick(data, "Id", "id")
@@ -183,17 +214,26 @@ def materialize_finance(data: dict):
     obj, _ = FinancialTransaction.objects.get_or_create(id=uid)
     map_base_fields(obj, data)
     tx_type = pick(data, "Type", "type")
-    obj.type = parse_int(tx_type, 1)
+    obj.type = _parse_tx_type(tx_type)
     obj.category = pick(data, "Category", "category") or ""
     obj.description = pick(data, "Description", "description") or ""
     obj.amount = parse_decimal(pick(data, "Amount", "amount"), 0)
-    obj.transaction_date = parse_datetime(
-        pick(data, "TransactionDate", "transactionDate")
-    ) or obj.transaction_date
+    tx_dt = parse_datetime(pick(data, "TransactionDate", "transactionDate"))
+    if tx_dt:
+        from django.utils import timezone as dj_tz
+
+        if tx_dt.tzinfo is None:
+            tx_dt = dj_tz.make_aware(tx_dt, dj_tz.get_current_timezone())
+        obj.transaction_date = tx_dt
     obj.reference = pick(data, "Reference", "reference") or ""
     obj.payment_method = pick(data, "PaymentMethod", "paymentMethod") or ""
     obj.status = pick(data, "Status", "status") or ""
     obj.recorded_by = pick(data, "RecordedBy", "recordedBy") or ""
+    obj.requires_pdg_approval = parse_bool(
+        pick(data, "RequiresPdgApproval", "requiresPdgApproval"), False
+    )
+    obj.approved_at = normalize_sync_datetime(pick(data, "ApprovedAt", "approvedAt"))
+    obj.approved_by = pick(data, "ApprovedBy", "approvedBy") or ""
     obj.save()
 
 

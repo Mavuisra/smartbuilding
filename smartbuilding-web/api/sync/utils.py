@@ -52,12 +52,24 @@ def parse_date(value):
 
 
 def parse_decimal(value, default=0):
+    from decimal import Decimal, InvalidOperation
+
     if value is None:
-        return default
+        return Decimal(str(default))
     try:
-        return value
-    except (TypeError, ValueError):
-        return default
+        return Decimal(str(value))
+    except (InvalidOperation, TypeError, ValueError):
+        return Decimal(str(default))
+
+
+def inject_entity_id(data: dict | None, entity_id) -> dict:
+    """Garantit Id/id pour les matérialiseurs (import SQLite sans Id dans json_data)."""
+    payload = dict(data) if isinstance(data, dict) else {}
+    eid = str(entity_id)
+    if not pick(payload, "Id", "id"):
+        payload["Id"] = eid
+        payload["id"] = eid
+    return payload
 
 
 def parse_bool(value, default=False) -> bool:

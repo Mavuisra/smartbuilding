@@ -5,6 +5,7 @@ namespace SmartBuilding.Domain.Entities.Location;
 public class Premise : BaseEntity
 {
     public Guid? BuildingId { get; set; }
+    public Guid? PropertyApartmentId { get; set; }
     public string Code { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public string Floor { get; set; } = string.Empty;

@@ -24,6 +24,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
@@ -98,8 +99,14 @@
             </Grid>
         </Border>
 
+        <Border Grid.Row="1" Background="#E8F9EF" BorderBrush="#D4EDDC" BorderThickness="0,0,0,1"
+                Padding="16,8"
+                Visibility="{Binding StatusMessage, Converter={StaticResource NullToVisibilityConverter}}">
+            <TextBlock Text="{Binding StatusMessage}" Foreground="#3D6B52" FontSize="12" TextWrapping="Wrap"/>
+        </Border>
+
         <!-- KPI -->
-        <UniformGrid Grid.Row="1" Columns="6" Margin="12,8,12,4">
+        <UniformGrid Grid.Row="2" Columns="6" Margin="12,8,12,4">
             <Border Style="{StaticResource DocumentsKpiCard}">
                 <Grid>
                     <Grid.RowDefinitions>
@@ -219,7 +226,7 @@
         </UniformGrid>
 
         <!-- CORPS -->
-        <Border Grid.Row="2" Background="White" CornerRadius="10" BorderBrush="#E8EFED" BorderThickness="1" Margin="12,4,12,12">
+        <Border Grid.Row="3" Background="White" CornerRadius="10" BorderBrush="#E8EFED" BorderThickness="1" Margin="12,4,12,12">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="220"/>
@@ -336,40 +343,94 @@
                             <TextBlock Text="{Binding PaginationDisplay}" FontSize="11" Foreground="#64748B" VerticalAlignment="Center"/>
                         </DockPanel>
                     </Border>
-                    <Border DockPanel.Dock="Top" Padding="12,8" BorderBrush="#E8EFED" BorderThickness="0,0,0,1">
-                        <DockPanel>
-                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                                <ComboBox ItemsSource="{Binding SortOptions}" SelectedItem="{Binding SelectedSort}"
-                                          Style="{StaticResource DocumentsFilterCombo}" Width="140" Margin="8,0,0,0"/>
-                                <Border Background="#F1F5F9" CornerRadius="6" Margin="8,0,0,0">
+                    <Border DockPanel.Dock="Top" Background="{StaticResource PatrimoineGelSoftBrush}"
+                            BorderBrush="#D4EDDC" BorderThickness="0,0,0,1" Padding="10,8">
+                        <Grid VerticalAlignment="Center">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Section 1 : Filtres -->
+                            <Border Grid.Column="0" Style="{StaticResource DocumentsFilterSectionCard}" Margin="0,0,8,0">
+                                <StackPanel>
+                                    <TextBlock Text="FILTRES" Style="{StaticResource DocumentsFilterSectionLabel}"/>
                                     <StackPanel Orientation="Horizontal">
-                                        <Button Command="{Binding SetGridViewCommand}" Style="{StaticResource DocumentsToolbarButton}" Padding="8,4">
-                                            <TextBlock Text="Grille" FontSize="11"/>
-                                        </Button>
-                                        <Button Command="{Binding SetTableViewCommand}" Style="{StaticResource DocumentsToolbarButton}" Padding="8,4">
-                                            <TextBlock Text="Tableau" FontSize="11"/>
+                                        <ComboBox ItemsSource="{Binding TypeFilters}" SelectedItem="{Binding FilterType}"
+                                                  Style="{StaticResource DocumentsFilterCombo}"
+                                                  materialDesign:HintAssist.Hint="Type"/>
+                                        <ComboBox ItemsSource="{Binding CategoryFilters}" SelectedItem="{Binding FilterCategory}"
+                                                  Style="{StaticResource DocumentsFilterCombo}"
+                                                  materialDesign:HintAssist.Hint="Catégorie"/>
+                                        <ComboBox ItemsSource="{Binding DateFilters}" SelectedItem="{Binding FilterDate}"
+                                                  Style="{StaticResource DocumentsFilterCombo}"
+                                                  materialDesign:HintAssist.Hint="Date"/>
+                                        <ComboBox ItemsSource="{Binding BuildingFilters}" SelectedItem="{Binding FilterBuilding}"
+                                                  Style="{StaticResource DocumentsFilterCombo}" Margin="0"
+                                                  materialDesign:HintAssist.Hint="Bâtiment"/>
+                                        <Button Command="{Binding OpenAdvancedFiltersCommand}"
+                                                Style="{StaticResource DocumentsFilterActionButton}" Margin="0">
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Kind="FilterVariant" Width="14" Height="14"
+                                                                         Foreground="{StaticResource PatrimoineGelBrush}" Margin="0,0,4,0"/>
+                                                <TextBlock Text="Filtres" VerticalAlignment="Center"/>
+                                            </StackPanel>
                                         </Button>
                                     </StackPanel>
-                                </Border>
-                            </StackPanel>
-                            <WrapPanel>
-                                <ComboBox ItemsSource="{Binding TypeFilters}" SelectedItem="{Binding FilterType}"
-                                          Style="{StaticResource DocumentsFilterCombo}" Width="120" Margin="0,0,4,0"/>
-                                <ComboBox ItemsSource="{Binding CategoryFilters}" SelectedItem="{Binding FilterCategory}"
-                                          Style="{StaticResource DocumentsFilterCombo}" Width="110" Margin="0,0,4,0"/>
-                                <ComboBox ItemsSource="{Binding DateFilters}" SelectedItem="{Binding FilterDate}"
-                                          Style="{StaticResource DocumentsFilterCombo}" Width="100" Margin="0,0,4,0"/>
-                                <ComboBox ItemsSource="{Binding BuildingFilters}" SelectedItem="{Binding FilterBuilding}"
-                                          Style="{StaticResource DocumentsFilterCombo}" Width="120" Margin="0,0,4,0"/>
-                                <Button Style="{StaticResource DocumentsToolbarButton}" Padding="8,4"
-                                        Command="{Binding OpenAdvancedFiltersCommand}">
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Section 2 : Affichage -->
+                            <Border Grid.Column="1" Style="{StaticResource DocumentsFilterSectionCard}">
+                                <StackPanel>
+                                    <TextBlock Text="AFFICHAGE" Style="{StaticResource DocumentsFilterSectionLabel}"/>
                                     <StackPanel Orientation="Horizontal">
-                                        <materialDesign:PackIcon Kind="FilterVariant" Margin="0,0,4,0"/>
-                                        <TextBlock Text="Filtres" FontSize="11"/>
+                                        <ComboBox ItemsSource="{Binding SortOptions}" SelectedItem="{Binding SelectedSort}"
+                                                  Style="{StaticResource DocumentsSortCombo}"
+                                                  materialDesign:HintAssist.Hint="Tri"/>
+                                        <Border Background="{StaticResource PatrimoineGelLightBrush}"
+                                                BorderBrush="#B8DFC8" BorderThickness="1" CornerRadius="7" Padding="2">
+                                            <StackPanel Orientation="Horizontal">
+                                                <Button Command="{Binding SetGridViewCommand}">
+                                                    <Button.Style>
+                                                        <Style TargetType="Button" BasedOn="{StaticResource DocumentsViewToggleButton}">
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsGridView}" Value="True">
+                                                                    <Setter Property="Background" Value="{StaticResource PatrimoineGelBrush}"/>
+                                                                    <Setter Property="Foreground" Value="White"/>
+                                                                    <Setter Property="FontWeight" Value="Bold"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Button.Style>
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <materialDesign:PackIcon Kind="ViewGrid" Width="14" Height="14" Margin="0,0,4,0"/>
+                                                        <TextBlock Text="Grille"/>
+                                                    </StackPanel>
+                                                </Button>
+                                                <Button Command="{Binding SetTableViewCommand}">
+                                                    <Button.Style>
+                                                        <Style TargetType="Button" BasedOn="{StaticResource DocumentsViewToggleButton}">
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsGridView}" Value="False">
+                                                                    <Setter Property="Background" Value="{StaticResource PatrimoineGelBrush}"/>
+                                                                    <Setter Property="Foreground" Value="White"/>
+                                                                    <Setter Property="FontWeight" Value="Bold"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Button.Style>
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <materialDesign:PackIcon Kind="ViewList" Width="14" Height="14" Margin="0,0,4,0"/>
+                                                        <TextBlock Text="Tableau"/>
+                                                    </StackPanel>
+                                                </Button>
+                                            </StackPanel>
+                                        </Border>
                                     </StackPanel>
-                                </Button>
-                            </WrapPanel>
-                        </DockPanel>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
                     </Border>
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="12,8">
                         <Grid>
@@ -655,7 +716,7 @@
             </Grid>
         </Border>
 
-        <ProgressBar Grid.Row="0" Grid.RowSpan="3" IsIndeterminate="True" Height="3" VerticalAlignment="Top"
+        <ProgressBar Grid.Row="0" Grid.RowSpan="4" IsIndeterminate="True" Height="3" VerticalAlignment="Top"
                      Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibilityConverter}}" Foreground="#2D6A4F"/>
     </Grid>
 </UserControl>

@@ -24,6 +24,7 @@ from api.models import (
 )
 from api.sync.utils import (
     MIN_SYNC_DATETIME,
+    inject_entity_id,
     merge_sync_payload,
     normalize_sync_datetime,
     parse_uuid,
@@ -36,20 +37,34 @@ SYNC_ENTITY_TYPES = [
     "SalaryPayments",
     "DisciplinaryNotes",
     "Buildings",
+    "BuildingInfos",
+    "Landlords",
+    "LandlordActivities",
+    "PropertyFloors",
+    "PropertyApartments",
+    "PropertyRooms",
     "RentPayments",
     "TenantActivities",
     "LeaseGuarantees",
+    "TenantDependents",
     "Equipment",
+    "MaintenanceRecords",
+    "RepairRecords",
+    "TechnicalAlerts",
     "Premises",
     "Tenants",
     "LeaseContracts",
     "FinancialTransactions",
     "Suppliers",
+    "SupplierContracts",
+    "SupplierPayments",
     "Incidents",
+    "IncidentInterventions",
     "ConsumptionRecords",
     "Visitors",
     "VisitorAppointments",
     "InventoryItems",
+    "InventoryMaintenanceRecords",
 ]
 
 _HANDLERS: dict[str, Callable[[dict], None]] = {}
@@ -68,6 +83,11 @@ def register_all():
     from api.sync import materializers  # noqa: F401
 
     materializers.register_handlers()
+
+
+def get_registered_handlers() -> dict[str, Callable[[dict], None]]:
+    register_all()
+    return dict(_HANDLERS)
 
 
 def is_syncable(entity_type: str) -> bool:
@@ -119,7 +139,7 @@ def apply_push(entity_type: str, entities: list[dict]) -> int:
 
         handler = _HANDLERS.get(entity_type)
         if handler:
-            handler(data)
+            handler(inject_entity_id(data, entity_id))
 
         applied += 1
 

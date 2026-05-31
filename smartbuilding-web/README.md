@@ -64,6 +64,17 @@ Après connexion desktop, le token JWT est utilisé pour la sync (à brancher c�
 | GET | `/api/executive/tenants/` | Liste locataires |
 | GET | `/api/executive/incidents/` | Liste incidents |
 | GET | `/api/executive/sync-logs/` | Journal sync serveur |
+| GET | `/api/executive/navigation/` | Menu aligné desktop + permissions |
+| GET | `/api/executive/modules/<slug>/` | Données d’un module (lecture) |
+| POST | `/api/executive/validations/expenses/<id>/<action>/` | Valider / refuser une dépense |
+
+## Parité avec le Desktop WPF
+
+Le portail web reprend la **structure de navigation** et les **permissions** du `ModuleRegistry` desktop (Location avec 8 sous-menus, Finances, Technique, Fournisseurs, Consommations, Visites, Emails, Documents, Administration).
+
+Voir le détail des écarts restants : [`docs/WEB_DESKTOP_PARITY.md`](../docs/WEB_DESKTOP_PARITY.md).
+
+**Important** : le web est un portail de **supervision / lecture** (+ validations PDG). Les formulaires CRUD complets, PDF, IMAP et le mode offline restent sur le desktop.
 
 ## Production (données persistantes)
 
