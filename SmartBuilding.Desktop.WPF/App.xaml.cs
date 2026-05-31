@@ -163,6 +163,8 @@ public partial class App : System.Windows.Application
             using (var scope = _host.Services.CreateScope())
             {
                 var db = scope.ServiceProvider.GetRequiredService<SmartBuildingDbContext>();
+                await db.Database.EnsureCreatedAsync();
+                await DatabaseSchemaUpgrader.UpgradeAsync(db);
                 await DatabaseSeeder.SeedAsync(db);
             }
 

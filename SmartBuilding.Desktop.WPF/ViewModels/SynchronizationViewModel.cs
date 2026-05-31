@@ -58,6 +58,7 @@ public partial class SynchronizationViewModel : BaseViewModel
     [ObservableProperty] private string _processedLabel = "0 / 0";
     [ObservableProperty] private string _transferredLabel = "—";
     [ObservableProperty] private string _syncStatusText = "—";
+    [ObservableProperty] private string? _lastSyncError;
 
     [ObservableProperty] private string _appVersion = "v1.0.0";
     [ObservableProperty] private string _sqliteVersion = "3.x";
@@ -161,6 +162,9 @@ public partial class SynchronizationViewModel : BaseViewModel
         ProcessedLabel = $"{data.LastProcessed:N0} / {data.LastTotal:N0}";
         TransferredLabel = data.LastDataTransferred ?? "—";
         SyncStatusText = data.SyncStatusText;
+        LastSyncError = data.LastSyncError;
+        if (!string.IsNullOrWhiteSpace(data.LastSyncError) && data.PendingCount > 0)
+            StatusMessage = data.LastSyncError;
 
         LastSyncBadgeText = data.LastSyncAt.HasValue
             ? data.LastSyncAt.Value.ToLocalTime().ToString("dd MMMM yyyy 'à' HH:mm:ss", new CultureInfo("fr-FR"))

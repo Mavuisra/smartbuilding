@@ -61,6 +61,8 @@ public static class SyncEntityRegistry
     public static IReadOnlyList<string> SyncableTypes { get; } =
         SyncConstants.EntityTypes;
 
+    public static IReadOnlyList<IEntitySyncAdapter> AllAdapters => Adapters;
+
     public static IEntitySyncAdapter? TryGet(string entityType) =>
         ByType.TryGetValue(entityType, out var adapter) ? adapter : null;
 

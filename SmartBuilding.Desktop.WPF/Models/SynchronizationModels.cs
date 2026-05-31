@@ -28,6 +28,7 @@ public sealed class SyncPageData
     public IReadOnlyList<SyncHistoryRow> History { get; init; } = [];
     public IReadOnlyList<SyncAlertRow> Alerts { get; init; } = [];
     public IReadOnlyList<int> Last7DaysCounts { get; init; } = [];
+    public string? LastSyncError { get; init; }
 }
 
 public sealed class SyncDataTypeRow
@@ -63,6 +64,7 @@ public sealed class SyncHistoryRow
     public string DataSizeLabel { get; init; } = "—";
     public string DurationLabel { get; init; } = "—";
     public string UserName { get; init; } = "Système";
+    public string? Detail { get; init; }
 }
 
 public sealed class SyncAlertRow

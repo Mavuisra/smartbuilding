@@ -10,6 +10,11 @@ internal static class SyncJson
         PropertyNameCaseInsensitive = true,
         WriteIndented = false,
         ReferenceHandler = ReferenceHandler.IgnoreCycles,
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+        Converters =
+        {
+            new SyncDateTimeJsonConverter(),
+            new SyncNullableDateTimeJsonConverter(),
+        },
     };
 }

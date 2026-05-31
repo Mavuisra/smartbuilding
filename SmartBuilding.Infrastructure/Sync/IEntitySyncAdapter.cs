@@ -21,6 +21,10 @@ public interface IEntitySyncAdapter
         IReadOnlyList<Guid> ids,
         CancellationToken cancellationToken);
 
+    Task<int> CountUnsyncedAsync(
+        SmartBuildingDbContext context,
+        CancellationToken cancellationToken);
+
     Task<bool> ApplyRemoteAsync(
         SmartBuildingDbContext context,
         SyncEntityPayload remote,

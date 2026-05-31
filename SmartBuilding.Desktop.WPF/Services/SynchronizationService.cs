@@ -14,6 +14,8 @@ using SmartBuilding.Domain.Entities.Location;
 using SmartBuilding.Domain.Entities.Personnel;
 using SmartBuilding.Domain.Entities.Sync;
 using SmartBuilding.Infrastructure.Persistence;
+using SmartBuilding.Infrastructure.Services;
+using SmartBuilding.Infrastructure.Sync;
 using SmartBuilding.Domain.Entities.Technical;
 using SmartBuilding.Domain.Entities.Visitors;
 using SmartBuilding.Desktop.WPF.Models;
@@ -38,6 +40,8 @@ public class SynchronizationService
 
     public async Task<SyncPageData> LoadAsync(DateTime? lastSyncAt, CancellationToken cancellationToken = default)
     {
+        await DatabaseSchemaUpgrader.UpgradeAsync(_db, cancellationToken);
+
         var apiUrl = _configuration["Api:BaseUrl"] ?? "https://localhost:7001/";
         var interval = _configuration.GetValue("Sync:IntervalSeconds", 60);
         var dbPath = DesktopSqlitePaths.GetDatabaseFilePath();
@@ -57,11 +61,16 @@ public class SynchronizationService
         var dataTypes = await BuildDataTypesAsync(cancellationToken);
         var totalRecords = dataTypes.Sum(d => d.Total);
         var syncedCount = dataTypes.Sum(d => d.Synced);
-        var pendingCount = totalRecords - syncedCount;
+        var pendingCount = await SyncCoordinator.CountAllUnsyncedAsync(_db, cancellationToken);
 
         var pendingItems = await BuildPendingItemsAsync(cancellationToken);
         var history = await BuildHistoryAsync(cancellationToken);
         var lastLog = history.FirstOrDefault();
+        var lastSyncError = await _db.SyncLogs.IgnoreQueryFilters()
+            .Where(l => !l.Success && l.ErrorMessage != null && l.ErrorMessage != "")
+            .OrderByDescending(l => l.StartedAt)
+            .Select(l => l.ErrorMessage)
+            .FirstOrDefaultAsync(cancellationToken);
         var conflicts = await BuildConflictsAsync(cancellationToken);
         var alerts = BuildAlerts(pendingCount, conflicts.Count, lastSyncAt, lastLog, cloudOk, isOnline);
         var last7 = await BuildLast7DaysAsync(cancellationToken);
@@ -102,7 +111,8 @@ public class SynchronizationService
             Conflicts = conflicts,
             History = history,
             Alerts = alerts,
-            Last7DaysCounts = last7
+            Last7DaysCounts = last7,
+            LastSyncError = lastSyncError
         };
     }
 
@@ -247,7 +257,8 @@ public class SynchronizationService
             DurationLabel = duration.TotalSeconds > 0
                 ? $"{(int)duration.TotalMinutes:00}:{duration.Seconds:00}"
                 : "—",
-            UserName = log.Direction is "Manual" ? "Admin" : "Système"
+            UserName = log.Direction is "Manual" ? "Admin" : "Système",
+            Detail = log.Success ? null : log.ErrorMessage
         };
     }
 
@@ -287,6 +298,18 @@ public class SynchronizationService
                 Title = "Éléments en attente",
                 Message = $"{pending} élément(s) en attente de synchronisation",
                 TimeLabel = "Maintenant"
+            });
+        }
+
+        if (lastLog is { Success: false } && !string.IsNullOrWhiteSpace(lastLog.Detail))
+        {
+            alerts.Insert(0, new SyncAlertRow
+            {
+                IconKind = "CloseCircle",
+                IconColor = "#DC2626",
+                Title = "Dernière synchronisation échouée",
+                Message = lastLog.Detail.Length > 220 ? lastLog.Detail[..220] + "…" : lastLog.Detail,
+                TimeLabel = FormatTimeAgo(lastLog.StartedAt)
             });
         }
 

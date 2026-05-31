@@ -21,6 +21,11 @@ public static class DatabaseSchemaUpgrader
 
         try
         {
+            // Colonnes critiques en premier (Landlords / BuildingInfos utilisées par la sync EF).
+            await EnsureLandlordsTableAsync(connection, cancellationToken);
+            await EnsureLandlordColumnsAsync(connection, cancellationToken);
+            await EnsureBuildingInfoColumnsAsync(connection, cancellationToken);
+
             await EnsureColumnAsync(connection, "Premises", "Building", "TEXT NOT NULL DEFAULT ''", cancellationToken);
             await EnsureColumnAsync(connection, "Premises", "PremiseType", "TEXT NOT NULL DEFAULT ''", cancellationToken);
 
@@ -171,9 +176,9 @@ public static class DatabaseSchemaUpgrader
 
             await EnsureDisciplinaryNotesTableAsync(connection, cancellationToken);
 
-            await EnsureLandlordsTableAsync(connection, cancellationToken);
             await EnsureLandlordActivitiesTableAsync(connection, cancellationToken);
             await EnsureBuildingsTableAsync(connection, cancellationToken);
+            await EnsureBuildingColumnsAsync(connection, cancellationToken);
             await EnsurePropertyStructureTablesAsync(connection, cancellationToken);
             await EnsureColumnAsync(connection, "Premises", "PropertyApartmentId", "TEXT NULL", cancellationToken);
             await EnsureColumnAsync(connection, "Buildings", "LandlordId", "TEXT NULL", cancellationToken);
@@ -256,23 +261,7 @@ public static class DatabaseSchemaUpgrader
             await EnsureColumnAsync(connection, "BuildingInfos", "NationalId", "TEXT NOT NULL DEFAULT ''", cancellationToken);
             await EnsureColumnAsync(connection, "BuildingInfos", "Website", "TEXT NOT NULL DEFAULT 'www.sbms.cd'", cancellationToken);
 
-            await ExecuteNonQueryAsync(connection, """
-                UPDATE BuildingInfos
-                SET Name = 'SBMS Immobilier SARL',
-                    Address = '123, Avenue de la Gombe',
-                    City = 'Kinshasa',
-                    Country = 'RDC',
-                    Phone = '+243 81 234 5678',
-                    Email = 'contact@sbms.cd',
-                    Website = 'www.sbms.cd',
-                    NationalId = 'ID Nat. —',
-                    TimeZoneId = 'Africa/Kinshasa',
-                    Currency = 'USD'
-                WHERE Country = 'France'
-                   OR City LIKE '%configurer%'
-                   OR Name = 'Smart Building (SB)'
-                   OR Phone IS NULL OR Phone = '';
-                """, cancellationToken);
+            await MigrateBuildingInfoDefaultsAsync(connection, cancellationToken);
         }
         finally
         {
@@ -353,6 +342,99 @@ public static class DatabaseSchemaUpgrader
             """, cancellationToken);
     }
 
+    private static async Task EnsureBuildingInfoColumnsAsync(DbConnection connection, CancellationToken cancellationToken)
+    {
+        if (!await TableExistsAsync(connection, "BuildingInfos", cancellationToken))
+            return;
+
+        await EnsureColumnAsync(connection, "BuildingInfos", "Name", "TEXT NOT NULL DEFAULT ''", cancellationToken);
+        await EnsureColumnAsync(connection, "BuildingInfos", "Address", "TEXT NOT NULL DEFAULT ''", cancellationToken);
+        await EnsureColumnAsync(connection, "BuildingInfos", "City", "TEXT NOT NULL DEFAULT ''", cancellationToken);
+        await EnsureColumnAsync(connection, "BuildingInfos", "Country", "TEXT NOT NULL DEFAULT 'RDC'", cancellationToken);
+        await EnsureColumnAsync(connection, "BuildingInfos", "Phone", "TEXT NOT NULL DEFAULT ''", cancellationToken);
+        await EnsureColumnAsync(connection, "BuildingInfos", "Email", "TEXT NOT NULL DEFAULT ''", cancellationToken);
+        await EnsureColumnAsync(connection, "BuildingInfos", "NationalId", "TEXT NOT NULL DEFAULT ''", cancellationToken);
+        await EnsureColumnAsync(connection, "BuildingInfos", "Website", "TEXT NOT NULL DEFAULT ''", cancellationToken);
+        await EnsureColumnAsync(connection, "BuildingInfos", "TotalFloors", "INTEGER NOT NULL DEFAULT 0", cancellationToken);
+        await EnsureColumnAsync(connection, "BuildingInfos", "TotalPremises", "INTEGER NOT NULL DEFAULT 0", cancellationToken);
+        await EnsureColumnAsync(connection, "BuildingInfos", "TotalAreaSqM", "REAL NOT NULL DEFAULT 0", cancellationToken);
+        await EnsureColumnAsync(connection, "BuildingInfos", "OwnerType", "TEXT NOT NULL DEFAULT 'Particulier'", cancellationToken);
+        await EnsureColumnAsync(connection, "BuildingInfos", "LegalRepresentative", "TEXT NULL", cancellationToken);
+        await EnsureColumnAsync(connection, "BuildingInfos", "SecondaryPhone", "TEXT NULL", cancellationToken);
+        await EnsureColumnAsync(connection, "BuildingInfos", "TaxId", "TEXT NULL", cancellationToken);
+        await EnsureColumnAsync(connection, "BuildingInfos", "BankName", "TEXT NULL", cancellationToken);
+        await EnsureColumnAsync(connection, "BuildingInfos", "BankAccount", "TEXT NULL", cancellationToken);
+        await EnsureColumnAsync(connection, "BuildingInfos", "BuildingDisplayName", "TEXT NOT NULL DEFAULT ''", cancellationToken);
+        await EnsureColumnAsync(connection, "BuildingInfos", "BuildingType", "TEXT NOT NULL DEFAULT ''", cancellationToken);
+        await EnsureColumnAsync(connection, "BuildingInfos", "ApartmentCount", "INTEGER NOT NULL DEFAULT 0", cancellationToken);
+        await EnsureColumnAsync(connection, "BuildingInfos", "CommercialUnitCount", "INTEGER NOT NULL DEFAULT 0", cancellationToken);
+        await EnsureColumnAsync(connection, "BuildingInfos", "ParkingSpaces", "INTEGER NOT NULL DEFAULT 0", cancellationToken);
+        await EnsureColumnAsync(connection, "BuildingInfos", "HasElevator", "INTEGER NOT NULL DEFAULT 0", cancellationToken);
+        await EnsureColumnAsync(connection, "BuildingInfos", "YearBuilt", "INTEGER NULL", cancellationToken);
+        await EnsureColumnAsync(connection, "BuildingInfos", "EquipmentAndInstallations", "TEXT NOT NULL DEFAULT ''", cancellationToken);
+        await EnsureColumnAsync(connection, "BuildingInfos", "ManagementRules", "TEXT NOT NULL DEFAULT ''", cancellationToken);
+        await EnsureColumnAsync(connection, "BuildingInfos", "TimeZoneId", "TEXT NOT NULL DEFAULT 'Africa/Kinshasa'", cancellationToken);
+        await EnsureColumnAsync(connection, "BuildingInfos", "Currency", "TEXT NOT NULL DEFAULT 'USD'", cancellationToken);
+        await EnsureColumnAsync(connection, "BuildingInfos", "UsdExchangeRate", "REAL NOT NULL DEFAULT 2850", cancellationToken);
+        await EnsureColumnAsync(connection, "BuildingInfos", "DateFormat", "TEXT NOT NULL DEFAULT 'dd/MM/yyyy'", cancellationToken);
+        await EnsureColumnAsync(connection, "BuildingInfos", "Language", "TEXT NOT NULL DEFAULT 'Français'", cancellationToken);
+        await EnsureColumnAsync(connection, "BuildingInfos", "TimeFormat", "TEXT NOT NULL DEFAULT '24 heures'", cancellationToken);
+        await EnsureColumnAsync(connection, "BuildingInfos", "MaintenanceMode", "INTEGER NOT NULL DEFAULT 0", cancellationToken);
+        await EnsureColumnAsync(connection, "BuildingInfos", "LogoPath", "TEXT NULL", cancellationToken);
+    }
+
+    private static async Task MigrateBuildingInfoDefaultsAsync(
+        DbConnection connection,
+        CancellationToken cancellationToken)
+    {
+        if (!await TableExistsAsync(connection, "BuildingInfos", cancellationToken))
+            return;
+        if (!await ColumnExistsAsync(connection, "BuildingInfos", "Country", cancellationToken))
+            return;
+
+        await ExecuteNonQueryAsync(connection, """
+            UPDATE BuildingInfos
+            SET Name = 'SBMS Immobilier SARL',
+                Address = '123, Avenue de la Gombe',
+                City = 'Kinshasa',
+                Country = 'RDC',
+                Phone = '+243 81 234 5678',
+                Email = 'contact@sbms.cd',
+                Website = 'www.sbms.cd',
+                NationalId = 'ID Nat. —',
+                TimeZoneId = 'Africa/Kinshasa',
+                Currency = 'USD'
+            WHERE Country = 'France'
+               OR Country IS NULL
+               OR TRIM(Country) = ''
+               OR City LIKE '%configurer%'
+               OR Name = 'Smart Building (SB)'
+               OR Phone IS NULL OR TRIM(Phone) = '';
+            """, cancellationToken);
+    }
+
+    private static async Task EnsureLandlordColumnsAsync(DbConnection connection, CancellationToken cancellationToken)
+    {
+        if (!await TableExistsAsync(connection, "Landlords", cancellationToken))
+            return;
+
+        await EnsureColumnAsync(connection, "Landlords", "ReferenceNumber", "TEXT NOT NULL DEFAULT ''", cancellationToken);
+        await EnsureColumnAsync(connection, "Landlords", "LandlordType", "TEXT NOT NULL DEFAULT 'Particulier'", cancellationToken);
+        await EnsureColumnAsync(connection, "Landlords", "Status", "TEXT NOT NULL DEFAULT 'Actif'", cancellationToken);
+        await EnsureColumnAsync(connection, "Landlords", "Email", "TEXT NOT NULL DEFAULT ''", cancellationToken);
+        await EnsureColumnAsync(connection, "Landlords", "Phone", "TEXT NOT NULL DEFAULT ''", cancellationToken);
+        await EnsureColumnAsync(connection, "Landlords", "SecondaryPhone", "TEXT NULL", cancellationToken);
+        await EnsureColumnAsync(connection, "Landlords", "Address", "TEXT NULL", cancellationToken);
+        await EnsureColumnAsync(connection, "Landlords", "City", "TEXT NULL", cancellationToken);
+        await EnsureColumnAsync(connection, "Landlords", "Country", "TEXT NULL", cancellationToken);
+        await EnsureColumnAsync(connection, "Landlords", "NationalId", "TEXT NULL", cancellationToken);
+        await EnsureColumnAsync(connection, "Landlords", "TaxId", "TEXT NULL", cancellationToken);
+        await EnsureColumnAsync(connection, "Landlords", "ContactPerson", "TEXT NULL", cancellationToken);
+        await EnsureColumnAsync(connection, "Landlords", "BankName", "TEXT NULL", cancellationToken);
+        await EnsureColumnAsync(connection, "Landlords", "BankAccount", "TEXT NULL", cancellationToken);
+        await EnsureColumnAsync(connection, "Landlords", "Notes", "TEXT NULL", cancellationToken);
+    }
+
     private static async Task EnsureLandlordsTableAsync(DbConnection connection, CancellationToken cancellationToken)
     {
         if (await TableExistsAsync(connection, "Landlords", cancellationToken))
@@ -428,6 +510,24 @@ public static class DatabaseSchemaUpgrader
             """, cancellationToken);
     }
 
+    private static async Task EnsureBuildingColumnsAsync(DbConnection connection, CancellationToken cancellationToken)
+    {
+        if (!await TableExistsAsync(connection, "Buildings", cancellationToken))
+            return;
+
+        await EnsureColumnAsync(connection, "Buildings", "LandlordId", "TEXT NULL", cancellationToken);
+        await EnsureColumnAsync(connection, "Buildings", "Code", "TEXT NOT NULL DEFAULT ''", cancellationToken);
+        await EnsureColumnAsync(connection, "Buildings", "FloorCount", "INTEGER NOT NULL DEFAULT 0", cancellationToken);
+        await EnsureColumnAsync(connection, "Buildings", "PremiseCount", "INTEGER NOT NULL DEFAULT 0", cancellationToken);
+        await EnsureColumnAsync(connection, "Buildings", "BuildingType", "TEXT NOT NULL DEFAULT 'Bureau'", cancellationToken);
+        await EnsureColumnAsync(connection, "Buildings", "Capacity", "INTEGER NOT NULL DEFAULT 0", cancellationToken);
+        await EnsureColumnAsync(connection, "Buildings", "Status", "TEXT NOT NULL DEFAULT 'Actif'", cancellationToken);
+        await EnsureColumnAsync(connection, "Buildings", "Equipment", "TEXT NOT NULL DEFAULT ''", cancellationToken);
+        await EnsureColumnAsync(connection, "Buildings", "Zones", "TEXT NOT NULL DEFAULT ''", cancellationToken);
+        await EnsureColumnAsync(connection, "Buildings", "PhotoPath", "TEXT NULL", cancellationToken);
+        await EnsureColumnAsync(connection, "Buildings", "Notes", "TEXT NULL", cancellationToken);
+    }
+
     private static async Task EnsureBuildingsTableAsync(DbConnection connection, CancellationToken cancellationToken)
     {
         if (await TableExistsAsync(connection, "Buildings", cancellationToken))
@@ -436,6 +536,7 @@ public static class DatabaseSchemaUpgrader
         await ExecuteNonQueryAsync(connection, """
             CREATE TABLE IF NOT EXISTS "Buildings" (
                 "Id" TEXT NOT NULL CONSTRAINT "PK_Buildings" PRIMARY KEY,
+                "LandlordId" TEXT NULL,
                 "Code" TEXT NOT NULL,
                 "Name" TEXT NOT NULL,
                 "Address" TEXT NOT NULL,

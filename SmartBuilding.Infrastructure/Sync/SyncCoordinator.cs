@@ -58,4 +58,14 @@ public static class SyncCoordinator
             .Select(x => x.CompletedAt)
             .FirstOrDefaultAsync(cancellationToken);
     }
+
+    public static async Task<int> CountAllUnsyncedAsync(
+        SmartBuildingDbContext context,
+        CancellationToken cancellationToken)
+    {
+        var total = 0;
+        foreach (var adapter in SyncEntityRegistry.AllAdapters)
+            total += await adapter.CountUnsyncedAsync(context, cancellationToken);
+        return total;
+    }
 }

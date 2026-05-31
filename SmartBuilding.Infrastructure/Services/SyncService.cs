@@ -1,4 +1,3 @@
-using System.IO;
 using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -16,11 +15,6 @@ public class SyncService : ISyncService
     private const int PushBatchSize = 200;
 
     private static readonly SemaphoreSlim SyncGate = new(1, 1);
-
-    private static readonly string ApiTokenPath = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "SBMS",
-        "api-token.txt");
 
     private readonly SmartBuildingDbContext _context;
     private readonly INetworkService _network;
@@ -87,25 +81,18 @@ public class SyncService : ISyncService
 
         try
         {
+            await DatabaseSchemaUpgrader.UpgradeAsync(_context, cancellationToken);
+
             _lastSyncAt ??= await SyncCoordinator.GetLastSuccessfulSyncAtAsync(_context, cancellationToken);
             var lastSync = _lastSyncAt ?? DateTime.MinValue;
             var baseUrl = GetApiBaseUrl();
 
-            var token = _configuration["Api:Token"];
-            if (string.IsNullOrWhiteSpace(token))
-                token = LoadTokenFromLocalStore();
-
+            var token = await SyncCloudTokenStore.AcquireAsync(_configuration, cancellationToken: cancellationToken);
             if (string.IsNullOrWhiteSpace(token))
             {
-                token = await CloudApiAuth.LoginAsync(baseUrl, cancellationToken);
-                if (string.IsNullOrWhiteSpace(token))
-                {
-                    return new SyncResult(
-                        false, 0, 0, 0,
-                        "Connexion API refusée — vérifiez que Django tourne (port 8000) et exécutez: python manage.py seed_smartbuilding");
-                }
-
-                PersistApiToken(token);
+                return new SyncResult(
+                    false, 0, 0, 0,
+                    "Connexion API cloud refusée — vérifiez l'URL Render et les comptes admin (admin / Admin@2026).");
             }
 
             using var api = new CloudApiClient(baseUrl, token);
@@ -131,63 +118,73 @@ public class SyncService : ISyncService
                 if (typePushed < 0)
                 {
                     hadFailure = true;
-                    failures.Add($"{entityType}: échec push (voir logs)");
+                    failures.Add(LastPushError ?? $"{entityType}: échec envoi vers le cloud");
                 }
                 else
                 {
                     pushed += typePushed;
                 }
 
-                var pullSince = lastSync;
-                while (true)
+                try
                 {
-                    var pullPath =
-                        $"api/sync/pull?entityType={Uri.EscapeDataString(entityType)}&since={pullSince:O}";
-                    var pullResult = await GetWithAuthRetryAsync<SyncPullResponse>(
-                        api, baseUrl, pullPath, cancellationToken);
-
-                    if (pullResult.Data is null && pullResult.StatusCode is 401 or 403)
+                    var pullSince = lastSync;
+                    while (true)
                     {
-                        hadFailure = true;
-                        failures.Add($"{entityType} pull: HTTP {pullResult.StatusCode} non autorisé");
-                        break;
+                        var pullPath =
+                            $"api/sync/pull?entityType={Uri.EscapeDataString(entityType)}&since={pullSince:O}";
+                        var pullResult = await GetWithAuthRetryAsync<SyncPullResponse>(
+                            api, baseUrl, pullPath, cancellationToken);
+
+                        if (pullResult.StatusCode is 401 or 403)
+                        {
+                            failures.Add($"{entityType} pull: HTTP {pullResult.StatusCode}");
+                            break;
+                        }
+
+                        var entities = pullResult.Data?.Entities;
+                        if (entities is null || entities.Count == 0)
+                            break;
+
+                        conflicts += await SyncCoordinator.ApplyPullAsync(
+                            _context, entityType, entities, cancellationToken);
+                        pulled += entities.Count;
+
+                        if (entities.Count < 200)
+                            break;
+
+                        pullSince = entities.Max(e => e.UpdatedAt);
                     }
-
-                    var entities = pullResult.Data?.Entities;
-                    if (entities is null || entities.Count == 0)
-                        break;
-
-                    conflicts += await SyncCoordinator.ApplyPullAsync(
-                        _context, entityType, entities, cancellationToken);
-                    pulled += entities.Count;
-
-                    if (entities.Count < 200)
-                        break;
-
-                    pullSince = entities.Max(e => e.UpdatedAt);
+                }
+                catch (Exception pullEx)
+                {
+                    failures.Add($"{entityType} pull: {pullEx.Message}");
+                    _logger.LogWarning(pullEx, "Pull ignoré pour {EntityType}", entityType);
                 }
             }
 
-            log.Success = !hadFailure;
+            var remainingPending = await SyncCoordinator.CountAllUnsyncedAsync(_context, cancellationToken);
             log.RecordsPushed = pushed;
             log.RecordsPulled = pulled;
             log.ConflictsResolved = conflicts;
+            log.Success = !hadFailure && remainingPending == 0;
 
-            if (!hadFailure)
+            if (log.Success)
             {
                 _lastSyncAt = DateTime.UtcNow;
                 _logger.LogInformation(
-                    "Sync OK: pushed={Pushed}, pulled={Pulled}, conflicts={Conflicts}",
-                    pushed, pulled, conflicts);
+                    "Sync OK: pushed={Pushed}, pulled={Pulled}, pending=0",
+                    pushed, pulled);
                 return new SyncResult(true, pushed, pulled, conflicts, null);
             }
 
             var message = failures.Count > 0
-                ? "Synchronisation partielle — " + string.Join(" | ", failures.Take(5))
-                : "Synchronisation partielle — certains types n'ont pas été synchronisés.";
+                ? string.Join(" | ", failures.Take(6))
+                : "Synchronisation incomplète.";
+            if (remainingPending > 0)
+                message += $" — {remainingPending} enregistrement(s) encore en attente.";
             log.ErrorMessage = message;
             _logger.LogWarning(message);
-            return new SyncResult(false, pushed, pulled, conflicts, message);
+            return new SyncResult(pushed > 0 && remainingPending == 0, pushed, pulled, conflicts, message);
         }
         catch (Exception ex)
         {
@@ -278,11 +275,20 @@ public class SyncService : ISyncService
 
         if (!pushResult.IsSuccess)
         {
+            var httpErr = Truncate(pushResult.Body);
             _logger.LogWarning(
                 "Push HTTP {Status} pour {EntityType}: {Body}",
                 pushResult.StatusCode,
                 entityType,
-                Truncate(pushResult.Body));
+                httpErr);
+            LastPushError = $"{entityType}: HTTP {pushResult.StatusCode} {httpErr}";
+            return -1;
+        }
+
+        if (!SyncApiResponse.IsApiSuccess(pushResult.Body, out var apiErr))
+        {
+            _logger.LogWarning("Push API {EntityType}: {Error}", entityType, apiErr);
+            LastPushError = $"{entityType}: {apiErr}";
             return -1;
         }
 
@@ -309,17 +315,21 @@ public class SyncService : ISyncService
         }
 
         var pushed = 0;
+        var failedSingles = 0;
         foreach (var single in batch)
         {
             var one = await PushBatchWithSplitAsync(
                 api, baseUrl, adapter, entityType, [single], cancellationToken);
-            if (one < 0)
-                return -1;
-            pushed += one;
+            if (one > 0)
+                pushed += one;
+            else
+                failedSingles++;
         }
 
-        return pushed;
+        return pushed > 0 ? pushed : failedSingles > 0 ? -1 : 0;
     }
+
+    internal static string? LastPushError { get; private set; }
 
     private async Task<CloudApiClient.HttpResult> PostWithAuthRetryAsync<T>(
         CloudApiClient api,
@@ -332,7 +342,8 @@ public class SyncService : ISyncService
         if (result.StatusCode is not 401 and not 403)
             return result;
 
-        var token = await RefreshTokenAsync(baseUrl, cancellationToken);
+        SyncCloudTokenStore.Clear();
+        var token = await SyncCloudTokenStore.AcquireAsync(_configuration, cancellationToken: cancellationToken);
         if (token is null)
             return result;
 
@@ -350,7 +361,8 @@ public class SyncService : ISyncService
         if (first.StatusCode is not 401 and not 403)
             return (first.StatusCode, Deserialize<T>(first.Body));
 
-        var token = await RefreshTokenAsync(baseUrl, cancellationToken);
+        SyncCloudTokenStore.Clear();
+        var token = await SyncCloudTokenStore.AcquireAsync(_configuration, cancellationToken: cancellationToken);
         if (token is null)
             return (first.StatusCode, default);
 
@@ -359,25 +371,13 @@ public class SyncService : ISyncService
         return (retry.StatusCode, Deserialize<T>(retry.Body));
     }
 
-    private async Task<string?> RefreshTokenAsync(string baseUrl, CancellationToken cancellationToken)
-    {
-        ClearPersistedApiToken();
-        var token = await CloudApiAuth.LoginAsync(baseUrl, cancellationToken);
-        if (!string.IsNullOrWhiteSpace(token))
-            PersistApiToken(token);
-        return token;
-    }
-
     private static T? Deserialize<T>(string json)
     {
         if (string.IsNullOrWhiteSpace(json))
             return default;
         try
         {
-            return JsonSerializer.Deserialize<T>(json, new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true,
-            });
+            return JsonSerializer.Deserialize<T>(json, SyncJson.Options);
         }
         catch
         {
@@ -399,46 +399,4 @@ public class SyncService : ISyncService
         return body.Length > 300 ? body[..300] + "..." : body;
     }
 
-    private static void ClearPersistedApiToken()
-    {
-        try
-        {
-            if (File.Exists(ApiTokenPath))
-                File.Delete(ApiTokenPath);
-        }
-        catch
-        {
-            // ignore
-        }
-    }
-
-    private static string? LoadTokenFromLocalStore()
-    {
-        try
-        {
-            if (!File.Exists(ApiTokenPath))
-                return null;
-            var value = File.ReadAllText(ApiTokenPath).Trim();
-            return string.IsNullOrWhiteSpace(value) ? null : value;
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
-    private static void PersistApiToken(string token)
-    {
-        try
-        {
-            var folder = Path.GetDirectoryName(ApiTokenPath);
-            if (!string.IsNullOrWhiteSpace(folder))
-                Directory.CreateDirectory(folder);
-            File.WriteAllText(ApiTokenPath, token.Trim());
-        }
-        catch
-        {
-            // ignore
-        }
-    }
 }

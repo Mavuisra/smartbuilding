@@ -79,6 +79,13 @@ public sealed class EntitySyncAdapter<TEntity> : IEntitySyncAdapter
                 cancellationToken);
     }
 
+    public Task<int> CountUnsyncedAsync(
+        SmartBuildingDbContext context,
+        CancellationToken cancellationToken) =>
+        _dbSet(context)
+            .IgnoreQueryFilters()
+            .CountAsync(x => !x.IsSynced && x.DeletedAt == null, cancellationToken);
+
     public async Task<bool> ApplyRemoteAsync(
         SmartBuildingDbContext context,
         SyncEntityPayload remote,

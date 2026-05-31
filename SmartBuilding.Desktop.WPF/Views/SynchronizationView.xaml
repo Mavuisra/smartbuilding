@@ -354,7 +354,10 @@
                             <TextBlock Text="Données transférées" FontSize="11" Foreground="{StaticResource SbmsTextMutedBrush}"/>
                             <TextBlock Text="{Binding TransferredLabel}" FontWeight="SemiBold" Margin="0,0,0,4"/>
                             <TextBlock Text="Statut" FontSize="11" Foreground="{StaticResource SbmsTextMutedBrush}"/>
-                            <TextBlock Text="{Binding SyncStatusText}" FontWeight="SemiBold" Foreground="#2D6A4F" Margin="0,0,0,12"/>
+                            <TextBlock Text="{Binding SyncStatusText}" FontWeight="SemiBold" Foreground="#2D6A4F"/>
+                            <TextBlock Text="{Binding LastSyncError}" FontSize="11" Foreground="#DC2626" TextWrapping="Wrap"
+                                       Margin="0,6,0,12"
+                                       Visibility="{Binding LastSyncError, Converter={StaticResource NullToVisibilityConverter}}"/>
 
                             <TextBlock Text="Types de données" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,8"/>
                             <ItemsControl ItemsSource="{Binding DataTypes}">
@@ -588,9 +591,16 @@
                                         </DataGridTemplateColumn.CellTemplate>
                                     </DataGridTemplateColumn>
                                     <DataGridTextColumn Header="Éléments" Binding="{Binding ItemsCount}" Width="70"/>
-                                    <DataGridTextColumn Header="Données" Binding="{Binding DataSizeLabel}" Width="80"/>
-                                    <DataGridTextColumn Header="Durée" Binding="{Binding DurationLabel}" Width="70"/>
-                                    <DataGridTextColumn Header="Utilisateur" Binding="{Binding UserName}" Width="*"/>
+                                    <DataGridTextColumn Header="Durée" Binding="{Binding DurationLabel}" Width="60"/>
+                                    <DataGridTextColumn Header="Détail" Binding="{Binding Detail}" Width="*">
+                                        <DataGridTextColumn.ElementStyle>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="TextWrapping" Value="Wrap"/>
+                                                <Setter Property="FontSize" Value="10"/>
+                                                <Setter Property="Foreground" Value="#991B1B"/>
+                                            </Style>
+                                        </DataGridTextColumn.ElementStyle>
+                                    </DataGridTextColumn>
                                 </DataGrid.Columns>
                             </DataGrid>
                         </StackPanel>
