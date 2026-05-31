@@ -156,26 +156,109 @@ def rent_from_sync_store(year: int, month: int) -> tuple[Decimal, Decimal, int, 
     return collected, planned, late_count, late_amount
 
 
+def rent_from_ledger_deduped(
+    year: int, month: int, *, orm_only: bool = False
+) -> tuple[Decimal, Decimal, int, Decimal]:
+    """Recettes « Loyers » dédupliquées (secours si RentPayments absent)."""
+    from api.sync.utils import normalize_sync_datetime
+
+    best: dict[tuple, Decimal] = {}
+
+    def consider(
+        *,
+        description: str,
+        amount: Any,
+        tx_date,
+        reference: str = "",
+        related_entity_id: str | None = None,
+    ) -> None:
+        dt = normalize_sync_datetime(tx_date)
+        if not dt or dt.year != year or dt.month != month:
+            return
+        amt = Decimal(str(amount or 0))
+        if amt <= 0:
+            return
+        key = financial_dedupe_key(
+            reference=reference,
+            description=description,
+            amount=amt,
+            transaction_date=dt,
+            tx_type=1,
+            related_entity_id=related_entity_id,
+        )
+        best[key] = amt
+
+    if not orm_only:
+        for row in SyncedEntityStore.objects.filter(
+            entity_type="FinancialTransactions", deleted_at__isnull=True
+        ).iterator():
+            payload = row.json_data if isinstance(row.json_data, dict) else {}
+            raw_type = pick_sync_value(payload, "Type", "type", default=1)
+            is_income = raw_type in (1, "1", "Recette") or (
+                isinstance(raw_type, str) and "rec" in str(raw_type).lower()
+            )
+            if not is_income:
+                continue
+            cat = str(pick_sync_value(payload, "Category", "category", default="")).lower()
+            desc = str(pick_sync_value(payload, "Description", "description", default=""))
+            if "loyer" not in cat and "loyer" not in desc.lower() and "rent" not in cat:
+                continue
+            rel = pick_sync_value(payload, "RelatedEntityId", "relatedEntityId")
+            consider(
+                description=desc or cat,
+                amount=pick_sync_value(payload, "Amount", "amount", default=0),
+                tx_date=pick_sync_value(payload, "TransactionDate", "transactionDate"),
+                reference=str(pick_sync_value(payload, "Reference", "reference", default="")),
+                related_entity_id=str(rel) if rel else None,
+            )
+
+    qs = FinancialTransaction.objects.filter(
+        deleted_at__isnull=True,
+        type=FinancialTransaction.TxType.RECETTE,
+    )
+    ids = synced_id_set("FinancialTransactions")
+    if ids is not None:
+        qs = qs.filter(id__in=ids)
+    for tx in dedupe_financial_transactions(list(qs)):
+        cat = (tx.category or "").lower()
+        desc = (tx.description or "").lower()
+        if "loyer" not in cat and "loyer" not in desc and "rent" not in cat:
+            continue
+        consider(
+            description=tx.description or tx.category,
+            amount=tx.amount,
+            tx_date=tx.transaction_date,
+            reference=tx.reference or "",
+        )
+
+    if not best:
+        return Decimal("0"), Decimal("0"), 0, Decimal("0")
+    collected = sum(best.values(), Decimal("0"))
+    return collected, collected, 0, Decimal("0")
+
+
 def rent_month_totals(year: int, month: int) -> tuple[Decimal, Decimal, int, Decimal]:
     """
-    Source unique des loyers : table RentPayments (aligné Desktop).
-    Ne jamais sommer le journal FinancialTransactions (doublons).
+    Loyers du mois : RentPayments (priorité Desktop), puis journal Loyers dédupliqué.
     """
     base = RentPayment.objects.filter(
         deleted_at__isnull=True, year=year, month=month
     )
     ids = synced_id_set("RentPayments")
-    if ids is not None:
-        orm_list = list(base.filter(id__in=ids))
-    else:
+    orm_list = list(base.filter(id__in=ids)) if ids is not None else list(base)
+    if not orm_list and ids is not None:
         orm_list = list(base)
     if orm_list:
-        return _sum_rent_payments(_dedupe_rent_payments_orm(orm_list))
+        totals = _sum_rent_payments(_dedupe_rent_payments_orm(orm_list))
+        if totals[0] > 0 or totals[1] > 0:
+            return totals
 
     if sync_store_count("RentPayments") > 0:
-        return rent_from_sync_store(year, month)
+        totals = rent_from_sync_store(year, month)
+        if totals[0] > 0 or totals[1] > 0:
+            return totals
 
-    return Decimal("0"), Decimal("0"), 0, Decimal("0")
+    return rent_from_ledger_deduped(year, month)
 
 
 def rent_from_orm(year: int, month: int, *, synced_only: bool = False) -> tuple[Decimal, Decimal, int, Decimal]:
@@ -192,6 +275,8 @@ def expenses_month_totals(month_start: date) -> Decimal:
     ids = synced_id_set("FinancialTransactions")
     qs = base.filter(id__in=ids) if ids is not None else base
     deduped = dedupe_financial_transactions(list(qs))
+    if not deduped and ids is not None:
+        deduped = dedupe_financial_transactions(list(base))
     if deduped:
         return sum((t.amount for t in deduped), Decimal("0"))
 
@@ -354,8 +439,13 @@ def ensure_dashboard_orm_materialized() -> int:
 
     diag = get_data_pipeline_diagnostics()
     rebuilt = 0
+    targets = list(DASHBOARD_ENTITY_TYPES)
+    if diag.get("syncStoreTotal", 0) > 0:
+        for et in targets:
+            if sync_store_count(et) > 0:
+                rebuilt += rematerialize_entity_type(et)
     for item in diag.get("mismatches") or []:
         et = item.get("entityType")
-        if et in DASHBOARD_ENTITY_TYPES:
+        if et in targets:
             rebuilt += rematerialize_entity_type(et)
     return rebuilt

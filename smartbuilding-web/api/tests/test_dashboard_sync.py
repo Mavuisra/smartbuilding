@@ -155,20 +155,28 @@ class DashboardSyncAlignmentTests(TestCase):
         self.assertEqual(tx.type, FinancialTransaction.TxType.DEPENSE)
         self.assertEqual(tx.amount, Decimal("42"))
 
-    def test_rent_month_ignores_ledger_duplicates(self):
-        """Les KPI loyers ne doivent pas sommer le journal comptable."""
+    def test_rent_month_uses_deduped_ledger_when_no_rent_payments(self):
+        from datetime import date
+
         today = timezone.localdate()
-        for _ in range(5):
-            SyncedEntityStore.objects.create(
-                id=uuid.uuid4(),
-                entity_type="FinancialTransactions",
-                json_data={
-                    "Type": 1,
-                    "Category": "Loyers",
-                    "Amount": 10000,
-                    "TransactionDate": today.isoformat(),
-                },
-                updated_at=timezone.now(),
-            )
+        prev_month = today.month - 1 if today.month > 1 else 12
+        prev_year = today.year if today.month > 1 else today.year - 1
+        for desc, y, m in (
+            ("Loyer 05/2026 — CC", today.year, today.month),
+            ("Loyer 06/2026 — CC", prev_year, prev_month),
+        ):
+            for _ in range(4):
+                SyncedEntityStore.objects.create(
+                    id=uuid.uuid4(),
+                    entity_type="FinancialTransactions",
+                    json_data={
+                        "Type": 1,
+                        "Category": "Loyers",
+                        "Description": desc,
+                        "Amount": 10000,
+                        "TransactionDate": date(y, m, 15).isoformat(),
+                    },
+                    updated_at=timezone.now(),
+                )
         collected, _, _, _ = rent_month_totals(today.year, today.month)
-        self.assertEqual(collected, Decimal("0"))
+        self.assertEqual(collected, Decimal("10000"))
