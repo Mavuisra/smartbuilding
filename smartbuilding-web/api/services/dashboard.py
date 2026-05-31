@@ -21,13 +21,13 @@ from api.services.sync_metrics import (
     calendar_month_starts,
     count_leases_orm,
     count_tenants_orm,
+    ensure_dashboard_orm_materialized,
     expenses_from_orm,
     occupancy_from_orm,
-    prefer_sync_store,
     recent_movements_from_orm,
     rent_from_orm,
     revenue_chart_from_orm,
-    synced_id_set,
+    sync_store_count,
 )
 
 
@@ -36,6 +36,8 @@ def _fc(amount) -> str:
 
 
 def get_executive_summary() -> dict:
+    ensure_dashboard_orm_materialized()
+
     today = timezone.localdate()
     month_start = today.replace(day=1)
 
@@ -55,12 +57,19 @@ def get_executive_summary() -> dict:
         .count()
     )
 
-    active_leases = count_leases_orm()
-    total_tenants = count_tenants_orm()
-    if active_leases == 0:
+    if sync_store_count("LeaseContracts") > 0:
         active_leases = _count_sync_store("LeaseContracts", status_contains="actif")
-    if total_tenants == 0:
+    else:
+        active_leases = count_leases_orm()
+        if active_leases == 0:
+            active_leases = _count_sync_store("LeaseContracts", status_contains="actif")
+
+    if sync_store_count("Tenants") > 0:
         total_tenants = _count_sync_store("Tenants")
+    else:
+        total_tenants = count_tenants_orm()
+        if total_tenants == 0:
+            total_tenants = _count_sync_store("Tenants")
 
     recent_syncs = list(
         ServerSyncEvent.objects.filter(success=True)
@@ -273,73 +282,88 @@ def get_executive_overview() -> dict:
 
 
 def _resolve_month_rent(year: int, month: int) -> tuple[Decimal, Decimal, int, Decimal]:
-    """Loyers du mois : ORM filtré sync, puis JSON magasin si retard matérialisation."""
-    orm = rent_from_orm(year, month)
-    if synced_id_set("RentPayments") is not None:
-        if orm[0] == 0 and orm[1] == 0:
-            return _rent_from_sync_store(year, month)
-        return orm
-    if orm[0] > 0 or orm[1] > 0:
-        return orm
-    if prefer_sync_store("RentPayments", 0):
-        return _rent_from_sync_store(year, month)
-    return orm
+    """Priorité : magasin sync Desktop, puis ORM, puis écritures loyer (FinancialTransactions)."""
+    if sync_store_count("RentPayments") > 0:
+        sync_vals = _rent_from_sync_store(year, month)
+        if sync_vals[0] > 0 or sync_vals[1] > 0:
+            return sync_vals
+        orm_vals = rent_from_orm(year, month, synced_only=True)
+        if orm_vals[0] > 0 or orm_vals[1] > 0:
+            return orm_vals
+        return sync_vals
+
+    orm_vals = rent_from_orm(year, month, synced_only=False)
+    if orm_vals[0] > 0 or orm_vals[1] > 0:
+        return orm_vals
+
+    ledger = _rent_from_ledger_sync_store(year, month)
+    if ledger[0] > 0 or ledger[1] > 0:
+        return ledger
+
+    return _rent_from_sync_store(year, month)
 
 
 def _resolve_expenses_month(month_start) -> Decimal:
-    orm = expenses_from_orm(month_start)
-    if synced_id_set("FinancialTransactions") is not None:
-        if orm == 0:
-            return _expenses_from_sync_store(month_start)
-        return orm
-    if orm > 0:
-        return orm
-    if prefer_sync_store("FinancialTransactions", 0):
-        return _expenses_from_sync_store(month_start)
-    return orm
+    if sync_store_count("FinancialTransactions") > 0:
+        sync_val = _expenses_from_sync_store(month_start)
+        if sync_val > 0:
+            return sync_val
+        orm_val = expenses_from_orm(month_start, synced_only=True)
+        return orm_val if orm_val > 0 else sync_val
+
+    orm_val = expenses_from_orm(month_start, synced_only=False)
+    if orm_val > 0:
+        return orm_val
+    return _expenses_from_sync_store(month_start)
 
 
 def _resolve_occupancy() -> tuple[int, int]:
-    orm = occupancy_from_orm()
-    if synced_id_set("Premises") is not None:
-        if orm[0] == 0:
-            return _occupancy_from_sync_store()
-        return orm
-    if orm[0] > 0:
-        return orm
-    if prefer_sync_store("Premises", 0):
-        return _occupancy_from_sync_store()
-    return orm
+    if sync_store_count("Premises") > 0:
+        sync_vals = _occupancy_from_sync_store()
+        if sync_vals[0] > 0:
+            return sync_vals
+        orm_vals = occupancy_from_orm(synced_only=True)
+        return orm_vals if orm_vals[0] > 0 else sync_vals
+
+    orm_vals = occupancy_from_orm(synced_only=False)
+    if orm_vals[0] > 0:
+        return orm_vals
+    return _occupancy_from_sync_store()
 
 
 def _resolve_revenue_chart(month_starts: list) -> list[dict]:
-    chart = revenue_chart_from_orm(month_starts)
-    if synced_id_set("RentPayments") is not None:
-        if all(p["value"] == 0 for p in chart):
-            return [
-                {
-                    "label": ms.strftime("%b %Y"),
-                    "value": float(_rent_from_sync_store(ms.year, ms.month)[0]),
-                }
-                for ms in month_starts
-            ]
-        return chart
+    if sync_store_count("RentPayments") > 0:
+        return [
+            {
+                "label": ms.strftime("%b %Y"),
+                "value": float(_rent_from_sync_store(ms.year, ms.month)[0]),
+            }
+            for ms in month_starts
+        ]
+
+    chart = revenue_chart_from_orm(month_starts, synced_only=False)
     if any(p["value"] > 0 for p in chart):
         return chart
+
     return [
         {
             "label": ms.strftime("%b %Y"),
-            "value": float(_rent_from_sync_store(ms.year, ms.month)[0]),
+            "value": float(
+                _rent_from_sync_store(ms.year, ms.month)[0]
+                or _rent_from_ledger_sync_store(ms.year, ms.month)[0]
+            ),
         }
         for ms in month_starts
     ]
 
 
 def _resolve_recent_movements(limit: int) -> list[dict]:
-    orm = recent_movements_from_orm(limit)
-    if synced_id_set("FinancialTransactions") is not None:
-        return orm if orm else _recent_movements_from_sync_store(limit)
-    return orm if orm else _recent_movements_from_sync_store(limit)
+    if sync_store_count("FinancialTransactions") > 0:
+        sync_rows = _recent_movements_from_sync_store(limit)
+        if sync_rows:
+            return sync_rows
+    orm_rows = recent_movements_from_orm(limit, synced_only=False)
+    return orm_rows if orm_rows else _recent_movements_from_sync_store(limit)
 
 
 def _pick_json(data: dict, *keys, default=None):
@@ -434,6 +458,29 @@ def _recent_movements_from_sync_store(limit: int) -> list[dict]:
             }
         )
     return rows
+
+
+def _rent_from_ledger_sync_store(year: int, month: int) -> tuple[Decimal, Decimal, int, Decimal]:
+    """Recettes « Loyer » dans FinancialTransactions (si RentPayments absents du sync)."""
+    collected = Decimal("0")
+    for row in SyncedEntityStore.objects.filter(
+        entity_type="FinancialTransactions", deleted_at__isnull=True
+    ).iterator():
+        payload = row.json_data if isinstance(row.json_data, dict) else {}
+        raw_type = _pick_json(payload, "Type", "type", default=1)
+        is_income = raw_type in (1, "1", "Recette") or (
+            isinstance(raw_type, str) and "rec" in str(raw_type).lower()
+        )
+        if not is_income:
+            continue
+        category = str(_pick_json(payload, "Category", "category", default="")).lower()
+        if "loyer" not in category and "rent" not in category:
+            continue
+        dt = parse_datetime_safe(_pick_json(payload, "TransactionDate", "transactionDate"))
+        if not dt or dt.year != year or dt.month != month:
+            continue
+        collected += Decimal(str(_pick_json(payload, "Amount", "amount", default=0) or 0))
+    return collected, collected, 0, Decimal("0")
 
 
 def _rent_from_sync_store(year: int, month: int) -> tuple[Decimal, Decimal, int, Decimal]:

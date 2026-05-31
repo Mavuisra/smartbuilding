@@ -209,7 +209,10 @@ function renderOccupancyChart(rate) {
 function renderDiagnostics(diag) {
   const banner = document.getElementById('diag-banner');
   if (!banner || !diag) return;
-  if (diag.status === 'ok') {
+  const mismatches = (diag.mismatches || [])
+    .map(m => `${m.entityType}: ORM=${m.ormCount}, sync=${m.syncStoreCount}`)
+    .join(' · ');
+  if (diag.status === 'ok' && !mismatches) {
     banner.classList.add('d-none');
     return;
   }
@@ -221,7 +224,8 @@ function renderDiagnostics(diag) {
     ? ` Dernière sync API : ${diag.lastSyncEvent.entityType} (${diag.lastSyncEvent.recordsCount} enr.) le ${fmtDate(diag.lastSyncEvent.createdAt)}.`
     : ' Aucune synchronisation reçue sur ce serveur.';
   banner.className = diag.status === 'empty' ? 'alert alert-warning mb-3' : 'alert alert-info mb-3';
-  banner.innerHTML = `<strong>Données vides ou incomplètes.</strong> ${diag.hint}${storeDetail}${syncEvt}`;
+  const mismatchLine = mismatches ? `<br><small>${mismatches}</small>` : '';
+  banner.innerHTML = `<strong>Données vides ou incomplètes.</strong> ${diag.hint}${storeDetail}${syncEvt}${mismatchLine}`;
   banner.classList.remove('d-none');
 }
 

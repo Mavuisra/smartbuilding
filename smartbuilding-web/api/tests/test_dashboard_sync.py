@@ -8,10 +8,9 @@ from django.test import TestCase
 from django.utils import timezone
 
 from api.models import FinancialTransaction, Premise, RentPayment, SyncedEntityStore
-from api.services.dashboard import get_executive_summary
+from api.services.dashboard import _resolve_month_rent, get_executive_summary
 from api.services.sync_metrics import (
     calendar_month_starts,
-    filter_to_synced,
     rent_from_orm,
     revenue_chart_from_orm,
     synced_id_set,
@@ -48,7 +47,7 @@ class DashboardSyncAlignmentTests(TestCase):
             amount_due=Decimal("500"),
             amount_paid=Decimal("400"),
         )
-        collected, planned, _, _ = rent_from_orm(2026, 5)
+        collected, planned, _, _ = rent_from_orm(2026, 5, synced_only=True)
         self.assertEqual(collected, Decimal("400"))
         self.assertEqual(planned, Decimal("500"))
         self.assertIsNotNone(synced_id_set("RentPayments"))
@@ -70,6 +69,23 @@ class DashboardSyncAlignmentTests(TestCase):
         summary = get_executive_summary()
         self.assertEqual(summary["rentCollected"], 750.0)
         self.assertEqual(summary["rentPlanned"], 1000.0)
+
+    def test_resolve_month_rent_prefers_sync_store(self):
+        today = timezone.localdate()
+        SyncedEntityStore.objects.create(
+            id=uuid.uuid4(),
+            entity_type="RentPayments",
+            json_data={
+                "Year": today.year,
+                "Month": today.month,
+                "AmountDue": 2000,
+                "AmountPaid": 1500,
+            },
+            updated_at=timezone.now(),
+        )
+        collected, planned, _, _ = _resolve_month_rent(today.year, today.month)
+        self.assertEqual(collected, Decimal("1500"))
+        self.assertEqual(planned, Decimal("2000"))
 
     def test_apply_push_materializes_rent_payment(self):
         pay_id = uuid.uuid4()
@@ -134,3 +150,19 @@ class DashboardSyncAlignmentTests(TestCase):
         tx = FinancialTransaction.objects.get(id=tx_id)
         self.assertEqual(tx.type, FinancialTransaction.TxType.DEPENSE)
         self.assertEqual(tx.amount, Decimal("42"))
+
+    def test_ledger_sync_store_rent_fallback(self):
+        today = timezone.localdate()
+        SyncedEntityStore.objects.create(
+            id=uuid.uuid4(),
+            entity_type="FinancialTransactions",
+            json_data={
+                "Type": 1,
+                "Category": "Loyers",
+                "Amount": 888,
+                "TransactionDate": today.isoformat(),
+            },
+            updated_at=timezone.now(),
+        )
+        collected, _, _, _ = _resolve_month_rent(today.year, today.month)
+        self.assertEqual(collected, Decimal("888"))

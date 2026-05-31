@@ -46,6 +46,11 @@ def filter_to_synced(qs: QuerySet, entity_type: str) -> QuerySet:
     return qs
 
 
+def orm_without_sync_filter(qs: QuerySet) -> QuerySet:
+    """ORM complet (modules liste) quand le magasin sync est vide pour ce type."""
+    return qs
+
+
 def prefer_sync_store(entity_type: str, orm_count: int) -> bool:
     """Utilise le JSON sync si le magasin est plus complet que l'ORM filtré."""
     store_count = sync_store_count(entity_type)
@@ -71,10 +76,9 @@ def calendar_month_starts(today: date, months: int = 6) -> list[date]:
     return out
 
 
-def rent_from_orm(year: int, month: int) -> tuple[Decimal, Decimal, int, Decimal]:
-    qs = filter_to_synced(
-        RentPayment.objects.filter(deleted_at__isnull=True), "RentPayments"
-    )
+def rent_from_orm(year: int, month: int, *, synced_only: bool = False) -> tuple[Decimal, Decimal, int, Decimal]:
+    base = RentPayment.objects.filter(deleted_at__isnull=True)
+    qs = filter_to_synced(base, "RentPayments") if synced_only else base
     month_rents = list(qs.filter(year=year, month=month))
     if not month_rents:
         return Decimal("0"), Decimal("0"), 0, Decimal("0")
@@ -88,31 +92,27 @@ def rent_from_orm(year: int, month: int) -> tuple[Decimal, Decimal, int, Decimal
     return collected, planned, late_count, late_amount
 
 
-def expenses_from_orm(month_start: date) -> Decimal:
-    return (
-        filter_to_synced(
-            FinancialTransaction.objects.filter(
-                deleted_at__isnull=True,
-                type=FinancialTransaction.TxType.DEPENSE,
-                transaction_date__date__gte=month_start,
-            ),
-            "FinancialTransactions",
-        ).aggregate(t=Sum("amount"))["t"]
-        or Decimal("0")
+def expenses_from_orm(month_start: date, *, synced_only: bool = False) -> Decimal:
+    base = FinancialTransaction.objects.filter(
+        deleted_at__isnull=True,
+        type=FinancialTransaction.TxType.DEPENSE,
+        transaction_date__date__gte=month_start,
     )
+    qs = filter_to_synced(base, "FinancialTransactions") if synced_only else base
+    return qs.aggregate(t=Sum("amount"))["t"] or Decimal("0")
 
 
-def occupancy_from_orm() -> tuple[int, int]:
-    qs = filter_to_synced(Premise.objects.filter(deleted_at__isnull=True), "Premises")
+def occupancy_from_orm(*, synced_only: bool = False) -> tuple[int, int]:
+    base = Premise.objects.filter(deleted_at__isnull=True)
+    qs = filter_to_synced(base, "Premises") if synced_only else base
     total = qs.count()
     occupied = qs.filter(is_occupied=True).count()
     return total, occupied
 
 
-def revenue_chart_from_orm(month_starts: list[date]) -> list[dict]:
-    qs = filter_to_synced(
-        RentPayment.objects.filter(deleted_at__isnull=True), "RentPayments"
-    )
+def revenue_chart_from_orm(month_starts: list[date], *, synced_only: bool = False) -> list[dict]:
+    base = RentPayment.objects.filter(deleted_at__isnull=True)
+    qs = filter_to_synced(base, "RentPayments") if synced_only else base
     chart = []
     for month_start in month_starts:
         y, m = month_start.year, month_start.month
@@ -126,25 +126,46 @@ def revenue_chart_from_orm(month_starts: list[date]) -> list[dict]:
     return chart
 
 
-def recent_movements_from_orm(limit: int) -> list[dict]:
+def recent_movements_from_orm(limit: int, *, synced_only: bool = False) -> list[dict]:
+    base = FinancialTransaction.objects.filter(deleted_at__isnull=True)
+    qs = filter_to_synced(base, "FinancialTransactions") if synced_only else base
     return list(
-        filter_to_synced(
-            FinancialTransaction.objects.filter(deleted_at__isnull=True),
-            "FinancialTransactions",
+        qs.order_by("-transaction_date")[:limit].values(
+            "transaction_date", "type", "category", "description", "amount", "reference"
         )
-        .order_by("-transaction_date")[:limit]
-        .values("transaction_date", "type", "category", "description", "amount", "reference")
     )
 
 
-def count_leases_orm() -> int:
-    return filter_to_synced(
-        LeaseContract.objects.filter(deleted_at__isnull=True, status__icontains="Actif"),
-        "LeaseContracts",
-    ).count()
+def count_leases_orm(*, synced_only: bool = False) -> int:
+    base = LeaseContract.objects.filter(deleted_at__isnull=True, status__icontains="Actif")
+    qs = filter_to_synced(base, "LeaseContracts") if synced_only else base
+    return qs.count()
 
 
-def count_tenants_orm() -> int:
-    return filter_to_synced(
-        Tenant.objects.filter(deleted_at__isnull=True), "Tenants"
-    ).count()
+def count_tenants_orm(*, synced_only: bool = False) -> int:
+    base = Tenant.objects.filter(deleted_at__isnull=True)
+    qs = filter_to_synced(base, "Tenants") if synced_only else base
+    return qs.count()
+
+
+DASHBOARD_ENTITY_TYPES = (
+    "RentPayments",
+    "Premises",
+    "LeaseContracts",
+    "Tenants",
+    "FinancialTransactions",
+)
+
+
+def ensure_dashboard_orm_materialized() -> int:
+    """Rejoue les matérialiseurs si le magasin sync est en avance sur l'ORM."""
+    from api.services.diagnostics import get_data_pipeline_diagnostics
+    from api.sync.registry import rematerialize_entity_type
+
+    diag = get_data_pipeline_diagnostics()
+    rebuilt = 0
+    for item in diag.get("mismatches") or []:
+        et = item.get("entityType")
+        if et in DASHBOARD_ENTITY_TYPES:
+            rebuilt += rematerialize_entity_type(et)
+    return rebuilt

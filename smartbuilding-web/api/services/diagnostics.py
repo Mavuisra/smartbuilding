@@ -68,22 +68,39 @@ def get_data_pipeline_diagnostics() -> dict:
     orm_business = sum(orm.values()) - orm.get("employees", 0)
     has_orm = orm_business > 0
     has_store = store_total > 0
+    business_types = (
+        "RentPayments",
+        "Premises",
+        "LeaseContracts",
+        "Tenants",
+        "FinancialTransactions",
+        "Buildings",
+    )
+    business_in_store = sum(store_by_type.get(t, 0) for t in business_types)
 
-    if has_orm:
+    if has_orm and business_in_store > 0:
         status = "ok"
-        hint_fr = "Données métier présentes dans PostgreSQL/SQLite."
-    elif has_store:
+        hint_fr = "Données métier présentes (ORM + sync Desktop)."
+    elif has_orm:
+        status = "ok"
+        hint_fr = "Données métier présentes dans PostgreSQL."
+    elif business_in_store > 0:
         status = "sync_store_only"
         hint_fr = (
-            "Des données existent dans le magasin sync mais pas dans les tables métier. "
-            "Exécutez : python manage.py rebuild_from_sync_store"
+            "Données Desktop dans le magasin sync — matérialisation ORM en cours ou incomplète. "
+            "Le tableau de bord lit le magasin sync ; si les chiffres restent à 0, relancez la sync Desktop."
+        )
+    elif has_store:
+        status = "sync_partial"
+        hint_fr = (
+            "Synchronisation reçue (ex. utilisateurs) mais pas encore de Locations/Finances. "
+            "Depuis le Desktop : Administration → Synchronisation → Synchroniser maintenant."
         )
     else:
         status = "empty"
         hint_fr = (
-            "Aucune donnée sur ce serveur. Depuis le Desktop : Paramètres → Synchronisation "
-            "(ou bouton sync), avec Api:BaseUrl pointant vers CE serveur. "
-            "En local : appsettings.Development.json → http://127.0.0.1:8000/"
+            "Aucune donnée sur ce serveur. Depuis le Desktop : Administration → Synchronisation "
+            "(Api:BaseUrl = https://smartbuilding-0kbk.onrender.com/), puis Synchroniser maintenant."
         )
 
     return {
