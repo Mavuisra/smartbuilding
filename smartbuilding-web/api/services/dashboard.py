@@ -1,7 +1,6 @@
 from datetime import timedelta
 from decimal import Decimal
 
-from django.db.models import Sum
 from django.utils import timezone
 
 from api.models import (
@@ -17,6 +16,18 @@ from api.models import (
     Tenant,
 )
 from api.services.diagnostics import get_data_pipeline_diagnostics
+from api.services.sync_metrics import (
+    calendar_month_starts,
+    count_leases_orm,
+    count_tenants_orm,
+    expenses_from_orm,
+    occupancy_from_orm,
+    prefer_sync_store,
+    recent_movements_from_orm,
+    rent_from_orm,
+    revenue_chart_from_orm,
+    synced_id_set,
+)
 
 
 def _fc(amount) -> str:
@@ -27,36 +38,13 @@ def get_executive_summary() -> dict:
     today = timezone.localdate()
     month_start = today.replace(day=1)
 
-    rent_qs = RentPayment.objects.filter(deleted_at__isnull=True)
-    month_rents = list(rent_qs.filter(year=today.year, month=today.month))
-    if month_rents:
-        rent_collected = sum((r.amount_paid for r in month_rents), Decimal("0"))
-        rent_planned = sum((r.amount_due for r in month_rents), Decimal("0"))
-        late_count = sum(1 for r in month_rents if r.is_late or r.amount_paid < r.amount_due)
-        rent_late_amount = sum(
-            (r.amount_due - r.amount_paid for r in month_rents if r.amount_paid < r.amount_due),
-            Decimal("0"),
-        )
-    else:
-        rent_collected, rent_planned, late_count, rent_late_amount = _rent_from_sync_store(
-            today.year, today.month
-        )
-
-    expenses_month = (
-        FinancialTransaction.objects.filter(
-            deleted_at__isnull=True,
-            type=FinancialTransaction.TxType.DEPENSE,
-            transaction_date__date__gte=month_start,
-        ).aggregate(t=Sum("amount"))["t"]
-        or Decimal("0")
+    rent_collected, rent_planned, late_count, rent_late_amount = _resolve_month_rent(
+        today.year, today.month
     )
-    if expenses_month == 0:
-        expenses_month = _expenses_from_sync_store(month_start)
 
-    total_premises = Premise.objects.filter(deleted_at__isnull=True).count()
-    occupied = Premise.objects.filter(deleted_at__isnull=True, is_occupied=True).count()
-    if total_premises == 0:
-        total_premises, occupied = _occupancy_from_sync_store()
+    expenses_month = _resolve_expenses_month(month_start)
+
+    total_premises, occupied = _resolve_occupancy()
     occupancy = (occupied / total_premises * 100) if total_premises else 0
 
     closed_statuses = {"Clôturé", "Cloture", "Résolu", "Resolu", "4", "3"}
@@ -66,10 +54,8 @@ def get_executive_summary() -> dict:
         .count()
     )
 
-    active_leases = LeaseContract.objects.filter(
-        deleted_at__isnull=True, status__icontains="Actif"
-    ).count()
-    total_tenants = Tenant.objects.filter(deleted_at__isnull=True).count()
+    active_leases = count_leases_orm()
+    total_tenants = count_tenants_orm()
     if active_leases == 0:
         active_leases = _count_sync_store("LeaseContracts", status_contains="actif")
     if total_tenants == 0:
@@ -81,20 +67,10 @@ def get_executive_summary() -> dict:
         .values("username", "user_role", "entity_type", "records_count", "created_at")
     )
 
-    revenue_chart = []
-    for i in range(5, -1, -1):
-        d = month_start - timedelta(days=30 * i)
-        y, m = d.year, d.month
-        val = rent_qs.filter(year=y, month=m).aggregate(t=Sum("amount_paid"))["t"] or 0
-        revenue_chart.append({"label": d.strftime("%b %Y"), "value": float(val)})
+    month_starts = calendar_month_starts(today)
+    revenue_chart = _resolve_revenue_chart(month_starts)
 
-    recent_movements = list(
-        FinancialTransaction.objects.filter(deleted_at__isnull=True)
-        .order_by("-transaction_date")[:8]
-        .values("transaction_date", "type", "category", "description", "amount", "reference")
-    )
-    if not recent_movements:
-        recent_movements = _recent_movements_from_sync_store(8)
+    recent_movements = _resolve_recent_movements(8)
 
     alerts = []
     if rent_late_amount > 0:
@@ -293,6 +269,76 @@ def get_executive_overview() -> dict:
             else 0.0,
         },
     }
+
+
+def _resolve_month_rent(year: int, month: int) -> tuple[Decimal, Decimal, int, Decimal]:
+    """Loyers du mois : ORM filtré sync, puis JSON magasin si retard matérialisation."""
+    orm = rent_from_orm(year, month)
+    if synced_id_set("RentPayments") is not None:
+        if orm[0] == 0 and orm[1] == 0:
+            return _rent_from_sync_store(year, month)
+        return orm
+    if orm[0] > 0 or orm[1] > 0:
+        return orm
+    if prefer_sync_store("RentPayments", 0):
+        return _rent_from_sync_store(year, month)
+    return orm
+
+
+def _resolve_expenses_month(month_start) -> Decimal:
+    orm = expenses_from_orm(month_start)
+    if synced_id_set("FinancialTransactions") is not None:
+        if orm == 0:
+            return _expenses_from_sync_store(month_start)
+        return orm
+    if orm > 0:
+        return orm
+    if prefer_sync_store("FinancialTransactions", 0):
+        return _expenses_from_sync_store(month_start)
+    return orm
+
+
+def _resolve_occupancy() -> tuple[int, int]:
+    orm = occupancy_from_orm()
+    if synced_id_set("Premises") is not None:
+        if orm[0] == 0:
+            return _occupancy_from_sync_store()
+        return orm
+    if orm[0] > 0:
+        return orm
+    if prefer_sync_store("Premises", 0):
+        return _occupancy_from_sync_store()
+    return orm
+
+
+def _resolve_revenue_chart(month_starts: list) -> list[dict]:
+    chart = revenue_chart_from_orm(month_starts)
+    if synced_id_set("RentPayments") is not None:
+        if all(p["value"] == 0 for p in chart):
+            return [
+                {
+                    "label": ms.strftime("%b %Y"),
+                    "value": float(_rent_from_sync_store(ms.year, ms.month)[0]),
+                }
+                for ms in month_starts
+            ]
+        return chart
+    if any(p["value"] > 0 for p in chart):
+        return chart
+    return [
+        {
+            "label": ms.strftime("%b %Y"),
+            "value": float(_rent_from_sync_store(ms.year, ms.month)[0]),
+        }
+        for ms in month_starts
+    ]
+
+
+def _resolve_recent_movements(limit: int) -> list[dict]:
+    orm = recent_movements_from_orm(limit)
+    if synced_id_set("FinancialTransactions") is not None:
+        return orm if orm else _recent_movements_from_sync_store(limit)
+    return orm if orm else _recent_movements_from_sync_store(limit)
 
 
 def _pick_json(data: dict, *keys, default=None):

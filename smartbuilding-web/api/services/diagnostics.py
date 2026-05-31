@@ -39,6 +39,31 @@ def get_data_pipeline_diagnostics() -> dict:
         if c:
             store_by_type[et] = c
 
+    orm_by_type = {
+        "RentPayments": orm["rentPayments"],
+        "Premises": orm["premises"],
+        "FinancialTransactions": orm["transactions"],
+        "Tenants": orm["tenants"],
+        "LeaseContracts": orm["leases"],
+        "Employees": orm["employees"],
+    }
+    mismatches = []
+    for et, orm_n in orm_by_type.items():
+        store_n = store_by_type.get(et, 0)
+        if store_n > 0 and orm_n < store_n:
+            mismatches.append(
+                {
+                    "entityType": et,
+                    "ormCount": orm_n,
+                    "syncStoreCount": store_n,
+                    "hint": (
+                        "ORM incomplet — le dashboard utilise le magasin sync. "
+                        "Lancez : python manage.py rebuild_from_sync_store "
+                        f"--entity-type={et}"
+                    ),
+                }
+            )
+
     last_event = ServerSyncEvent.objects.order_by("-created_at").first()
     orm_business = sum(orm.values()) - orm.get("employees", 0)
     has_orm = orm_business > 0
@@ -67,6 +92,7 @@ def get_data_pipeline_diagnostics() -> dict:
         "ormCounts": orm,
         "syncStoreTotal": store_total,
         "syncStoreByType": store_by_type,
+        "mismatches": mismatches,
         "lastSyncEvent": (
             {
                 "username": last_event.username,

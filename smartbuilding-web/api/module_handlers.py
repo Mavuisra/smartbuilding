@@ -26,6 +26,7 @@ from api.models import (
     Visitor,
 )
 from api.services.dashboard import get_executive_summary, get_sync_health
+from api.services.sync_metrics import filter_to_synced
 from api.sync.materializers import repair_employees_from_sync_store
 from api.module_data_utils import iso, module_payload, money, pick_sync_value, rows_from_sync_store
 
@@ -110,7 +111,9 @@ def locations_list():
             "Loyer": _money(p.monthly_rent),
             "Statut": "Occupé" if p.is_occupied else "Libre",
         }
-        for p in Premise.objects.filter(deleted_at__isnull=True).order_by("code")[:300]
+        for p in filter_to_synced(
+            Premise.objects.filter(deleted_at__isnull=True), "Premises"
+        ).order_by("code")[:300]
     ]
     if not rows:
         rows = _rows_from_sync_store(
@@ -126,8 +129,12 @@ def locations_list():
                 else "Libre",
             },
         )
-    total = Premise.objects.filter(deleted_at__isnull=True).count()
-    occupied = Premise.objects.filter(deleted_at__isnull=True, is_occupied=True).count()
+    total = filter_to_synced(
+        Premise.objects.filter(deleted_at__isnull=True), "Premises"
+    ).count()
+    occupied = filter_to_synced(
+        Premise.objects.filter(deleted_at__isnull=True), "Premises"
+    ).filter(is_occupied=True).count()
     if total == 0 and rows:
         total = len(rows)
         occupied = sum(1 for r in rows if r.get("Statut") == "Occupé")
@@ -153,7 +160,9 @@ def locations_contracts():
             "Loyer mensuel": _money(c.monthly_rent),
             "Statut": c.status or "—",
         }
-        for c in LeaseContract.objects.filter(deleted_at__isnull=True).order_by("-updated_at")[:300]
+        for c in filter_to_synced(
+            LeaseContract.objects.filter(deleted_at__isnull=True), "LeaseContracts"
+        ).order_by("-updated_at")[:300]
     ]
     if not rows:
         rows = _rows_from_sync_store(
@@ -172,12 +181,19 @@ def locations_contracts():
         "Contrats",
         rows,
         [
-            {"label": "Contrats", "value": LeaseContract.objects.filter(deleted_at__isnull=True).count()},
+            {
+                "label": "Contrats",
+                "value": filter_to_synced(
+                    LeaseContract.objects.filter(deleted_at__isnull=True), "LeaseContracts"
+                ).count(),
+            },
             {
                 "label": "Actifs",
-                "value": LeaseContract.objects.filter(
-                    deleted_at__isnull=True, status__icontains="actif"
-                ).count(),
+                "value": filter_to_synced(
+                    LeaseContract.objects.filter(deleted_at__isnull=True), "LeaseContracts"
+                )
+                .filter(status__icontains="actif")
+                .count(),
             },
         ],
     )
@@ -194,7 +210,9 @@ def locations_rent_payments():
             "Statut": p.payment_status or "—",
             "Retard": "Oui" if p.is_late else "Non",
         }
-        for p in RentPayment.objects.filter(deleted_at__isnull=True).order_by("-year", "-month")[:300]
+        for p in filter_to_synced(
+            RentPayment.objects.filter(deleted_at__isnull=True), "RentPayments"
+        ).order_by("-year", "-month")[:300]
     ]
     if not rows:
         rows = _rows_from_sync_store(
@@ -209,12 +227,19 @@ def locations_rent_payments():
                 "Retard": "Oui" if _pick_sync_value(d, "IsLate", "isLate", default=False) else "Non",
             },
         )
-    late = RentPayment.objects.filter(deleted_at__isnull=True, is_late=True).count()
+    late = filter_to_synced(
+        RentPayment.objects.filter(deleted_at__isnull=True), "RentPayments"
+    ).filter(is_late=True).count()
     return _module_payload(
         "Paiements loyer",
         rows,
         [
-            {"label": "Paiements", "value": RentPayment.objects.filter(deleted_at__isnull=True).count()},
+            {
+                "label": "Paiements",
+                "value": filter_to_synced(
+                    RentPayment.objects.filter(deleted_at__isnull=True), "RentPayments"
+                ).count(),
+            },
             {"label": "En retard", "value": late},
         ],
     )
@@ -312,7 +337,9 @@ def locations_apartments():
             "Surface m²": p.area_sq_m,
             "Loyer": _money(p.monthly_rent),
         }
-        for p in Premise.objects.filter(deleted_at__isnull=True).order_by("building_name", "code")[:300]
+        for p in filter_to_synced(
+            Premise.objects.filter(deleted_at__isnull=True), "Premises"
+        ).order_by("building_name", "code")[:300]
     ]
     if not rows:
         rows = _rows_from_sync_store(
@@ -401,9 +428,10 @@ def finances():
             "Statut": t.status or "—",
             "Référence": t.reference or "—",
         }
-        for t in FinancialTransaction.objects.filter(deleted_at__isnull=True).order_by(
-            "-transaction_date"
-        )[:300]
+        for t in filter_to_synced(
+            FinancialTransaction.objects.filter(deleted_at__isnull=True),
+            "FinancialTransactions",
+        ).order_by("-transaction_date")[:300]
     ]
     if not ledger_rows:
         ledger_rows = _finance_rows_from_sync_store()

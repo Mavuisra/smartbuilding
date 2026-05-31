@@ -296,17 +296,25 @@ def _mirror_validation_to_sync_store(tx: FinancialTransaction) -> None:
 
 
 def ledger_income_expense_totals() -> tuple[Decimal, Decimal]:
+    from api.services.sync_metrics import filter_to_synced
+
     income = (
-        FinancialTransaction.objects.filter(
-            deleted_at__isnull=True,
-            type=FinancialTransaction.TxType.RECETTE,
+        filter_to_synced(
+            FinancialTransaction.objects.filter(
+                deleted_at__isnull=True,
+                type=FinancialTransaction.TxType.RECETTE,
+            ),
+            "FinancialTransactions",
         ).aggregate(t=Sum("amount"))["t"]
         or Decimal("0")
     )
     expenses = (
-        FinancialTransaction.objects.filter(
-            deleted_at__isnull=True,
-            type=FinancialTransaction.TxType.DEPENSE,
+        filter_to_synced(
+            FinancialTransaction.objects.filter(
+                deleted_at__isnull=True,
+                type=FinancialTransaction.TxType.DEPENSE,
+            ),
+            "FinancialTransactions",
         ).aggregate(t=Sum("amount"))["t"]
         or Decimal("0")
     )

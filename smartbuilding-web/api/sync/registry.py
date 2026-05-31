@@ -1,9 +1,12 @@
 import json
+import logging
 from datetime import datetime
 from typing import Any, Callable
 
 from django.db import transaction
 from django.utils import timezone
+
+logger = logging.getLogger(__name__)
 
 from api.models import (
     Building,
@@ -136,11 +139,39 @@ def apply_push(entity_type: str, entities: list[dict]) -> int:
 
         handler = _HANDLERS.get(entity_type)
         if handler:
-            handler(inject_entity_id(data, entity_id))
+            try:
+                handler(inject_entity_id(data, entity_id))
+            except Exception:
+                logger.exception(
+                    "Matérialisation échouée pour %s/%s", entity_type, entity_id
+                )
 
         applied += 1
 
     return applied
+
+
+def rematerialize_entity_type(entity_type: str) -> int:
+    """Rejoue les handlers ORM pour toutes les lignes du magasin sync (type donné)."""
+    register_all()
+    handler = _HANDLERS.get(entity_type)
+    if not handler:
+        return 0
+    done = 0
+    for row in SyncedEntityStore.objects.filter(
+        entity_type=entity_type, deleted_at__isnull=True
+    ).iterator():
+        payload = row.json_data if isinstance(row.json_data, dict) else {}
+        if not payload:
+            continue
+        try:
+            handler(inject_entity_id(payload, row.id))
+            done += 1
+        except Exception:
+            logger.exception(
+                "Rematérialisation échouée pour %s/%s", entity_type, row.id
+            )
+    return done
 
 
 def get_changes_since(
