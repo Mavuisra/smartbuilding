@@ -25,6 +25,15 @@ public class FinanceLedgerService
         if (amountCollected <= 0)
             return;
 
+        var alreadyLinked = await _db.FinancialTransactions.AnyAsync(
+            t => t.RelatedEntityId == payment.Id
+                 && t.Type == TransactionType.Recette
+                 && t.Category == FinanceConstants.CategoryRent
+                 && t.DeletedAt == null,
+            cancellationToken);
+        if (alreadyLinked)
+            return;
+
         var tenant = await _db.Tenants
             .AsNoTracking()
             .FirstOrDefaultAsync(t => t.Id == contract.TenantId, cancellationToken);
@@ -436,7 +445,22 @@ public class FinanceLedgerService
     private async Task<string> NextReferenceAsync(TransactionType type, CancellationToken cancellationToken)
     {
         var prefix = type == TransactionType.Recette ? "REV" : "DEP";
-        var count = await _db.FinancialTransactions.CountAsync(cancellationToken) + 1;
-        return $"{prefix}-{DateTime.Today:yyyyMM}-{count:D4}";
+        var month = DateTime.Today.ToString("yyyyMM");
+        var pattern = $"{prefix}-{month}-";
+        var existing = await _db.FinancialTransactions
+            .Where(t => t.Reference != null && t.Reference.StartsWith(pattern))
+            .Select(t => t.Reference!)
+            .ToListAsync(cancellationToken);
+        var maxSeq = 0;
+        foreach (var reference in existing)
+        {
+            var tail = reference.Length > pattern.Length
+                ? reference[pattern.Length..]
+                : "";
+            if (int.TryParse(tail, out var seq) && seq > maxSeq)
+                maxSeq = seq;
+        }
+
+        return $"{pattern}{maxSeq + 1:D4}";
     }
 }

@@ -17,6 +17,7 @@ from api.models import (
     Tenant,
 )
 from api.services.diagnostics import get_data_pipeline_diagnostics
+from api.services.finance_ledger import dedupe_financial_transactions
 from api.services.sync_metrics import (
     calendar_month_starts,
     count_leases_orm,
@@ -362,8 +363,23 @@ def _resolve_recent_movements(limit: int) -> list[dict]:
         sync_rows = _recent_movements_from_sync_store(limit)
         if sync_rows:
             return sync_rows
-    orm_rows = recent_movements_from_orm(limit, synced_only=False)
-    return orm_rows if orm_rows else _recent_movements_from_sync_store(limit)
+    base = FinancialTransaction.objects.filter(deleted_at__isnull=True).order_by(
+        "-transaction_date"
+    )[: limit * 3]
+    deduped = dedupe_financial_transactions(list(base))[:limit]
+    if deduped:
+        return [
+            {
+                "transaction_date": t.transaction_date,
+                "type": t.type,
+                "category": t.category,
+                "description": t.description,
+                "amount": t.amount,
+                "reference": t.reference,
+            }
+            for t in deduped
+        ]
+    return _recent_movements_from_sync_store(limit)
 
 
 def _pick_json(data: dict, *keys, default=None):

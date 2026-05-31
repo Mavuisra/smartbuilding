@@ -26,7 +26,11 @@ from api.models import (
     Visitor,
 )
 from api.services.dashboard import get_executive_summary, get_sync_health
-from api.services.sync_metrics import filter_to_synced
+from api.services.finance_ledger import (
+    dedupe_sync_financial_rows,
+    queryset_to_deduped_list,
+)
+from api.services.sync_metrics import filter_to_synced, sync_store_count
 from api.sync.materializers import repair_employees_from_sync_store
 from api.module_data_utils import iso, module_payload, money, pick_sync_value, rows_from_sync_store
 
@@ -375,17 +379,21 @@ def _finance_rows_from_sync_store():
             return "Dépense"
         return "Recette"
 
-    return _rows_from_sync_store(
-        ["FinancialTransactions"],
-        lambda d: {
+    def map_row(d: dict) -> dict:
+        return {
             "Date": _pick_sync_value(d, "TransactionDate", "transactionDate"),
             "Type": tx_type_label(_pick_sync_value(d, "Type", "type", default=1)),
             "Catégorie": _pick_sync_value(d, "Category", "category"),
             "Description": _pick_sync_value(d, "Description", "description"),
             "Montant": _money(_pick_sync_value(d, "Amount", "amount", default=0)),
             "Statut": _pick_sync_value(d, "Status", "status"),
-        },
-    )
+            "Référence": _pick_sync_value(d, "Reference", "reference", default="—"),
+        }
+
+    rows = dedupe_sync_financial_rows(map_row, limit=300)
+    for row in rows:
+        row.setdefault("Référence", "—")
+    return rows
 
 
 def _finance_totals_from_sync_store() -> tuple[float, float]:
@@ -418,6 +426,14 @@ def finances():
     pending_summary = pending_validation_summary(pending)
     pending_rows = [e.to_validation_dict() for e in pending]
 
+    base_qs = FinancialTransaction.objects.filter(deleted_at__isnull=True)
+    if sync_store_count("FinancialTransactions") > 0:
+        txs = queryset_to_deduped_list(
+            filter_to_synced(base_qs, "FinancialTransactions")
+        )
+    else:
+        txs = queryset_to_deduped_list(base_qs)
+
     ledger_rows = [
         {
             "Date": _iso(t.transaction_date),
@@ -428,15 +444,10 @@ def finances():
             "Statut": t.status or "—",
             "Référence": t.reference or "—",
         }
-        for t in filter_to_synced(
-            FinancialTransaction.objects.filter(deleted_at__isnull=True),
-            "FinancialTransactions",
-        ).order_by("-transaction_date")[:300]
+        for t in txs[:300]
     ]
     if not ledger_rows:
         ledger_rows = _finance_rows_from_sync_store()
-        for row in ledger_rows:
-            row.setdefault("Référence", "—")
 
     income, expenses = ledger_income_expense_totals()
     if not income and not expenses:
