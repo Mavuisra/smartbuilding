@@ -42,6 +42,7 @@ public partial class VisitsViewModel : BaseViewModel
     [ObservableProperty] private int _notificationCount = 5;
     [ObservableProperty] private int _pageSize = 10;
     [ObservableProperty] private int _filteredTotal;
+    [ObservableProperty] private bool _hasVisitsInGrid;
     [ObservableProperty] private bool _isDetailPanelOpen;
     [ObservableProperty] private int _selectedDetailTab;
     [ObservableProperty] private bool _isAddFormOpen;
@@ -136,6 +137,11 @@ public partial class VisitsViewModel : BaseViewModel
             HostFilters.Add(AllHosts);
             foreach (var h in _allVisits.Select(v => v.HostName).Distinct().OrderBy(x => x)) HostFilters.Add(h);
 
+            BuildingFilters.Clear();
+            BuildingFilters.Add(AllBuildings);
+            foreach (var b in _allVisits.Select(v => v.Building).Where(s => !string.IsNullOrWhiteSpace(s)).Distinct().OrderBy(x => x))
+                BuildingFilters.Add(b);
+
             BuildCharts(data);
             CurrentPage = 1;
             ApplyFilters();
@@ -145,7 +151,12 @@ public partial class VisitsViewModel : BaseViewModel
         finally { IsBusy = false; }
     }
 
-    [RelayCommand] private void CloseDetailPanel() { IsDetailPanelOpen = false; SelectedVisit = null; }
+    [RelayCommand]
+    private void CloseDetailPanel()
+    {
+        SelectedVisit = null;
+        IsDetailPanelOpen = false;
+    }
     [RelayCommand] private void SetDetailTab(object? p) => SelectedDetailTab = TabNavigationHelper.ParseIndex(p);
 
     [RelayCommand]
@@ -208,9 +219,6 @@ public partial class VisitsViewModel : BaseViewModel
     [RelayCommand] private async Task RefreshAsync() => await LoadAsync();
 
     [RelayCommand]
-    private void ExportCsv() => StatusMessage = $"Export : {VisitsExportService.ExportCsv(_allVisits)}";
-
-    [RelayCommand]
     private async Task SyncAsync()
     {
         IsBusy = true;
@@ -227,7 +235,7 @@ public partial class VisitsViewModel : BaseViewModel
     [RelayCommand] private void PreviousPage() { if (CurrentPage > 1) { CurrentPage--; ApplyFilters(); } }
     [RelayCommand] private void NextPage() { if (CurrentPage < TotalPages) { CurrentPage++; ApplyFilters(); } }
 
-    partial void OnSelectedVisitChanged(VisitListItem? value) => IsDetailPanelOpen = value is not null;
+    partial void OnSelectedVisitChanged(VisitListItem? value) => IsDetailPanelOpen = true;
     partial void OnSearchQueryChanged(string value) => ResetPageAndFilter();
     partial void OnTableSearchQueryChanged(string value) => ResetPageAndFilter();
     partial void OnFilterTypeChanged(string value) => ResetPageAndFilter();
@@ -272,6 +280,7 @@ public partial class VisitsViewModel : BaseViewModel
 
         var start = filtered.Count == 0 ? 0 : skip + 1;
         PaginationText = $"Affichage de {start} à {skip + Visits.Count} sur {list.Count} visite(s)";
+        HasVisitsInGrid = Visits.Count > 0;
     }
 
     private void BuildCharts(VisitsPageData data)

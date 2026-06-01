@@ -241,12 +241,15 @@ async function loadDashboard() {
     const unreadNotifications = overview.unreadNotifications || 0;
     const presence = overview.presence || { activeEmployees: 0, totalEmployees: 0, rate: 0 };
 
-    const net = Number(s.netBalance || 0);
-    const netTrend = net >= 0 ? 'Solde positif' : 'Solde négatif';
-    const netClass = net >= 0 ? 'text-success' : 'text-danger';
+    const treasury = Number(s.availableBalance ?? s.netBalance ?? 0);
+    const treasuryMonth = Number(s.netBalanceThisMonth ?? s.availableThisMonth ?? 0);
+    const netTrend = treasury >= 0 ? 'Solde positif' : 'Solde négatif';
+    const netClass = treasury >= 0 ? 'text-success' : 'text-danger';
+    const treasurySub = `Ce mois ${fmtMoney(treasuryMonth)} · ${fmtMoney(s.rentCollectedTotal ?? s.monthlyRevenue)} − ${fmtMoney(s.totalExpenses)}`;
     document.getElementById('kpi-row').innerHTML = [
-      kpiCard('Loyers encaissés (mois)', fmtMoney(s.rentCollected), `Prévu ${fmtMoney(s.rentPlanned)}`, 'bi bi-currency-dollar', 'text-success'),
-      kpiCard('Dépenses (mois)', fmtMoney(s.monthlyExpenses), netTrend, 'bi bi-wallet2', netClass),
+      kpiCard('Trésorerie disponible', fmtMoney(treasury), treasurySub, 'bi bi-piggy-bank', netClass),
+      kpiCard('Loyers encaissés (total)', fmtMoney(s.rentCollectedTotal ?? s.monthlyRevenue), `Ce mois ${fmtMoney(s.rentCollected)} · prévu ${fmtMoney(s.rentPlanned)}`, 'bi bi-currency-dollar', 'text-success'),
+      kpiCard('Dépenses engagées (total)', fmtMoney(s.totalExpenses), `Ce mois ${fmtMoney(s.expensesThisMonth)} · ${netTrend}`, 'bi bi-wallet2', netClass),
       kpiCard('Bâtiments occupés', `${s.occupiedPremises} / ${s.totalPremises}`, `${Number(s.occupancyRate || 0).toFixed(0)}% occupation`, 'bi bi-buildings', s.totalPremises ? 'text-success' : 'text-muted'),
       kpiCard('Contrats actifs', s.activeLeases || 0, `${s.totalTenants || 0} locataire(s)`, 'bi bi-file-earmark-text', s.activeLeases ? 'text-success' : 'text-muted'),
       kpiCard('Loyers en retard', fmtMoney(s.rentLateAmount), `${s.latePayments || 0} paiement(s)`, 'bi bi-exclamation-triangle', s.rentLateAmount > 0 ? 'text-danger' : 'text-success'),

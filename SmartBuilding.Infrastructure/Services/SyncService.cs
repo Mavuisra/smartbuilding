@@ -68,11 +68,15 @@ public class SyncService : ISyncService
         if (IsSyncing)
             return new SyncResult(false, 0, 0, 0, "Synchronisation déjà en cours.");
 
+        var storedToken = SyncCloudTokenStore.Load();
+        if (!manual && string.IsNullOrWhiteSpace(storedToken))
+            return new SyncResult(false, 0, 0, 0, null);
+
         if (!await IsOnlineAsync(cancellationToken))
             return new SyncResult(false, 0, 0, 0, "Hors ligne — synchronisation reportée.");
 
         IsSyncing = true;
-        var log = new SyncLog { StartedAt = DateTime.UtcNow, Direction = manual ? "Manual" : "Auto" };
+        var log = new SyncLog { StartedAt = DateTime.UtcNow, Direction = manual ? "Manual" : "Auto", IsSynced = true };
         var pushed = 0;
         var pulled = 0;
         var conflicts = 0;
@@ -87,16 +91,24 @@ public class SyncService : ISyncService
             var lastSync = _lastSyncAt ?? DateTime.MinValue;
             var baseUrl = GetApiBaseUrl();
 
-            var token = await SyncCloudTokenStore.AcquireAsync(_configuration, cancellationToken: cancellationToken);
+            var token = storedToken;
+            if (string.IsNullOrWhiteSpace(token) && manual)
+                token = await SyncCloudTokenStore.AcquireAsync(_configuration, cancellationToken: cancellationToken);
+
             if (string.IsNullOrWhiteSpace(token))
             {
                 return new SyncResult(
                     false, 0, 0, 0,
-                    "Connexion API cloud refusée — vérifiez l'URL Render et les comptes admin (admin / Admin@2026).");
+                    manual
+                        ? "Synchronisation cloud indisponible — l'application fonctionne en mode local."
+                        : null);
             }
 
             using var api = new CloudApiClient(baseUrl, token);
+            var deviceLabel = DesktopSyncDevice.GetDeviceLabel();
+            log.Direction = manual ? $"Manual ({deviceLabel})" : $"Auto ({deviceLabel})";
 
+            // Phase 1 — Push : envoyer toutes les modifications locales (offline first).
             foreach (var entityType in SyncEntityRegistry.SyncableTypes)
             {
                 var adapter = SyncEntityRegistry.TryGet(entityType);
@@ -107,8 +119,6 @@ public class SyncService : ISyncService
                     _logger.LogWarning("Adaptateur sync manquant pour {EntityType}", entityType);
                     continue;
                 }
-
-                var pendingAtStart = await adapter.GetLocalChangesAsync(_context, cancellationToken);
 
                 var typePushed = await PushAllPendingAsync(
                     api,
@@ -126,47 +136,28 @@ public class SyncService : ISyncService
                 {
                     pushed += typePushed;
                 }
+            }
 
-                // Ne pas tirer depuis le cloud juste après un push local : le JSON serveur
-                // contient souvent isSynced=false et peut annuler le marquage ExecuteUpdate.
-                if (pendingAtStart.Count > 0)
-                {
-                    _logger.LogDebug(
-                        "Pull ignoré pour {EntityType} ({Pending} en attente au départ)",
-                        entityType,
-                        pendingAtStart.Count);
+            await _context.SaveChangesAsync(cancellationToken);
+
+            // Phase 2 — Pull : récupérer les changements des autres postes via PostgreSQL.
+            foreach (var entityType in SyncEntityRegistry.SyncableTypes)
+            {
+                var adapter = SyncEntityRegistry.TryGet(entityType);
+                if (adapter is null)
                     continue;
-                }
 
                 try
                 {
-                    var pullSince = lastSync;
-                    while (true)
-                    {
-                        var pullPath =
-                            $"api/sync/pull?entityType={Uri.EscapeDataString(entityType)}&since={pullSince:O}";
-                        var pullResult = await GetWithAuthRetryAsync<SyncPullResponse>(
-                            api, baseUrl, pullPath, cancellationToken);
-
-                        if (pullResult.StatusCode is 401 or 403)
-                        {
-                            failures.Add($"{entityType} pull: HTTP {pullResult.StatusCode}");
-                            break;
-                        }
-
-                        var entities = pullResult.Data?.Entities;
-                        if (entities is null || entities.Count == 0)
-                            break;
-
-                        conflicts += await SyncCoordinator.ApplyPullAsync(
-                            _context, entityType, entities, cancellationToken);
-                        pulled += entities.Count;
-
-                        if (entities.Count < 200)
-                            break;
-
-                        pullSince = entities.Max(e => e.UpdatedAt);
-                    }
+                    var pullResult = await PullEntityTypeAsync(
+                        api,
+                        baseUrl,
+                        entityType,
+                        lastSync,
+                        cancellationToken,
+                        failures);
+                    pulled += pullResult.Pulled;
+                    conflicts += pullResult.Conflicts;
                 }
                 catch (Exception pullEx)
                 {
@@ -174,6 +165,10 @@ public class SyncService : ISyncService
                     _logger.LogWarning(pullEx, "Pull ignoré pour {EntityType}", entityType);
                 }
             }
+
+            await _context.SaveChangesAsync(cancellationToken);
+
+            await DatabaseSeeder.EnsureReservedAdminAccountsAsync(_context, cancellationToken);
 
             var remainingPending = await SyncCoordinator.CountAllUnsyncedAsync(_context, cancellationToken);
             if (remainingPending > 0)
@@ -225,6 +220,48 @@ public class SyncService : ISyncService
             else
                 _lastSyncAt = await SyncCoordinator.GetLastSuccessfulSyncAtAsync(_context, cancellationToken);
         }
+    }
+
+    private async Task<(int Pulled, int Conflicts)> PullEntityTypeAsync(
+        CloudApiClient api,
+        string baseUrl,
+        string entityType,
+        DateTime lastSync,
+        CancellationToken cancellationToken,
+        List<string> failures)
+    {
+        var pulled = 0;
+        var conflicts = 0;
+        var pullSince = lastSync;
+
+        while (true)
+        {
+            var pullPath =
+                $"api/sync/pull?entityType={Uri.EscapeDataString(entityType)}&since={pullSince:O}";
+            var pullResult = await GetWithAuthRetryAsync<SyncPullResponse>(
+                api, baseUrl, pullPath, cancellationToken);
+
+            if (pullResult.StatusCode is 401 or 403)
+            {
+                failures.Add($"{entityType} pull: HTTP {pullResult.StatusCode}");
+                break;
+            }
+
+            var entities = pullResult.Data?.Entities;
+            if (entities is null || entities.Count == 0)
+                break;
+
+            conflicts += await SyncCoordinator.ApplyPullAsync(
+                _context, entityType, entities, cancellationToken);
+            pulled += entities.Count;
+
+            if (entities.Count < 200)
+                break;
+
+            pullSince = entities.Max(e => e.UpdatedAt);
+        }
+
+        return (pulled, conflicts);
     }
 
     /// <summary>

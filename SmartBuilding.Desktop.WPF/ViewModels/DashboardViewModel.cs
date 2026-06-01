@@ -30,6 +30,8 @@ public partial class DashboardViewModel : BaseViewModel
     [ObservableProperty] private string _availableBalanceDisplay = MoneyFormatter.ZeroDisplay;
     [ObservableProperty] private string _rentCollectedTotalDisplay = MoneyFormatter.ZeroDisplay;
     [ObservableProperty] private string _monthlyExpensesDisplay = MoneyFormatter.ZeroDisplay;
+    [ObservableProperty] private string _expensesSubtitleDisplay = "—";
+    [ObservableProperty] private string _balanceSubtitleDisplay = "—";
     [ObservableProperty] private string _rentCollectionRateDisplay = "0 %";
     [ObservableProperty] private double _rentCollectionRate;
     [ObservableProperty] private ISeries[] _financeTrendSeries = [];
@@ -74,16 +76,24 @@ public partial class DashboardViewModel : BaseViewModel
         try
         {
             Summary = await _dashboardService.GetSummaryAsync();
-            MonthlyRevenueDisplay = Fc(Summary.RentCollected);
+            MonthlyRevenueDisplay = Fc(Summary.RentCollectedTotal);
             RentCollectedDisplay = Fc(Summary.RentCollected);
             RentSubtitleDisplay = Summary.RentPlanned > 0
-                ? $"{Fc(Summary.RentCollected)} / {Fc(Summary.RentPlanned)} prévus"
-                : "Aucun loyer prévu ce mois";
+                ? $"Ce mois : {Fc(Summary.RentCollected)} / {Fc(Summary.RentPlanned)} prévus"
+                : Summary.RentCollected > 0
+                    ? $"Ce mois : {Fc(Summary.RentCollected)}"
+                    : "Aucun loyer prévu ce mois";
             RentLateDisplay = Summary.RentLateAmount > 0 ? Fc(Summary.RentLateAmount) : Summary.LatePayments.ToString();
-            NetBalanceDisplay = Fc(Summary.NetBalance);
-            AvailableBalanceDisplay = Fc(Summary.AvailableThisMonth);
+            AvailableBalanceDisplay = Fc(Summary.AvailableBalance);
+            NetBalanceDisplay = Fc(Summary.AvailableBalance);
+            BalanceSubtitleDisplay = Summary.AvailableThisMonth != Summary.AvailableBalance
+                ? $"Ce mois : {Fc(Summary.AvailableThisMonth)} · {Fc(Summary.RentCollectedTotal)} − {Fc(Summary.TotalExpensesAllTime)}"
+                : $"{Fc(Summary.RentCollectedTotal)} − {Fc(Summary.TotalExpensesAllTime)}";
             RentCollectedTotalDisplay = Fc(Summary.RentCollectedTotal);
-            MonthlyExpensesDisplay = Fc(Summary.MonthlyExpenses);
+            MonthlyExpensesDisplay = Fc(Summary.TotalExpensesAllTime);
+            ExpensesSubtitleDisplay = Summary.MonthlyExpenses > 0
+                ? $"Ce mois : {Fc(Summary.MonthlyExpenses)}"
+                : "Aucune dépense ce mois";
             RentCollectionRate = Summary.RentPlanned > 0
                 ? Math.Min(100, (double)(Summary.RentCollected / Summary.RentPlanned) * 100)
                 : Summary.RentCollected > 0 ? 100 : 0;

@@ -23,9 +23,19 @@ public static class DesktopDatabaseResetService
         SmartBuildingDbContext? activeContext = null,
         CancellationToken cancellationToken = default)
     {
+        var isMySql = activeContext?.Database.ProviderName?.Contains("MySql", StringComparison.OrdinalIgnoreCase) == true;
+
         if (activeContext is not null)
         {
             await activeContext.Database.CloseConnectionAsync();
+        }
+
+        if (isMySql && activeContext is not null)
+        {
+            await activeContext.Database.EnsureDeletedAsync(cancellationToken);
+            await activeContext.Database.MigrateAsync(cancellationToken);
+            await DatabaseSeeder.SeedAsync(activeContext);
+            return;
         }
 
         SqliteConnection.ClearAllPools();

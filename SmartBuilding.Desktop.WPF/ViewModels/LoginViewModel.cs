@@ -1,10 +1,9 @@
 using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Microsoft.Extensions.Configuration;
 using SmartBuilding.Application.Interfaces;
 using SmartBuilding.Desktop.WPF.Services;
-using SmartBuilding.Infrastructure.Sync;
+using SmartBuilding.Infrastructure.Services;
 using SmartBuilding.Shared.DTOs.Auth;
 
 namespace SmartBuilding.Desktop.WPF.ViewModels;
@@ -13,7 +12,6 @@ public partial class LoginViewModel : BaseViewModel
 {
     private readonly IAuthService _authService;
     private readonly SessionService _session;
-    private readonly IConfiguration _configuration;
     private readonly Action _onLoginSuccess;
 
     [ObservableProperty] private string _username = string.Empty;
@@ -24,12 +22,10 @@ public partial class LoginViewModel : BaseViewModel
     public LoginViewModel(
         IAuthService authService,
         SessionService session,
-        IConfiguration configuration,
         Action onLoginSuccess)
     {
         _authService = authService;
         _session = session;
-        _configuration = configuration;
         _onLoginSuccess = onLoginSuccess;
         Username = LoadRememberedUsername() ?? "admin";
     }
@@ -49,7 +45,7 @@ public partial class LoginViewModel : BaseViewModel
 
             if (result is null)
             {
-                ErrorMessage = "Nom d'utilisateur ou mot de passe incorrect.";
+                ErrorMessage = "Nom d'utilisateur ou mot de passe incorrect. Essayez admin / Admin@2026 (compte local).";
                 return;
             }
 
@@ -58,17 +54,15 @@ public partial class LoginViewModel : BaseViewModel
 
             _session.SetUser(result);
 
-            await SyncCloudTokenStore.AcquireAsync(
-                _configuration,
-                Username.Trim(),
-                Password,
-                cancellationToken: default);
-
             var invoke = System.Windows.Application.Current?.Dispatcher;
             if (invoke is not null && !invoke.CheckAccess())
                 invoke.Invoke(_onLoginSuccess);
             else
                 _onLoginSuccess();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = DbSaveExceptionTranslator.ToUserMessage(ex);
         }
         finally
         {

@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using SmartBuilding.Application.Interfaces;
 using SmartBuilding.Desktop.WPF.Services;
 using SmartBuilding.Desktop.WPF.ViewModels;
@@ -163,8 +164,9 @@ public partial class App : System.Windows.Application
             using (var scope = _host.Services.CreateScope())
             {
                 var db = scope.ServiceProvider.GetRequiredService<SmartBuildingDbContext>();
-                await db.Database.EnsureCreatedAsync();
-                await DatabaseSchemaUpgrader.UpgradeAsync(db);
+                var localDb = scope.ServiceProvider.GetRequiredService<DesktopLocalDatabaseConfig>();
+                var logger = scope.ServiceProvider.GetService<ILogger<App>>();
+                await DesktopDatabaseInitializer.InitializeAsync(db, localDb, logger);
                 await DatabaseSeeder.SeedAsync(db);
             }
 

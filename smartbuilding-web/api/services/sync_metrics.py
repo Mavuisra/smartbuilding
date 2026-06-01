@@ -237,6 +237,64 @@ def rent_from_ledger_deduped(
     return collected, collected, 0, Decimal("0")
 
 
+def rent_all_time_collected() -> Decimal:
+    """Somme de tous les loyers encaissés (toutes périodes)."""
+    base = RentPayment.objects.filter(deleted_at__isnull=True)
+    ids = synced_id_set("RentPayments")
+    orm_list = list(base.filter(id__in=ids)) if ids is not None else list(base)
+    if not orm_list and ids is not None:
+        orm_list = list(base)
+    if orm_list:
+        return _sum_rent_payments(_dedupe_rent_payments_orm(orm_list))[0]
+
+    if sync_store_count("RentPayments") > 0:
+        best: dict[tuple, Decimal] = {}
+        for row in SyncedEntityStore.objects.filter(
+            entity_type="RentPayments", deleted_at__isnull=True
+        ).iterator():
+            payload = row.json_data if isinstance(row.json_data, dict) else {}
+            y = int(pick_sync_value(payload, "Year", "year", default=0) or 0)
+            m = int(pick_sync_value(payload, "Month", "month", default=0) or 0)
+            lease = str(
+                pick_sync_value(payload, "LeaseContractId", "leaseContractId") or row.id
+            )
+            key = (y, m, lease)
+            paid = Decimal(
+                str(pick_sync_value(payload, "AmountPaid", "amountPaid", default=0) or 0)
+            )
+            prev = best.get(key)
+            if prev is None or paid >= prev:
+                best[key] = paid
+        if best:
+            return sum(best.values(), Decimal("0"))
+
+    # Secours : recettes loyer du journal (toutes dates)
+    from api.sync.utils import normalize_sync_datetime
+
+    ledger_best: dict[tuple, Decimal] = {}
+    for row in SyncedEntityStore.objects.filter(
+        entity_type="FinancialTransactions", deleted_at__isnull=True
+    ).iterator():
+        payload = row.json_data if isinstance(row.json_data, dict) else {}
+        raw_type = pick_sync_value(payload, "Type", "type", default=1)
+        is_receipt = raw_type in (1, "1", "Recette") or (
+            isinstance(raw_type, str) and "rec" in str(raw_type).lower()
+        )
+        if not is_receipt:
+            continue
+        cat = str(pick_sync_value(payload, "Category", "category", default="") or "")
+        if "loyer" not in cat.lower() and "rent" not in cat.lower():
+            continue
+        dt = normalize_sync_datetime(
+            pick_sync_value(payload, "TransactionDate", "transactionDate")
+        )
+        amount = Decimal(str(pick_sync_value(payload, "Amount", "amount", default=0) or 0))
+        ref = str(pick_sync_value(payload, "Reference", "reference", default="") or "")
+        key = (ref, dt.date() if dt else None, amount)
+        ledger_best[key] = amount
+    return sum(ledger_best.values(), Decimal("0"))
+
+
 def rent_month_totals(year: int, month: int) -> tuple[Decimal, Decimal, int, Decimal]:
     """
     Loyers du mois : RentPayments (priorité Desktop), puis journal Loyers dédupliqué.
@@ -265,13 +323,15 @@ def rent_from_orm(year: int, month: int, *, synced_only: bool = False) -> tuple[
     return rent_month_totals(year, month)
 
 
-def expenses_month_totals(month_start: date) -> Decimal:
-    """Dépenses du mois, écritures dédupliquées."""
+def _expenses_totals(*, month_start: date | None = None) -> Decimal:
+    """Dépenses dédupliquées (mois ou cumul total)."""
     base = FinancialTransaction.objects.filter(
         deleted_at__isnull=True,
         type=FinancialTransaction.TxType.DEPENSE,
-        transaction_date__date__gte=month_start,
-    )
+    ).exclude(status="En attente validation PDG")
+    if month_start is not None:
+        base = base.filter(transaction_date__date__gte=month_start)
+
     ids = synced_id_set("FinancialTransactions")
     qs = base.filter(id__in=ids) if ids is not None else base
     deduped = dedupe_financial_transactions(list(qs))
@@ -280,7 +340,6 @@ def expenses_month_totals(month_start: date) -> Decimal:
     if deduped:
         return sum((t.amount for t in deduped), Decimal("0"))
 
-    total = Decimal("0")
     seen: dict[tuple, Decimal] = {}
     for row in SyncedEntityStore.objects.filter(
         entity_type="FinancialTransactions", deleted_at__isnull=True
@@ -292,12 +351,15 @@ def expenses_month_totals(month_start: date) -> Decimal:
         )
         if not is_expense:
             continue
+        status = str(pick_sync_value(payload, "Status", "status", default="") or "")
+        if status == "En attente validation PDG":
+            continue
         from api.sync.utils import normalize_sync_datetime
 
         dt = normalize_sync_datetime(
             pick_sync_value(payload, "TransactionDate", "transactionDate")
         )
-        if dt and dt.date() < month_start:
+        if month_start is not None and dt and dt.date() < month_start:
             continue
         rel = pick_sync_value(payload, "RelatedEntityId", "relatedEntityId")
         key = financial_dedupe_key(
@@ -310,6 +372,16 @@ def expenses_month_totals(month_start: date) -> Decimal:
         )
         seen[key] = Decimal(str(pick_sync_value(payload, "Amount", "amount", default=0) or 0))
     return sum(seen.values(), Decimal("0"))
+
+
+def expenses_month_totals(month_start: date) -> Decimal:
+    """Dépenses du mois, écritures dédupliquées."""
+    return _expenses_totals(month_start=month_start)
+
+
+def expenses_all_time_totals() -> Decimal:
+    """Dépenses engagées cumulées (toutes périodes)."""
+    return _expenses_totals(month_start=None)
 
 
 def occupancy_totals() -> tuple[int, int]:

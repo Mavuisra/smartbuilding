@@ -4,6 +4,8 @@ using SmartBuilding.Domain.Entities.Auth;
 using SmartBuilding.Domain.Enums;
 using SmartBuilding.Desktop.WPF.Models;
 using SmartBuilding.Infrastructure.Persistence;
+using SmartBuilding.Infrastructure.Services;
+using SmartBuilding.Shared.Constants;
 
 namespace SmartBuilding.Desktop.WPF.Services;
 
@@ -201,6 +203,115 @@ public class UsersModuleService
         return sessions;
     }
 
+    public async Task<(bool Ok, string? Error)> CreateUserAsync(
+        string username,
+        string fullName,
+        string email,
+        string password,
+        UserRole role,
+        CancellationToken cancellationToken = default)
+    {
+        username = username.Trim();
+        if (string.IsNullOrWhiteSpace(username))
+            return (false, "L'identifiant est obligatoire.");
+        if (string.IsNullOrWhiteSpace(password) || password.Length < 6)
+            return (false, "Le mot de passe doit contenir au moins 6 caractères.");
+        if (await _db.Users.AnyAsync(u => u.Username == username, cancellationToken))
+            return (false, "Cet identifiant existe déjà.");
+
+        var user = new User
+        {
+            Username = username,
+            FullName = string.IsNullOrWhiteSpace(fullName) ? username : fullName.Trim(),
+            Email = email.Trim(),
+            PasswordHash = AuthService.HashPassword(password),
+            Role = role,
+            IsActive = true
+        };
+        _db.Users.Add(user);
+        await _db.SaveChangesAsync(cancellationToken);
+        return (true, null);
+    }
+
+    public async Task<(bool Ok, string? Error)> UpdateUserAsync(
+        Guid userId,
+        string fullName,
+        string email,
+        UserRole role,
+        string? newPassword,
+        CancellationToken cancellationToken = default)
+    {
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
+        if (user is null)
+            return (false, "Utilisateur introuvable.");
+
+        if (user.Role == UserRole.Administrateur && role != UserRole.Administrateur)
+        {
+            var otherAdmins = await _db.Users.CountAsync(
+                u => u.Id != userId && u.IsActive && u.Role == UserRole.Administrateur && u.DeletedAt == null,
+                cancellationToken);
+            if (otherAdmins == 0)
+                return (false, "Impossible de retirer le rôle du dernier administrateur actif.");
+        }
+
+        user.FullName = string.IsNullOrWhiteSpace(fullName) ? user.Username : fullName.Trim();
+        user.Email = email.Trim();
+        user.Role = role;
+        if (!string.IsNullOrWhiteSpace(newPassword))
+        {
+            if (newPassword.Length < 6)
+                return (false, "Le mot de passe doit contenir au moins 6 caractères.");
+            user.PasswordHash = AuthService.HashPassword(newPassword);
+        }
+
+        await _db.SaveChangesAsync(cancellationToken);
+        return (true, null);
+    }
+
+    public async Task<(bool Ok, string? Error)> ResetPasswordAsync(
+        Guid userId,
+        string newPassword,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(newPassword) || newPassword.Length < 6)
+            return (false, "Le mot de passe doit contenir au moins 6 caractères.");
+
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
+        if (user is null)
+            return (false, "Utilisateur introuvable.");
+
+        user.PasswordHash = AuthService.HashPassword(newPassword);
+        await _db.SaveChangesAsync(cancellationToken);
+        return (true, null);
+    }
+
+    public async Task<(bool Ok, string? Error)> SetUserActiveAsync(
+        Guid userId,
+        bool isActive,
+        Guid? actingUserId,
+        CancellationToken cancellationToken = default)
+    {
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
+        if (user is null)
+            return (false, "Utilisateur introuvable.");
+
+        if (!isActive && actingUserId == userId)
+            return (false, "Vous ne pouvez pas suspendre votre propre compte.");
+
+        if (!isActive && user.Role == UserRole.Administrateur)
+        {
+            var activeAdmins = await _db.Users.CountAsync(
+                u => u.IsActive && u.Role == UserRole.Administrateur && u.DeletedAt == null,
+                cancellationToken);
+            if (activeAdmins <= 1)
+                return (false, "Impossible de suspendre le dernier administrateur actif.");
+        }
+
+        user.IsActive = isActive;
+        await _db.SaveChangesAsync(cancellationToken);
+        return (true, null);
+    }
+
     public async Task<IReadOnlyList<UserPermissionItem>> LoadPermissionsAsync(
         Guid userId,
         CancellationToken cancellationToken = default)
@@ -221,7 +332,14 @@ public class UsersModuleService
         }
 
         var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
-        if (user?.Role == UserRole.Administrateur)
+        if (user is null)
+            return [];
+
+        var roleLabel = UserRoleCatalog.ToLabel(user.Role);
+        if (!PermissionCodes.RolePermissions.TryGetValue(roleLabel, out var codes) || codes.Length == 0)
+            codes = PermissionCodes.RolePermissions.GetValueOrDefault(user.Role.ToString(), []);
+
+        if (codes.Contains("*"))
         {
             var all = await _db.Permissions.ToListAsync(cancellationToken);
             return all.Select(p => new UserPermissionItem
@@ -232,8 +350,45 @@ public class UsersModuleService
             }).ToList();
         }
 
-        return [];
+        var dbPerms = await _db.Permissions
+            .Where(p => codes.Contains(p.Code))
+            .ToListAsync(cancellationToken);
+
+        return codes.Select(code =>
+        {
+            var p = dbPerms.FirstOrDefault(x => x.Code == code);
+            return new UserPermissionItem
+            {
+                Name = p?.Name ?? PermissionDisplayName(code),
+                Module = p?.Module ?? PermissionModule(code),
+                Code = code
+            };
+        }).ToList();
     }
+
+    private static string PermissionDisplayName(string code) => code switch
+    {
+        PermissionCodes.VisitorsManage => "Gestion des visites",
+        PermissionCodes.DashboardView => "Tableau de bord",
+        PermissionCodes.UsersManage => "Gestion des utilisateurs",
+        PermissionCodes.FinanceView => "Consultation finances",
+        PermissionCodes.FinanceManage => "Gestion finances",
+        PermissionCodes.LocationManage => "Gestion locations",
+        PermissionCodes.PersonnelView => "Consultation personnel",
+        PermissionCodes.PersonnelManage => "Gestion personnel",
+        _ => code
+    };
+
+    private static string PermissionModule(string code) => code switch
+    {
+        PermissionCodes.VisitorsManage => "Réception",
+        PermissionCodes.DashboardView => "Accueil",
+        PermissionCodes.UsersManage or PermissionCodes.SyncManage => "Administration",
+        PermissionCodes.FinanceView or PermissionCodes.FinanceManage => "Finances",
+        PermissionCodes.LocationManage => "Location",
+        PermissionCodes.PersonnelView or PermissionCodes.PersonnelManage => "Personnel",
+        _ => "SBMS"
+    };
 
     private static UserListItem MapUser(User u, DateTime onlineThreshold, Guid? currentUserId)
     {
@@ -272,13 +427,10 @@ public class UsersModuleService
         };
     }
 
-    private static string RoleLabel(UserRole role) => role switch
+    private static string RoleLabel(UserRole role) => UserRoleCatalog.ToLabel(role) switch
     {
-        UserRole.Administrateur => "Administrateur",
-        UserRole.Comptable => "Comptable",
-        UserRole.Technique => "Technicien",
-        UserRole.Gestionnaire => "Gestionnaire",
-        _ => role.ToString()
+        "Technique" => "Technicien",
+        _ => UserRoleCatalog.ToLabel(role)
     };
 
     private static string JobTitle(UserRole role) => role switch
@@ -287,6 +439,7 @@ public class UsersModuleService
         UserRole.Comptable => "Comptable",
         UserRole.Technique => "Technicien",
         UserRole.Gestionnaire => "Gestionnaire",
+        UserRole.Receptionniste => "Réceptionniste",
         _ => "Utilisateur"
     };
 
@@ -296,6 +449,7 @@ public class UsersModuleService
         UserRole.Comptable => "Finance",
         UserRole.Technique => "Technique",
         UserRole.Gestionnaire => "Gestion",
+        UserRole.Receptionniste => "Accueil",
         _ => "—"
     };
 
@@ -305,6 +459,7 @@ public class UsersModuleService
         UserRole.Gestionnaire => ("#DBEAFE", "#2563EB"),
         UserRole.Comptable => ("#EDE9FE", "#6D28D9"),
         UserRole.Technique => ("#FFEDD5", "#EA580C"),
+        UserRole.Receptionniste => ("#D1FAE5", "#059669"),
         _ => ("#F1F5F9", "#475569")
     };
 

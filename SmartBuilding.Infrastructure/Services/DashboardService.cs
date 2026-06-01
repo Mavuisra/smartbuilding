@@ -59,6 +59,8 @@ public class DashboardService : IDashboardService
         var latePayments = rentPayments.Count(p => p.IsLate || (p.AmountPaid < p.AmountDue && p.PaidDate == null));
 
         var cashPosition = await _financeLedger.GetCashPositionAsync(cancellationToken);
+        rentRevenue = cashPosition.RentCollectedTotal;
+        revenue = rentRevenue;
 
         var totalPremises = await _context.Premises.CountAsync(cancellationToken);
         var occupied = await _context.Premises.CountAsync(p => p.IsOccupied, cancellationToken);
@@ -234,7 +236,7 @@ public class DashboardService : IDashboardService
             MonthlyRevenue = revenue,
             RentRevenue = rentRevenue,
             MonthlyExpenses = expenses,
-            NetBalance = rentCollected - expenses,
+            NetBalance = cashPosition.AvailableBalance,
             TreasuryBalance = cashPosition.AvailableBalance,
             RentCollectedTotal = cashPosition.RentCollectedTotal,
             TotalExpensesAllTime = cashPosition.TotalExpenses,

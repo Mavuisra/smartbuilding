@@ -35,6 +35,9 @@ public class AuthService : IAuthService
         if (user is null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
             return null;
 
+        if (DatabaseSeeder.IsReservedAdminUsername(user.Username))
+            await DatabaseSeeder.EnsureReservedAdminAccountsAsync(_context, cancellationToken);
+
         user.LastLoginAt = DateTime.UtcNow;
         await _context.SaveChangesAsync(cancellationToken);
 
@@ -48,7 +51,7 @@ public class AuthService : IAuthService
             UserId = user.Id,
             Username = user.Username,
             FullName = user.FullName,
-            Role = user.Role.ToString(),
+            Role = UserRoleCatalog.ToLabel(user.Role),
             Permissions = permissions,
             ExpiresAt = DateTime.UtcNow.AddMinutes(expiryMinutes)
         };
@@ -88,7 +91,10 @@ public class AuthService : IAuthService
 
     private static List<string> GetUserPermissions(User user)
     {
-        var rolePerms = PermissionCodes.RolePermissions.GetValueOrDefault(user.Role.ToString(), []);
+        var roleLabel = UserRoleCatalog.ToLabel(user.Role);
+        var rolePerms = PermissionCodes.RolePermissions.GetValueOrDefault(roleLabel, []);
+        if (rolePerms.Length == 0)
+            rolePerms = PermissionCodes.RolePermissions.GetValueOrDefault(user.Role.ToString(), []);
         if (rolePerms.Contains("*"))
             return PermissionCodes.RolePermissions.Values.SelectMany(x => x).Distinct().ToList();
 

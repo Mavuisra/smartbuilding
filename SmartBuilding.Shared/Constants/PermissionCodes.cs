@@ -36,6 +36,8 @@ public static class PermissionCodes
         [
             DashboardView, LocationManage, VisitorsManage, IncidentsManage,
             PersonnelManage, ConsumptionManage, EmailManage, ReportsExport
-        ]
+        ],
+        ["Réceptionniste"] = [VisitorsManage],
+        ["Receptionniste"] = [VisitorsManage]
     };
 }

@@ -86,10 +86,10 @@
                         <StackPanel>
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
                                 <materialDesign:PackIcon Kind="Wallet" Foreground="#95D5B2" Width="20" Height="20" Margin="0,0,8,0"/>
-                                <TextBlock Text="Disponible ce mois" FontSize="11" Foreground="#D8F3DC"/>
+                                <TextBlock Text="Trésorerie disponible" FontSize="11" Foreground="#D8F3DC"/>
                             </StackPanel>
                             <TextBlock Text="{Binding AvailableBalanceDisplay}" FontSize="22" FontWeight="Bold" Foreground="White"/>
-                            <TextBlock Text="{Binding NetBalanceDisplay, StringFormat=Solde net : {0}}" FontSize="10" Foreground="#A8C5C0" Margin="0,4,0,0"/>
+                            <TextBlock Text="{Binding BalanceSubtitleDisplay}" FontSize="10" Foreground="#A8C5C0" Margin="0,4,0,0" TextWrapping="Wrap"/>
                         </StackPanel>
                     </Border>
                     <Border Style="{StaticResource DashHeroCard}" Background="#166534">
@@ -107,10 +107,10 @@
                         <StackPanel>
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
                                 <materialDesign:PackIcon Kind="TrendingDown" Foreground="#FED7AA" Width="20" Height="20" Margin="0,0,8,0"/>
-                                <TextBlock Text="Dépenses du mois" FontSize="11" Foreground="#FFEDD5"/>
+                                <TextBlock Text="Dépenses engagées (total)" FontSize="11" Foreground="#FFEDD5"/>
                             </StackPanel>
                             <TextBlock Text="{Binding MonthlyExpensesDisplay}" FontSize="22" FontWeight="Bold" Foreground="White"/>
-                            <TextBlock Text="Engagements validés" FontSize="10" Foreground="#FDBA74" Margin="0,4,0,0"/>
+                            <TextBlock Text="{Binding ExpensesSubtitleDisplay}" FontSize="10" Foreground="#FDBA74" Margin="0,4,0,0"/>
                         </StackPanel>
                     </Border>
                     <Border Style="{StaticResource DashHeroCard}" Background="#1D3557">
@@ -135,7 +135,7 @@
                                 <materialDesign:PackIcon Kind="CurrencyUsd" Foreground="#2D6A4F" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
                             <StackPanel>
-                                <TextBlock Text="Revenus loyers (mois)" FontSize="11" Foreground="{StaticResource SbmsTextMutedBrush}"/>
+                                <TextBlock Text="Revenus loyers (total)" FontSize="11" Foreground="{StaticResource SbmsTextMutedBrush}"/>
                                 <TextBlock Text="{Binding MonthlyRevenueDisplay}" FontSize="20" FontWeight="Bold" Foreground="#2D6A4F"/>
                                 <TextBlock Text="{Binding RentSubtitleDisplay}" FontSize="9" Foreground="#64748B" Margin="0,4,0,0" TextWrapping="Wrap"/>
                             </StackPanel>
@@ -207,8 +207,9 @@
                                 <materialDesign:PackIcon Kind="Bank" Foreground="#1B3D3B" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
                             <StackPanel>
-                                <TextBlock Text="Disponible ce mois" FontSize="11" Foreground="{StaticResource SbmsTextMutedBrush}"/>
+                                <TextBlock Text="Trésorerie disponible" FontSize="11" Foreground="{StaticResource SbmsTextMutedBrush}"/>
                                 <TextBlock Text="{Binding AvailableBalanceDisplay}" FontSize="20" FontWeight="Bold" Foreground="#1B3D3B"/>
+                                <TextBlock Text="{Binding BalanceSubtitleDisplay}" FontSize="9" Foreground="#64748B" Margin="0,4,0,0" TextWrapping="Wrap"/>
                                 <TextBlock Text="{Binding RentCollectedTotalDisplay, StringFormat=Total encaissé : {0}}" FontSize="9" Foreground="#64748B" Margin="0,4,0,0"/>
                             </StackPanel>
                         </StackPanel>

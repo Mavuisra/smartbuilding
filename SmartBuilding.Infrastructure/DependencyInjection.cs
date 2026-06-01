@@ -16,11 +16,13 @@ public static class DependencyInjection
         IConfiguration configuration,
         bool isDesktop = false)
     {
+        DesktopLocalDatabaseConfig? localDb = null;
         string connectionString;
         if (isDesktop)
         {
-            DesktopSqlitePaths.EnsureInitialized();
-            connectionString = DesktopSqlitePaths.ConnectionString;
+            localDb = DesktopLocalDatabaseBootstrap.Resolve(configuration);
+            connectionString = localDb.ConnectionString;
+            services.AddSingleton(localDb);
         }
         else
         {
@@ -31,9 +33,22 @@ public static class DependencyInjection
         services.AddDbContext<SmartBuildingDbContext>(options =>
         {
             if (isDesktop)
-                options.UseSqlite(connectionString);
+            {
+                if (localDb!.IsMySql)
+                {
+                    var serverVersion = ServerVersion.Parse("8.0.36-mysql");
+                    options.UseMySql(connectionString, serverVersion, mySql =>
+                        mySql.EnableStringComparisonTranslations());
+                }
+                else
+                {
+                    options.UseSqlite(connectionString);
+                }
+            }
             else
+            {
                 options.UseNpgsql(connectionString);
+            }
         });
 
         services.AddScoped(typeof(IRepository<>), typeof(Repository<>));

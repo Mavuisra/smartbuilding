@@ -27,15 +27,18 @@ public class SynchronizationService
     private readonly SmartBuildingDbContext _db;
     private readonly IConfiguration _configuration;
     private readonly INetworkService _network;
+    private readonly DesktopLocalDatabaseConfig _localDb;
 
     public SynchronizationService(
         SmartBuildingDbContext db,
         IConfiguration configuration,
-        INetworkService network)
+        INetworkService network,
+        DesktopLocalDatabaseConfig localDb)
     {
         _db = db;
         _configuration = configuration;
         _network = network;
+        _localDb = localDb;
     }
 
     public async Task<SyncPageData> LoadAsync(DateTime? lastSyncAt, CancellationToken cancellationToken = default)
@@ -44,8 +47,12 @@ public class SynchronizationService
 
         var apiUrl = _configuration["Api:BaseUrl"] ?? "https://localhost:7001/";
         var interval = _configuration.GetValue("Sync:IntervalSeconds", 60);
-        var dbPath = DesktopSqlitePaths.GetDatabaseFilePath();
-        var dbInfo = GetDbFileInfo(dbPath);
+        var dbPath = _localDb.IsMySql
+            ? MaskConnectionString(_localDb.ConnectionString)
+            : DesktopSqlitePaths.GetDatabaseFilePath();
+        (long Size, DateTime? LastWrite) dbInfo = _localDb.IsMySql
+            ? (0L, null)
+            : GetDbFileInfo(dbPath);
 
         var pingMs = 0;
         var isOnline = _network.IsConnected();
@@ -92,6 +99,8 @@ public class SynchronizationService
             LocalDbSizeBytes = dbInfo.Size,
             TotalRecords = totalRecords,
             LocalDbPath = dbPath,
+            LocalDatabaseLabel = _localDb.DisplayLabel,
+            DeviceLabel = DesktopSyncDevice.GetDeviceLabel(),
             LocalDbLastWrite = dbInfo.LastWrite,
             CloudServerUrl = apiUrl.TrimEnd('/'),
             LastSyncAt = lastSyncAt ?? lastLog?.StartedAt,
@@ -418,5 +427,20 @@ public class SynchronizationService
             return (0, null);
         var info = new FileInfo(path);
         return (info.Length, info.LastWriteTime);
+    }
+
+    private static string MaskConnectionString(string connectionString)
+    {
+        if (string.IsNullOrWhiteSpace(connectionString))
+            return "—";
+
+        var parts = connectionString.Split(';', StringSplitOptions.RemoveEmptyEntries);
+        for (var i = 0; i < parts.Length; i++)
+        {
+            if (parts[i].StartsWith("Password=", StringComparison.OrdinalIgnoreCase))
+                parts[i] = "Password=***";
+        }
+
+        return string.Join(';', parts);
     }
 }

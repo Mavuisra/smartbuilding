@@ -49,21 +49,7 @@ public sealed class InitialSetupService
             .Where(u => u.DeletedAt == null)
             .ToListAsync(cancellationToken);
 
-        if (users.Count == 0)
-            return true;
-
-        // Cas legacy: ancien seed "admin/admin@smartbuilding.local" => on force l'onboarding pro.
-        if (users.Count == 1)
-        {
-            var u = users[0];
-            if (string.Equals(u.Username, "admin", StringComparison.OrdinalIgnoreCase)
-                && string.Equals(u.Email, "admin@smartbuilding.local", StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-        }
-
-        return false;
+        return users.Count == 0;
     }
 
     public async Task<InitialSetupResult> CompleteInitialSetupAsync(InitialSetupRequest request, CancellationToken cancellationToken = default)

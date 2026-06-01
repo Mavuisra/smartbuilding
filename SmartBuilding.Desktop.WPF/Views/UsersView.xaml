@@ -63,26 +63,31 @@
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                     <ComboBox ItemsSource="{Binding RoleFilters}" SelectedItem="{Binding FilterRole}"
                               Style="{StaticResource UsersFilterCombo}" Width="150" Margin="0,0,8,0"/>
-                    <Button Style="{StaticResource UsersToolbarButton}" Margin="0,0,8,0">
+                    <Button Style="{StaticResource UsersToolbarButton}" Margin="0,0,8,0"
+                            Command="{Binding RefreshFiltersCommand}">
                         <StackPanel Orientation="Horizontal">
                             <materialDesign:PackIcon Kind="FilterVariant" Margin="0,0,6,0"/>
-                            <TextBlock Text="Filtrer par rôle"/>
+                            <TextBlock Text="Réinitialiser filtres"/>
                         </StackPanel>
                     </Button>
-                    <Button Style="{StaticResource UsersPrimaryButton}">
+                    <Button Style="{StaticResource UsersPrimaryButton}"
+                            Command="{Binding OpenAddUserFormCommand}"
+                            Visibility="{Binding CanManageUsers, Converter={StaticResource BoolToVisibilityConverter}}">
                         <StackPanel Orientation="Horizontal">
                             <materialDesign:PackIcon Kind="AccountPlus" Margin="0,0,6,0"/>
                             <TextBlock Text="Ajouter un utilisateur"/>
                         </StackPanel>
                     </Button>
-                    <Button Style="{StaticResource MaterialDesignIconButton}" Width="40" Height="40" Margin="12,0,4,0">
+                    <Button Style="{StaticResource MaterialDesignIconButton}" Width="40" Height="40" Margin="12,0,4,0"
+                            Command="{Binding ShowSuspendedOnlyCommand}" ToolTip="Comptes suspendus">
                         <materialDesign:PackIcon Kind="BellOutline"/>
                     </Button>
                     <Border Background="#E63946" CornerRadius="9" MinWidth="18" Height="18" Margin="-14,-8,8,0" VerticalAlignment="Top">
                         <TextBlock Text="{Binding NotificationCount}" Foreground="White" FontSize="10" FontWeight="Bold"
                                    HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
-                    <Button Style="{StaticResource MaterialDesignIconButton}" Width="40" Height="40" Margin="0,0,8,0">
+                    <Button Style="{StaticResource MaterialDesignIconButton}" Width="40" Height="40" Margin="0,0,8,0"
+                            Command="{Binding ShowUsersHelpCommand}" ToolTip="Aide">
                         <materialDesign:PackIcon Kind="HelpCircleOutline"/>
                     </Button>
                     <Border Width="36" Height="36" CornerRadius="18" Background="{StaticResource SbmsAccentGreenBrush}">
@@ -250,13 +255,16 @@
                     <Border DockPanel.Dock="Top" Padding="16,12" BorderBrush="#E8EFED" BorderThickness="0,0,0,1">
                         <DockPanel>
                             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                                <Button Style="{StaticResource UsersToolbarButton}" Padding="8,4" Margin="0,0,4,0">
+                                <Button Style="{StaticResource UsersToolbarButton}" Padding="8,4" Margin="0,0,4,0"
+                                        Command="{Binding SetListViewCommand}" ToolTip="Vue liste">
                                     <materialDesign:PackIcon Kind="ViewList"/>
                                 </Button>
-                                <Button Style="{StaticResource UsersToolbarButton}" Padding="8,4" Margin="0,0,8,0">
+                                <Button Style="{StaticResource UsersToolbarButton}" Padding="8,4" Margin="0,0,8,0"
+                                        Command="{Binding SetGridViewCommand}" ToolTip="Vue grille">
                                     <materialDesign:PackIcon Kind="ViewGrid"/>
                                 </Button>
-                                <Button Style="{StaticResource UsersToolbarButton}" Padding="8,4">
+                                <Button Style="{StaticResource UsersToolbarButton}" Padding="8,4"
+                                        Command="{Binding ExportUsersCommand}">
                                     <StackPanel Orientation="Horizontal">
                                         <materialDesign:PackIcon Kind="Export" Margin="0,0,4,0"/>
                                         <TextBlock Text="Exporter" FontSize="11"/>
@@ -267,7 +275,8 @@
                         </DockPanel>
                     </Border>
                     <DataGrid ItemsSource="{Binding PagedUsers}" SelectedItem="{Binding SelectedUser}"
-                              Style="{StaticResource SbmsDataGrid}" IsReadOnly="True" BorderThickness="0">
+                              Style="{StaticResource SbmsDataGrid}" IsReadOnly="True" BorderThickness="0"
+                              Visibility="{Binding IsGridView, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
                         <DataGrid.Columns>
                             <DataGridTemplateColumn Header="Utilisateur" Width="200">
                                 <DataGridTemplateColumn.CellTemplate>
@@ -319,8 +328,11 @@
                                                     CommandParameter="{Binding}" Style="{StaticResource MaterialDesignIconButton}" Width="32" Height="32">
                                                 <materialDesign:PackIcon Kind="Eye"/>
                                             </Button>
-                                            <Button Style="{StaticResource MaterialDesignIconButton}" Width="32" Height="32">
-                                                <materialDesign:PackIcon Kind="DotsVertical"/>
+                                            <Button Command="{Binding DataContext.OpenEditUserFromRowCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding}"
+                                                    Style="{StaticResource MaterialDesignIconButton}" Width="32" Height="32"
+                                                    ToolTip="Modifier">
+                                                <materialDesign:PackIcon Kind="Pencil"/>
                                             </Button>
                                         </StackPanel>
                                     </DataTemplate>
@@ -328,6 +340,40 @@
                             </DataGridTemplateColumn>
                         </DataGrid.Columns>
                     </DataGrid>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                  Visibility="{Binding IsGridView, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <ItemsControl ItemsSource="{Binding PagedUsers}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type models:UserListItem}">
+                                    <Border Width="220" Margin="8" Padding="12" Background="White" CornerRadius="8"
+                                            BorderBrush="#E2E8F0" BorderThickness="1"
+                                            MouseLeftButtonUp="UserCard_MouseLeftButtonUp">
+                                        <StackPanel>
+                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                                <Border Width="40" Height="40" CornerRadius="20"
+                                                        Background="{Binding AvatarBackground, Converter={StaticResource HexToBrushConverter}}" Margin="0,0,8,0">
+                                                    <TextBlock Text="{Binding Initials}" FontWeight="Bold" FontSize="12"
+                                                               Foreground="{Binding AvatarForeground, Converter={StaticResource HexToBrushConverter}}"
+                                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </Border>
+                                                <StackPanel VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding FullName}" FontWeight="SemiBold" FontSize="12"/>
+                                                    <TextBlock Text="{Binding RoleLabel}" FontSize="10" Foreground="#64748B"/>
+                                                </StackPanel>
+                                            </StackPanel>
+                                            <TextBlock Text="{Binding Email}" FontSize="10" Foreground="#64748B" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Text="{Binding StatusLabel}" FontSize="10" Margin="0,4,0,0"/>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
                 </DockPanel>
             </Border>
 
@@ -335,15 +381,22 @@
             <Border Grid.Column="1" Style="{StaticResource UsersDetailCard}"
                     Visibility="{Binding SelectedUser, Converter={StaticResource NullToVisibilityConverter}}">
                 <DockPanel DataContext="{Binding SelectedUser}">
-                    <StackPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">
-                        <Button Style="{StaticResource UsersPrimaryButton}" HorizontalAlignment="Stretch" Margin="0,0,0,8">
+                    <StackPanel DockPanel.Dock="Bottom" Margin="0,12,0,0"
+                                DataContext="{Binding DataContext, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                        <Button Style="{StaticResource UsersPrimaryButton}" HorizontalAlignment="Stretch" Margin="0,0,0,8"
+                                Command="{Binding OpenEditUserFormCommand}"
+                                IsEnabled="{Binding CanManageUsers}">
                             <TextBlock Text="Modifier" HorizontalAlignment="Center"/>
                         </Button>
-                        <Button Style="{StaticResource UsersToolbarButton}" HorizontalAlignment="Stretch" Margin="0,0,0,8">
+                        <Button Style="{StaticResource UsersToolbarButton}" HorizontalAlignment="Stretch" Margin="0,0,0,8"
+                                Command="{Binding OpenResetPasswordFormCommand}"
+                                IsEnabled="{Binding CanManageUsers}">
                             <TextBlock Text="Réinitialiser mot de passe" HorizontalAlignment="Center"/>
                         </Button>
-                        <Button HorizontalAlignment="Stretch" Style="{StaticResource UsersToolbarButton}">
-                            <TextBlock Text="Suspendre" Foreground="#DC2626" HorizontalAlignment="Center"/>
+                        <Button HorizontalAlignment="Stretch" Style="{StaticResource UsersToolbarButton}"
+                                Command="{Binding ToggleSuspendUserCommand}"
+                                IsEnabled="{Binding CanManageUsers}">
+                            <TextBlock Text="{Binding SuspendButtonLabel}" Foreground="#DC2626" HorizontalAlignment="Center"/>
                         </Button>
                     </StackPanel>
                     <StackPanel DockPanel.Dock="Top" HorizontalAlignment="Center" Margin="0,8,0,12">
@@ -579,5 +632,74 @@
 
         <ProgressBar Grid.Row="0" Grid.RowSpan="4" IsIndeterminate="True" Height="3" VerticalAlignment="Top"
                      Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibilityConverter}}" Foreground="#2563EB"/>
+
+        <Border Grid.RowSpan="4" Background="#CC0F172A"
+                Visibility="{Binding IsUserFormOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Border Background="White" CornerRadius="12" BorderBrush="#2563EB" BorderThickness="2" Padding="28"
+                    MaxWidth="480" VerticalAlignment="Center" HorizontalAlignment="Center">
+                <StackPanel>
+                    <TextBlock Text="{Binding FormTitle}" FontSize="20" FontWeight="Bold" Foreground="#0F172A" Margin="0,0,0,4"/>
+                    <TextBlock Text="Le compte sera actif immédiatement. Le réceptionniste n'accède qu'à la page Réception."
+                               FontSize="12" Foreground="#64748B" TextWrapping="Wrap" Margin="0,0,0,16"/>
+                    <TextBox materialDesign:HintAssist.Hint="Identifiant *"
+                             Text="{Binding FormUsername, UpdateSourceTrigger=PropertyChanged}"
+                             IsEnabled="{Binding IsEditMode, Converter={StaticResource InverseBoolConverter}}"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}" Margin="0,0,0,10"/>
+                    <TextBox materialDesign:HintAssist.Hint="Nom complet"
+                             Text="{Binding FormFullName, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}" Margin="0,0,0,10"/>
+                    <TextBox materialDesign:HintAssist.Hint="E-mail"
+                             Text="{Binding FormEmail, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}" Margin="0,0,0,10"/>
+                    <TextBox materialDesign:HintAssist.Hint="{Binding FormPasswordHint}"
+                             Text="{Binding FormPassword, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}" Margin="0,0,0,10"/>
+                    <ComboBox ItemsSource="{Binding AssignableRoles}" SelectedItem="{Binding FormRole}"
+                              Style="{StaticResource UsersFilterCombo}" Margin="0,0,0,10"/>
+                    <TextBlock Text="{Binding FormError}" Foreground="#DC2626" FontSize="12"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+                        <Button Content="Annuler" Command="{Binding CloseUserFormCommand}"
+                                Style="{StaticResource UsersToolbarButton}" Margin="0,0,8,0"/>
+                        <Button Command="{Binding SaveUserCommand}" Style="{StaticResource UsersPrimaryButton}">
+                            <TextBlock>
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Text" Value="Créer"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsEditMode}" Value="True">
+                                                <Setter Property="Text" Value="Enregistrer"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Button>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Border>
+
+        <Border Grid.RowSpan="4" Background="#CC0F172A"
+                Visibility="{Binding IsPasswordFormOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Border Background="White" CornerRadius="12" BorderBrush="#6D28D9" BorderThickness="2" Padding="28"
+                    MaxWidth="420" VerticalAlignment="Center" HorizontalAlignment="Center">
+                <StackPanel>
+                    <TextBlock Text="Réinitialiser le mot de passe" FontSize="20" FontWeight="Bold" Foreground="#0F172A" Margin="0,0,0,12"/>
+                    <TextBlock FontSize="12" Foreground="#64748B" Margin="0,0,0,12" TextWrapping="Wrap">
+                        <Run Text="Compte : "/><Run Text="{Binding SelectedUser.FullName, Mode=OneWay}" FontWeight="SemiBold"/>
+                    </TextBlock>
+                    <TextBox materialDesign:HintAssist.Hint="Nouveau mot de passe *"
+                             Text="{Binding FormPassword, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}" Margin="0,0,0,10"/>
+                    <TextBlock Text="{Binding FormError}" Foreground="#DC2626" FontSize="12"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+                        <Button Content="Annuler" Command="{Binding ClosePasswordFormCommand}"
+                                Style="{StaticResource UsersToolbarButton}" Margin="0,0,8,0"/>
+                        <Button Content="Confirmer" Command="{Binding SavePasswordResetCommand}"
+                                Style="{StaticResource UsersPrimaryButton}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Border>
     </Grid>
 </UserControl>

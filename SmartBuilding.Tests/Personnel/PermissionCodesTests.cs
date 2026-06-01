@@ -35,6 +35,15 @@ public class PermissionCodesTests
     }
 
     [Fact]
+    public void Receptionniste_Has_Visitors_Manage_Only()
+    {
+        var perms = PermissionCodes.RolePermissions["Réceptionniste"];
+        Assert.Contains(PermissionCodes.VisitorsManage, perms);
+        Assert.DoesNotContain(PermissionCodes.DashboardView, perms);
+        Assert.DoesNotContain(PermissionCodes.UsersManage, perms);
+    }
+
+    [Fact]
     public void HasPermission_Exact_Code_Required()
     {
         var permissions = new List<string> { PermissionCodes.PersonnelView };

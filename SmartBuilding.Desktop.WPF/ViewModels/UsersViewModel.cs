@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LiveChartsCore;
@@ -7,6 +9,7 @@ using LiveChartsCore.SkiaSharpView.Painting;
 using SkiaSharp;
 using SmartBuilding.Desktop.WPF.Models;
 using SmartBuilding.Desktop.WPF.Services;
+using SmartBuilding.Shared.Constants;
 
 namespace SmartBuilding.Desktop.WPF.ViewModels;
 
@@ -16,6 +19,7 @@ public partial class UsersViewModel : BaseViewModel
     private readonly SessionService _session;
     private List<UserListItem> _allUsers = [];
     private string _locationLabel = "—";
+    private bool _filterSuspendedOnly;
 
     public const string AllRoles = "Tous les rôles";
 
@@ -66,6 +70,25 @@ public partial class UsersViewModel : BaseViewModel
     public ObservableCollection<UserSessionItem> UserSessions { get; } = [];
     public ObservableCollection<UserPermissionItem> UserPermissions { get; } = [];
     public ObservableCollection<UserRecentSignupItem> RecentSignups { get; } = [];
+    public ObservableCollection<string> AssignableRoles { get; } = [];
+
+    [ObservableProperty] private bool _isUserFormOpen;
+    [ObservableProperty] private bool _isEditMode;
+    [ObservableProperty] private bool _isPasswordFormOpen;
+    [ObservableProperty] private bool _isGridView;
+    [ObservableProperty] private Guid? _editingUserId;
+    [ObservableProperty] private string _formUsername = string.Empty;
+    [ObservableProperty] private string _formFullName = string.Empty;
+    [ObservableProperty] private string _formEmail = string.Empty;
+    [ObservableProperty] private string _formPassword = string.Empty;
+    [ObservableProperty] private string _formRole = "Gestionnaire";
+    [ObservableProperty] private string? _formError;
+    [ObservableProperty] private string _formTitle = "Nouvel utilisateur";
+    [ObservableProperty] private string _formPasswordHint = "Mot de passe *";
+    [ObservableProperty] private string _suspendButtonLabel = "Suspendre";
+
+    public bool CanManageUsers => _session.HasPermission(PermissionCodes.UsersManage);
+    public bool HasSelectedUser => SelectedUser is not null;
 
     public UsersViewModel(UsersModuleService usersService, SessionService session)
     {
@@ -74,6 +97,238 @@ public partial class UsersViewModel : BaseViewModel
         UserName = session.CurrentUser?.FullName ?? "Admin SBMS";
         UserRole = session.CurrentUser?.Role ?? "Administrateur";
         UserInitials = GetInitials(UserName);
+        foreach (var role in UserRoleCatalog.AssignableRoleLabels)
+            AssignableRoles.Add(role);
+    }
+
+    [RelayCommand]
+    private void OpenAddUserForm() => OpenUserForm(edit: false);
+
+    [RelayCommand]
+    private void OpenEditUserForm()
+    {
+        if (!CanManageUsers || SelectedUser is null) return;
+        OpenUserForm(edit: true, SelectedUser);
+    }
+
+    [RelayCommand]
+    private void OpenEditUserFromRow(UserListItem? user)
+    {
+        if (!CanManageUsers || user is null) return;
+        SelectUser(user);
+        OpenUserForm(edit: true, user);
+    }
+
+    private void OpenUserForm(bool edit, UserListItem? user = null)
+    {
+        if (!CanManageUsers) return;
+        IsEditMode = edit;
+        EditingUserId = edit ? user?.Id : null;
+        FormTitle = edit ? "Modifier l'utilisateur" : "Nouvel utilisateur";
+        FormPasswordHint = edit ? "Nouveau mot de passe (laisser vide pour ne pas changer)" : "Mot de passe *";
+        FormUsername = edit ? user!.Username : string.Empty;
+        FormFullName = edit ? user!.FullName : string.Empty;
+        FormEmail = edit ? user!.Email : string.Empty;
+        FormPassword = string.Empty;
+        FormRole = edit
+            ? ResolveRoleLabelForForm(user!.RoleLabel)
+            : "Gestionnaire";
+        FormError = null;
+        IsUserFormOpen = true;
+    }
+
+    private static string ResolveRoleLabelForForm(string roleLabel) =>
+        roleLabel.Equals("Technicien", StringComparison.OrdinalIgnoreCase) ? "Technique" : roleLabel;
+
+    [RelayCommand]
+    private void CloseUserForm()
+    {
+        IsUserFormOpen = false;
+        IsEditMode = false;
+        EditingUserId = null;
+        FormError = null;
+    }
+
+    [RelayCommand]
+    private async Task SaveUserAsync()
+    {
+        if (!CanManageUsers) return;
+        FormError = null;
+        if (!UserRoleCatalog.TryParseLabel(FormRole, out var role))
+        {
+            FormError = "Rôle invalide.";
+            return;
+        }
+
+        IsBusy = true;
+        try
+        {
+            if (IsEditMode && EditingUserId.HasValue)
+            {
+                var (ok, error) = await _usersService.UpdateUserAsync(
+                    EditingUserId.Value, FormFullName, FormEmail, role,
+                    string.IsNullOrWhiteSpace(FormPassword) ? null : FormPassword);
+                if (!ok) { FormError = error; return; }
+            }
+            else
+            {
+                var (ok, error) = await _usersService.CreateUserAsync(
+                    FormUsername, FormFullName, FormEmail, FormPassword, role);
+                if (!ok) { FormError = error; return; }
+            }
+
+            CloseUserForm();
+            await LoadAsync();
+        }
+        finally { IsBusy = false; }
+    }
+
+    [RelayCommand]
+    private void OpenResetPasswordForm()
+    {
+        if (!CanManageUsers || SelectedUser is null) return;
+        FormPassword = string.Empty;
+        FormError = null;
+        IsPasswordFormOpen = true;
+    }
+
+    [RelayCommand]
+    private void ClosePasswordForm()
+    {
+        IsPasswordFormOpen = false;
+        FormPassword = string.Empty;
+        FormError = null;
+    }
+
+    [RelayCommand]
+    private async Task SavePasswordResetAsync()
+    {
+        if (!CanManageUsers || SelectedUser is null) return;
+        FormError = null;
+        IsBusy = true;
+        try
+        {
+            var (ok, error) = await _usersService.ResetPasswordAsync(SelectedUser.Id, FormPassword);
+            if (!ok) { FormError = error; return; }
+            ClosePasswordForm();
+            MessageBox.Show(
+                $"Mot de passe réinitialisé pour {SelectedUser.FullName}.",
+                "SBMS — Utilisateurs",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+            await LoadUserDetailAsync(SelectedUser);
+        }
+        finally { IsBusy = false; }
+    }
+
+    [RelayCommand]
+    private async Task ToggleSuspendUserAsync()
+    {
+        if (!CanManageUsers || SelectedUser is null) return;
+
+        var suspend = SelectedUser.IsActive;
+        var action = suspend ? "suspendre" : "réactiver";
+        var confirm = MessageBox.Show(
+            $"Voulez-vous {action} le compte « {SelectedUser.FullName} » ?",
+            "SBMS — Utilisateurs",
+            MessageBoxButton.YesNo,
+            suspend ? MessageBoxImage.Warning : MessageBoxImage.Question);
+        if (confirm != MessageBoxResult.Yes) return;
+
+        IsBusy = true;
+        try
+        {
+            var (ok, error) = await _usersService.SetUserActiveAsync(
+                SelectedUser.Id, !suspend, _session.CurrentUser?.UserId);
+            if (!ok)
+            {
+                MessageBox.Show(error, "SBMS — Utilisateurs", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            await LoadAsync();
+            SelectedUser = PagedUsers.FirstOrDefault(u => u.Id == SelectedUser?.Id) ?? PagedUsers.FirstOrDefault();
+        }
+        finally { IsBusy = false; }
+    }
+
+    [RelayCommand]
+    private void ExportUsers()
+    {
+        try
+        {
+            var path = UsersExportService.ExportCsv(_allUsers);
+            Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+            MessageBox.Show(
+                $"Export enregistré :\n{path}",
+                "SBMS — Utilisateurs",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                $"Export impossible.\n{ex.Message}",
+                "SBMS — Utilisateurs",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
+    }
+
+    [RelayCommand]
+    private void ShowSuspendedOnly()
+    {
+        _filterSuspendedOnly = true;
+        FilterRole = AllRoles;
+        SearchQuery = string.Empty;
+        CurrentPage = 1;
+        ApplyFilters();
+        if (FilteredTotal == 0)
+        {
+            _filterSuspendedOnly = false;
+            ApplyFilters();
+            MessageBox.Show(
+                "Aucun compte suspendu.",
+                "SBMS — Utilisateurs",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+        }
+    }
+
+    [RelayCommand]
+    private async Task RefreshFiltersAsync()
+    {
+        _filterSuspendedOnly = false;
+        FilterRole = AllRoles;
+        SearchQuery = string.Empty;
+        await LoadAsync();
+    }
+
+    [RelayCommand]
+    private void SetListView() => IsGridView = false;
+
+    [RelayCommand]
+    private void SetGridView() => IsGridView = true;
+
+    [RelayCommand]
+    private void ShowUsersHelp()
+    {
+        MessageBox.Show(
+            "Utilisateurs SBMS\n\n" +
+            "• Ajouter / Modifier : comptes et rôles (dont Réceptionniste → page Réception seule).\n" +
+            "• Réinitialiser mot de passe : définit un nouveau mot de passe immédiat.\n" +
+            "• Suspendre : bloque la connexion sans supprimer le compte.\n" +
+            "• Exporter : fichier CSV dans Documents\\SBMS\\Exports.",
+            "Aide — Utilisateurs",
+            MessageBoxButton.OK,
+            MessageBoxImage.Information);
+    }
+
+    partial void OnSelectedUserChanged(UserListItem? value)
+    {
+        SuspendButtonLabel = value is { IsActive: true } ? "Suspendre" : "Réactiver";
+        OnPropertyChanged(nameof(HasSelectedUser));
+        _ = LoadUserDetailAsync(value);
     }
 
     [RelayCommand]
@@ -157,8 +412,6 @@ public partial class UsersViewModel : BaseViewModel
         ApplyFilters(skipResetPage: true);
     }
 
-    partial void OnSelectedUserChanged(UserListItem? value) => _ = LoadUserDetailAsync(value);
-
     partial void OnSearchQueryChanged(string value) { CurrentPage = 1; ApplyFilters(); }
     partial void OnFilterRoleChanged(string value) { CurrentPage = 1; ApplyFilters(); }
     partial void OnPageSizeChanged(int value) { CurrentPage = 1; ApplyFilters(); }
@@ -187,6 +440,9 @@ public partial class UsersViewModel : BaseViewModel
 
         if (FilterRole != AllRoles)
             filtered = filtered.Where(u => u.RoleLabel.Equals(FilterRole, StringComparison.OrdinalIgnoreCase));
+
+        if (_filterSuspendedOnly)
+            filtered = filtered.Where(u => !u.IsActive);
 
         if (!string.IsNullOrWhiteSpace(query))
         {

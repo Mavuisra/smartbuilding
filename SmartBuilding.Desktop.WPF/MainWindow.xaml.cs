@@ -47,7 +47,7 @@ public partial class MainWindow : Window
 
         try
         {
-            await shellVm.NavigateCommand.ExecuteAsync("dashboard");
+            await shellVm.NavigateToDefaultModuleAsync();
         }
         catch (Exception ex)
         {

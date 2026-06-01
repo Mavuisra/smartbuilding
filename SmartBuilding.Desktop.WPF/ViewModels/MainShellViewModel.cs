@@ -74,6 +74,7 @@ public partial class MainShellViewModel : BaseViewModel
     [ObservableProperty] private string? _shellLogoPath;
     [ObservableProperty] private bool _hasShellLogo;
     [ObservableProperty] private string _windowTitle = "SBMS — Smart Building Management";
+    [ObservableProperty] private bool _isReceptionOnly;
 
     public ObservableCollection<ShellNavEntry> NavigationItems { get; } = [];
 
@@ -155,9 +156,19 @@ public partial class MainShellViewModel : BaseViewModel
             OpenTenantsListAsync,
             OpenPatrimoineForTabAsync,
             ResumeContractFormAsync);
+        IsReceptionOnly = _session.IsReceptionOnly();
         RebuildNavigation();
-        CurrentViewModel = _dashboardViewModel;
+        CurrentViewModel = IsReceptionOnly ? _visitsViewModel : _dashboardViewModel;
+        SelectedModuleId = IsReceptionOnly ? "visites" : "dashboard";
         _ = InitializeShellAsync();
+    }
+
+    public async Task NavigateToDefaultModuleAsync()
+    {
+        if (_session.IsReceptionOnly())
+            await NavigateAsync("visites");
+        else
+            await NavigateAsync("dashboard");
     }
 
     private async Task InitializeShellAsync()

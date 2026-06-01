@@ -34,6 +34,8 @@ ROLE_PERMISSIONS: dict[str, list[str]] = {
         "email.manage",
         "reports.export",
     ],
+    "Réceptionniste": ["visitors.manage"],
+    "Receptionniste": ["visitors.manage"],
 }
 
 ALL_PERMISSION_CODES = [

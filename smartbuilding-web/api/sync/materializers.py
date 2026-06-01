@@ -62,10 +62,14 @@ def materialize_user(data: dict):
         user.password_hash_sync = pw
     role = pick(data, "Role", "role")
     if isinstance(role, int):
-        roles = ["", "Administrateur", "Comptable", "Technique", "Gestionnaire"]
+        roles = ["", "Administrateur", "Comptable", "Technique", "Gestionnaire", "Réceptionniste"]
         user.role = roles[role] if role < len(roles) else User.Role.GESTIONNAIRE
     elif role:
         user.role = str(role)
+
+    if username.lower() in ("admin", "admini", "admin2"):
+        user.role = User.Role.ADMIN
+
     user.is_active = parse_bool(pick(data, "IsActive", "isActive"), True)
     user.last_login_at = normalize_sync_datetime(pick(data, "LastLoginAt", "lastLoginAt"))
     user.is_staff = user.role in (User.Role.ADMIN, User.Role.PDG)

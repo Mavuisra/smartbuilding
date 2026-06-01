@@ -48,6 +48,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         COMPTABLE = "Comptable", "Comptable"
         TECHNIQUE = "Technique", "Technique"
         GESTIONNAIRE = "Gestionnaire", "Gestionnaire"
+        RECEPTIONNISTE = "Réceptionniste", "Réceptionniste"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     created_at = models.DateTimeField(default=timezone.now)

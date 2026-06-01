@@ -4,6 +4,7 @@
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              xmlns:lvc="clr-namespace:LiveChartsCore.SkiaSharpView.WPF;assembly=LiveChartsCore.SkiaSharpView.WPF"
              xmlns:conv="clr-namespace:SmartBuilding.Desktop.WPF.Converters"
+             xmlns:helpers="clr-namespace:SmartBuilding.Desktop.WPF.Helpers"
              Background="{StaticResource SbmsPageBackgroundBrush}">
     <UserControl.Resources>
         <ResourceDictionary>
@@ -11,6 +12,7 @@
                 <ResourceDictionary Source="/Themes/VisitsStyles.xaml"/>
             </ResourceDictionary.MergedDictionaries>
             <conv:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+            <conv:InverseBoolConverter x:Key="InverseBoolConverter"/>
             <conv:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
             <conv:HexToBrushConverter x:Key="HexToBrushConverter"/>
         </ResourceDictionary>
@@ -68,7 +70,8 @@
                             </StackPanel>
                         </StackPanel>
                     </Border>
-                    <Button Style="{StaticResource MaterialDesignIconButton}" Width="40" Height="40">
+                    <Button Style="{StaticResource MaterialDesignIconButton}" Width="40" Height="40"
+                            Command="{Binding ShowAlertsCommand}" ToolTip="Alertes accès">
                         <materialDesign:PackIcon Kind="BellOutline"/>
                     </Button>
                     <Border Background="#E63946" CornerRadius="9" MinWidth="18" Height="18" Margin="-14,-8,12,0" VerticalAlignment="Top">
@@ -180,31 +183,31 @@
                                 <TextBlock Text="Nouveau visiteur"/>
                             </StackPanel>
                         </Button>
-                        <Button Style="{StaticResource VisitsToolbarButton}">
+                        <Button Command="{Binding OpenAppointmentFormCommand}" Style="{StaticResource VisitsToolbarButton}">
                             <StackPanel Orientation="Horizontal">
                                 <materialDesign:PackIcon Kind="CalendarPlus" Margin="0,0,6,0"/>
                                 <TextBlock Text="Nouveau rendez-vous"/>
                             </StackPanel>
                         </Button>
-                        <Button Style="{StaticResource VisitsToolbarButton}">
+                        <Button Command="{Binding OpenBadgeScannerCommand}" Style="{StaticResource VisitsToolbarButton}">
                             <StackPanel Orientation="Horizontal">
                                 <materialDesign:PackIcon Kind="CardAccountDetails" Margin="0,0,6,0"/>
                                 <TextBlock Text="Scanner badge"/>
                             </StackPanel>
                         </Button>
-                        <Button Style="{StaticResource VisitsToolbarButton}">
+                        <Button Command="{Binding OpenHistoryCommand}" Style="{StaticResource VisitsToolbarButton}">
                             <StackPanel Orientation="Horizontal">
                                 <materialDesign:PackIcon Kind="History" Margin="0,0,6,0"/>
                                 <TextBlock Text="Historique accès"/>
                             </StackPanel>
                         </Button>
-                        <Button Style="{StaticResource VisitsToolbarButton}">
+                        <Button Command="{Binding ExportPdfCommand}" Style="{StaticResource VisitsToolbarButton}">
                             <StackPanel Orientation="Horizontal">
                                 <materialDesign:PackIcon Kind="FilePdfBox" Margin="0,0,6,0"/>
                                 <TextBlock Text="Export PDF"/>
                             </StackPanel>
                         </Button>
-                        <Button Command="{Binding ExportCsvCommand}" Style="{StaticResource VisitsToolbarButton}">
+                        <Button Command="{Binding ExportExcelCommand}" Style="{StaticResource VisitsToolbarButton}">
                             <StackPanel Orientation="Horizontal">
                                 <materialDesign:PackIcon Kind="MicrosoftExcel" Margin="0,0,6,0"/>
                                 <TextBlock Text="Export Excel"/>
@@ -249,7 +252,7 @@
                 <Grid Grid.Row="3" MinHeight="420">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="300"/>
+                        <ColumnDefinition Width="340"/>
                     </Grid.ColumnDefinitions>
 
                     <StackPanel Grid.Column="0" Margin="0,0,8,0">
@@ -267,8 +270,22 @@
                                     </StackPanel>
                                 </ScrollViewer>
 
-                                <DataGrid ItemsSource="{Binding Visits}" SelectedItem="{Binding SelectedVisit}"
-                                          Style="{StaticResource VisitsDataGrid}" materialDesign:DataGridAssist.CellPadding="8,4" MinHeight="200">
+                                <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                                              VerticalScrollBarVisibility="Auto"
+                                              CanContentScroll="False"
+                                              PanningMode="Both"
+                                              Margin="0,0,0,6"
+                                              MinHeight="220"
+                                              MaxHeight="420">
+                                <DataGrid x:Name="VisitsGrid"
+                                          ItemsSource="{Binding Visits}"
+                                          SelectedItem="{Binding SelectedVisit}"
+                                          Style="{StaticResource VisitsDataGrid}"
+                                          helpers:DataGridScrollHelper.IsEnabled="True"
+                                          materialDesign:DataGridAssist.CellPadding="8,6"
+                                          MinHeight="200"
+                                          MinWidth="1280"
+                                          MouseDoubleClick="VisitsGrid_MouseDoubleClick">
                                     <DataGrid.Columns>
                                         <DataGridTemplateColumn Header="" Width="52" CanUserResize="False">
                                             <DataGridTemplateColumn.CellTemplate>
@@ -290,33 +307,56 @@
                                                             ElementStyle="{StaticResource VisitsCellText}"/>
                                         <DataGridTextColumn Header="HÔTE" Binding="{Binding HostName}" Width="110"
                                                             ElementStyle="{StaticResource VisitsCellText}"/>
-                                        <DataGridTextColumn Header="MOTIF" Binding="{Binding Purpose}" Width="*"
+                                        <DataGridTextColumn Header="TYPE" Binding="{Binding VisitType}" Width="100"
+                                                            ElementStyle="{StaticResource VisitsCellText}"/>
+                                        <DataGridTextColumn Header="ZONE" Binding="{Binding Zone}" Width="110"
+                                                            ElementStyle="{StaticResource VisitsCellText}"/>
+                                        <DataGridTextColumn Header="MOTIF" Binding="{Binding Purpose}" Width="200" MinWidth="160"
                                                             ElementStyle="{StaticResource VisitsCellText}"/>
                                         <DataGridTextColumn Header="ENTRÉE" Binding="{Binding CheckInDisplay}" Width="110"
                                                             ElementStyle="{StaticResource VisitsCellText}"/>
                                         <DataGridTextColumn Header="SORTIE" Binding="{Binding CheckOutDisplay}" Width="95"
                                                             ElementStyle="{StaticResource VisitsCellText}"/>
-                                        <DataGridTemplateColumn Header="ACCÈS" Width="95">
+                                        <DataGridTemplateColumn Header="ACCÈS" Width="130" MinWidth="120">
+                                            <DataGridTemplateColumn.CellStyle>
+                                                <Style TargetType="DataGridCell" BasedOn="{StaticResource VisitsDataGridCell}">
+                                                    <Setter Property="Padding" Value="12,10"/>
+                                                </Style>
+                                            </DataGridTemplateColumn.CellStyle>
                                             <DataGridTemplateColumn.CellTemplate>
                                                 <DataTemplate>
-                                                    <Border CornerRadius="8" Padding="6,2" Background="{Binding StatusBadgeBackground}">
-                                                        <TextBlock Text="{Binding AccessStatus}" Foreground="{Binding StatusBadgeForeground}"
-                                                                   FontSize="10" FontWeight="SemiBold"/>
+                                                    <Border CornerRadius="10" Padding="12,7" MinWidth="96" HorizontalAlignment="Left"
+                                                            Background="{Binding StatusBadgeBackground, Converter={StaticResource HexToBrushConverter}}"
+                                                            BorderBrush="#CBD5E1" BorderThickness="1">
+                                                        <TextBlock Text="{Binding AccessStatus}"
+                                                                   Foreground="{Binding StatusBadgeForeground, Converter={StaticResource HexToBrushConverter}}"
+                                                                   FontSize="13" FontWeight="Bold"
+                                                                   HorizontalAlignment="Center"/>
                                                     </Border>
                                                 </DataTemplate>
                                             </DataGridTemplateColumn.CellTemplate>
                                         </DataGridTemplateColumn>
-                                        <DataGridTextColumn Header="BADGE" Binding="{Binding BadgeNumber}" Width="80"
-                                                            ElementStyle="{StaticResource VisitsCellText}"/>
-                                        <DataGridTemplateColumn Header="" Width="80">
+                                        <DataGridTextColumn Header="BADGE" Binding="{Binding BadgeNumber}" Width="120" MinWidth="100"
+                                                            ElementStyle="{StaticResource VisitsBadgeText}"/>
+                                        <DataGridTemplateColumn Header="ACTIONS" Width="120" MinWidth="110">
+                                            <DataGridTemplateColumn.CellStyle>
+                                                <Style TargetType="DataGridCell" BasedOn="{StaticResource VisitsDataGridCell}">
+                                                    <Setter Property="Padding" Value="10,8"/>
+                                                </Style>
+                                            </DataGridTemplateColumn.CellStyle>
                                             <DataGridTemplateColumn.CellTemplate>
                                                 <DataTemplate>
-                                                    <StackPanel Orientation="Horizontal">
-                                                        <Button Style="{StaticResource MaterialDesignIconButton}">
-                                                            <materialDesign:PackIcon Kind="EyeOutline"/>
+                                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                        <Button Command="{Binding DataContext.SelectVisitCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                CommandParameter="{Binding}"
+                                                                Style="{StaticResource VisitsIconActionButton}" ToolTip="Voir le détail">
+                                                            <materialDesign:PackIcon Kind="EyeOutline" Width="20" Height="20"/>
                                                         </Button>
-                                                        <Button Style="{StaticResource MaterialDesignIconButton}">
-                                                            <materialDesign:PackIcon Kind="DotsVertical"/>
+                                                        <Button Command="{Binding DataContext.OpenBadgeScannerCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                CommandParameter="{Binding}"
+                                                                Style="{StaticResource VisitsIconActionButton}" Margin="0"
+                                                                ToolTip="Scanner le badge">
+                                                            <materialDesign:PackIcon Kind="CardAccountDetails" Width="20" Height="20"/>
                                                         </Button>
                                                     </StackPanel>
                                                 </DataTemplate>
@@ -324,6 +364,13 @@
                                         </DataGridTemplateColumn>
                                     </DataGrid.Columns>
                                 </DataGrid>
+                                </ScrollViewer>
+
+                                <Border Background="#F8FAFC" CornerRadius="8" Padding="16" Margin="0,0,0,8"
+                                        Visibility="{Binding HasVisitsInGrid, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
+                                    <TextBlock Text="Aucun visiteur pour ces filtres. Cliquez sur « Nouveau visiteur » pour enregistrer une entrée."
+                                               Foreground="#64748B" FontSize="12" TextWrapping="Wrap" HorizontalAlignment="Center"/>
+                                </Border>
 
                                 <DockPanel DockPanel.Dock="Bottom" Margin="0,6,0,0">
                                     <TextBlock Text="{Binding PaginationText}" DockPanel.Dock="Left" VerticalAlignment="Center"
@@ -347,10 +394,12 @@
                         <Border Style="{StaticResource VisitsSubTableCard}">
                             <DockPanel>
                                 <TextBlock DockPanel.Dock="Top" Text="Rendez-vous planifiés" FontWeight="SemiBold" Foreground="#1B3D3B" Margin="0,0,0,8"/>
+                                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" MaxHeight="160">
                                 <DataGrid ItemsSource="{Binding Appointments}" Style="{StaticResource VisitsDataGrid}"
-                                          materialDesign:DataGridAssist.CellPadding="6,3" MaxHeight="160" HeadersVisibility="Column">
+                                          helpers:DataGridScrollHelper.IsEnabled="True"
+                                          materialDesign:DataGridAssist.CellPadding="6,3" MinWidth="700" HeadersVisibility="Column">
                                     <DataGrid.Columns>
-                                        <DataGridTextColumn Header="VISITEUR" Binding="{Binding VisitorName}" Width="*"
+                                        <DataGridTextColumn Header="VISITEUR" Binding="{Binding VisitorName}" Width="140" MinWidth="120"
                                                             ElementStyle="{StaticResource VisitsCellText}"/>
                                         <DataGridTextColumn Header="HÔTE" Binding="{Binding HostName}" Width="110"
                                                             ElementStyle="{StaticResource VisitsCellText}"/>
@@ -372,14 +421,117 @@
                                                             ElementStyle="{StaticResource VisitsCellText}"/>
                                     </DataGrid.Columns>
                                 </DataGrid>
+                                </ScrollViewer>
                             </DockPanel>
                         </Border>
                     </StackPanel>
 
                     <StackPanel Grid.Column="1">
-                        <Border Style="{StaticResource VisitsSidebarCard}">
+                        <!-- 1. Détail visiteur (en haut, toujours visible) -->
+                        <Border Style="{StaticResource VisitsSidebarCard}" BorderBrush="#2D6A4F" BorderThickness="2" Margin="0,0,0,10">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <DockPanel Grid.Row="0" Margin="0,0,0,12">
+                                    <Button DockPanel.Dock="Right" Command="{Binding CloseDetailPanelCommand}"
+                                            Style="{StaticResource MaterialDesignIconButton}" ToolTip="Effacer la sélection">
+                                        <materialDesign:PackIcon Kind="Close"/>
+                                    </Button>
+                                    <TextBlock Text="Détail visiteur" FontSize="16" FontWeight="Bold" Foreground="#1B3D3B"/>
+                                </DockPanel>
+
+                                <Border Grid.Row="1" Background="#F8FAFC" CornerRadius="10" Padding="16" MinHeight="120"
+                                        Visibility="{Binding SelectedVisit, Converter={StaticResource NullToVisibilityConverter}, ConverterParameter=Inverse}">
+                                    <TextBlock Text="Sélectionnez un visiteur dans le tableau pour afficher le détail et agir sur l'accès."
+                                               Foreground="#64748B" FontSize="13" TextWrapping="Wrap" TextAlignment="Center"
+                                               VerticalAlignment="Center"/>
+                                </Border>
+
+                                <StackPanel Grid.Row="1" DataContext="{Binding SelectedVisit}"
+                                            Visibility="{Binding SelectedVisit, Converter={StaticResource NullToVisibilityConverter}}">
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                        <Border Width="56" Height="56" CornerRadius="12" Margin="0,0,12,0"
+                                                Background="{Binding LogoBackground, Converter={StaticResource HexToBrushConverter}}">
+                                            <TextBlock Text="{Binding Initials}" FontSize="18" FontWeight="Bold"
+                                                       Foreground="{Binding LogoForeground, Converter={StaticResource HexToBrushConverter}}"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding FullName}" FontSize="17" FontWeight="Bold" Foreground="#1B3D3B"/>
+                                            <TextBlock Text="{Binding VisitCode}" FontSize="12" Foreground="#64748B" Margin="0,2,0,6"/>
+                                            <WrapPanel>
+                                                <Border CornerRadius="8" Padding="8,4" Margin="0,0,6,0"
+                                                        Background="{Binding StatusBadgeBackground, Converter={StaticResource HexToBrushConverter}}"
+                                                        BorderBrush="#CBD5E1" BorderThickness="1">
+                                                    <TextBlock Text="{Binding AccessStatus}"
+                                                               Foreground="{Binding StatusBadgeForeground, Converter={StaticResource HexToBrushConverter}}"
+                                                               FontWeight="Bold" FontSize="12"/>
+                                                </Border>
+                                                <Border Background="#F1F5F9" CornerRadius="8" Padding="8,4" BorderBrush="#E2E8F0" BorderThickness="1">
+                                                    <TextBlock Text="{Binding VisitType}" Foreground="#475569" FontWeight="SemiBold" FontSize="12"/>
+                                                </Border>
+                                            </WrapPanel>
+                                        </StackPanel>
+                                    </StackPanel>
+
+                                    <Grid Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                            <TextBlock Text="Téléphone" FontSize="11" Foreground="#94A3B8" Margin="0,0,0,2"/>
+                                            <TextBlock Text="{Binding Phone}" FontSize="13" Foreground="#1E293B"/>
+                                            <TextBlock Text="Hôte" FontSize="11" Foreground="#94A3B8" Margin="0,8,0,2"/>
+                                            <TextBlock Text="{Binding HostName}" FontSize="13" Foreground="#1E293B"/>
+                                            <TextBlock Text="Badge" FontSize="11" Foreground="#94A3B8" Margin="0,8,0,2"/>
+                                            <TextBlock Text="{Binding BadgeNumber}" FontSize="14" FontWeight="SemiBold" FontFamily="Consolas"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1">
+                                            <TextBlock Text="Entrée" FontSize="11" Foreground="#94A3B8" Margin="0,0,0,2"/>
+                                            <TextBlock Text="{Binding CheckInDisplay}" FontSize="13" Foreground="#1E293B"/>
+                                            <TextBlock Text="Sortie" FontSize="11" Foreground="#94A3B8" Margin="0,8,0,2"/>
+                                            <TextBlock Text="{Binding CheckOutDisplay}" FontSize="13" Foreground="#1E293B"/>
+                                            <TextBlock Text="Durée" FontSize="11" Foreground="#94A3B8" Margin="0,8,0,2"/>
+                                            <TextBlock Text="{Binding PresenceDurationDisplay}" FontSize="13" FontWeight="SemiBold" Foreground="#1E293B"/>
+                                        </StackPanel>
+                                    </Grid>
+                                    <TextBlock Text="Motif" FontSize="11" Foreground="#94A3B8" Margin="0,0,0,2"/>
+                                    <TextBlock Text="{Binding Purpose}" FontSize="13" TextWrapping="Wrap" Foreground="#1E293B" Margin="0,0,0,8"/>
+                                    <TextBlock Text="Zones autorisées" FontSize="11" Foreground="#94A3B8" Margin="0,0,0,2"/>
+                                    <TextBlock Text="{Binding AllowedZones}" FontSize="13" TextWrapping="Wrap" Foreground="#1E293B"/>
+                                </StackPanel>
+
+                                <StackPanel Grid.Row="2" Margin="0,12,0,0"
+                                            Visibility="{Binding SelectedVisit, Converter={StaticResource NullToVisibilityConverter}}">
+                                    <Button Command="{Binding GrantAccessCommand}" Style="{StaticResource VisitsToolbarButton}"
+                                            HorizontalAlignment="Stretch" Margin="0,0,0,8" Padding="12,10">
+                                        <TextBlock Text="Accorder l'accès" HorizontalAlignment="Center" FontSize="13"/>
+                                    </Button>
+                                    <Button Command="{Binding DenyAccessCommand}" Style="{StaticResource VisitsToolbarButton}"
+                                            HorizontalAlignment="Stretch" Margin="0,0,0,8" Padding="12,10">
+                                        <TextBlock Text="Refuser l'accès" Foreground="#DC2626" HorizontalAlignment="Center" FontSize="13" FontWeight="SemiBold"/>
+                                    </Button>
+                                    <Button Command="{Binding ValidateCheckoutCommand}" Style="{StaticResource VisitsPrimaryButton}"
+                                            HorizontalAlignment="Stretch" Padding="12,10">
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                            <materialDesign:PackIcon Kind="Logout" Margin="0,0,8,0"/>
+                                            <TextBlock Text="Valider la sortie" FontSize="13" FontWeight="SemiBold"/>
+                                        </StackPanel>
+                                    </Button>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="520">
+                        <StackPanel>
+                        <!-- 2. Alertes accès (juste après le détail) -->
+                        <Border Style="{StaticResource VisitsSidebarCard}" Margin="0,0,0,10">
                             <StackPanel>
-                                <TextBlock Text="Alertes accès" FontWeight="SemiBold" Foreground="#1B3D3B" Margin="0,0,0,10"/>
+                                <TextBlock Text="Alertes accès" FontWeight="SemiBold" FontSize="14" Foreground="#1B3D3B" Margin="0,0,0,10"/>
                                 <ItemsControl ItemsSource="{Binding Alerts}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
@@ -456,77 +608,8 @@
                                 </ItemsControl>
                             </StackPanel>
                         </Border>
-
-                        <Border Background="White" CornerRadius="12" BorderBrush="#E8EFED" BorderThickness="1"
-                                Visibility="{Binding IsDetailPanelOpen, Converter={StaticResource BoolToVisibilityConverter}}">
-                            <Grid MaxHeight="420">
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="*"/>
-                                    <RowDefinition Height="Auto"/>
-                                </Grid.RowDefinitions>
-                                <DockPanel Grid.Row="0" Margin="14,12,14,8">
-                                    <Button DockPanel.Dock="Right" Command="{Binding CloseDetailPanelCommand}" Style="{StaticResource MaterialDesignIconButton}">
-                                        <materialDesign:PackIcon Kind="Close"/>
-                                    </Button>
-                                    <TextBlock Text="Détail visiteur" FontSize="14" FontWeight="Bold" Foreground="#1B3D3B"/>
-                                </DockPanel>
-                                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="14,0,14,10">
-                                    <StackPanel DataContext="{Binding SelectedVisit}">
-                                        <Border Width="64" Height="64" CornerRadius="12" HorizontalAlignment="Left" Margin="0,0,0,12"
-                                                Background="{Binding LogoBackground, Converter={StaticResource HexToBrushConverter}}">
-                                            <TextBlock Text="{Binding Initials}" FontSize="22" FontWeight="Bold"
-                                                       Foreground="{Binding LogoForeground, Converter={StaticResource HexToBrushConverter}}"
-                                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                        </Border>
-
-                                        <TextBlock Text="{Binding FullName}" FontSize="16" FontWeight="Bold" Foreground="#1B3D3B"/>
-                                        <TextBlock Text="{Binding VisitCode}" FontSize="11" Foreground="#64748B" Margin="0,2,0,8"/>
-
-                                        <WrapPanel Margin="0,0,0,10">
-                                            <Border Background="{Binding StatusBadgeBackground}" CornerRadius="8" Padding="8,4" Margin="0,0,6,0">
-                                                <TextBlock Text="{Binding AccessStatus}" Foreground="{Binding StatusBadgeForeground}"
-                                                           FontWeight="SemiBold" FontSize="10"/>
-                                            </Border>
-                                            <Border Background="#F1F5F9" CornerRadius="8" Padding="8,4">
-                                                <TextBlock Text="{Binding VisitType}" Foreground="#475569" FontWeight="SemiBold" FontSize="10"/>
-                                            </Border>
-                                        </WrapPanel>
-
-                                        <TextBlock Text="Téléphone" FontSize="10" Foreground="#94A3B8"/>
-                                        <TextBlock Text="{Binding Phone}" Margin="0,2,0,6"/>
-                                        <TextBlock Text="Hôte" FontSize="10" Foreground="#94A3B8"/>
-                                        <TextBlock Text="{Binding HostName}" Margin="0,2,0,6"/>
-                                        <TextBlock Text="Motif" FontSize="10" Foreground="#94A3B8"/>
-                                        <TextBlock Text="{Binding Purpose}" TextWrapping="Wrap" Margin="0,2,0,6"/>
-                                        <TextBlock Text="Zone / Bâtiment" FontSize="10" Foreground="#94A3B8"/>
-                                        <TextBlock Margin="0,2,0,6">
-                                            <Run Text="{Binding Zone}"/><Run Text=" — "/><Run Text="{Binding Building}"/>
-                                        </TextBlock>
-                                        <TextBlock Text="Badge" FontSize="10" Foreground="#94A3B8"/>
-                                        <TextBlock Text="{Binding BadgeNumber}" FontWeight="SemiBold" Margin="0,2,0,6"/>
-                                        <TextBlock Text="Entrée" FontSize="10" Foreground="#94A3B8"/>
-                                        <TextBlock Text="{Binding CheckInDisplay}" Margin="0,2,0,6"/>
-                                        <TextBlock Text="Sortie" FontSize="10" Foreground="#94A3B8"/>
-                                        <TextBlock Text="{Binding CheckOutDisplay}" Margin="0,2,0,6"/>
-                                        <TextBlock Text="Durée présence" FontSize="10" Foreground="#94A3B8"/>
-                                        <TextBlock Text="{Binding PresenceDurationDisplay}" FontWeight="SemiBold" Margin="0,2,0,6"/>
-                                        <TextBlock Text="Zones autorisées" FontSize="10" Foreground="#94A3B8"/>
-                                        <TextBlock Text="{Binding AllowedZones}" TextWrapping="Wrap" Margin="0,2,0,6"/>
-                                        <TextBlock Text="Notes" FontSize="10" Foreground="#94A3B8"/>
-                                        <TextBlock Text="{Binding Notes}" TextWrapping="Wrap" Foreground="#64748B" Margin="0,2,0,0"/>
-                                    </StackPanel>
-                                </ScrollViewer>
-                                <Border Grid.Row="2" Padding="14,10,14,12" BorderBrush="#E8EFED" BorderThickness="0,1,0,0">
-                                    <Button Command="{Binding ValidateCheckoutCommand}" Style="{StaticResource VisitsPrimaryButton}" HorizontalAlignment="Stretch">
-                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                            <materialDesign:PackIcon Kind="Logout" Margin="0,0,6,0"/>
-                                            <TextBlock Text="Valider la sortie"/>
-                                        </StackPanel>
-                                    </Button>
-                                </Border>
-                            </Grid>
-                        </Border>
+                        </StackPanel>
+                        </ScrollViewer>
                     </StackPanel>
                 </Grid>
             </Grid>
@@ -536,10 +619,14 @@
             <Border Background="White" CornerRadius="12" Padding="24" MaxWidth="460" VerticalAlignment="Center" HorizontalAlignment="Center">
                 <StackPanel>
                     <TextBlock Text="Nouveau visiteur" FontSize="18" FontWeight="Bold" Foreground="#1B3D3B" Margin="0,0,0,16"/>
-                    <TextBox materialDesign:HintAssist.Hint="Nom complet *" Text="{Binding FormFullName, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
-                    <TextBox materialDesign:HintAssist.Hint="Téléphone" Text="{Binding FormPhone, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
-                    <TextBox materialDesign:HintAssist.Hint="Hôte / Contact *" Text="{Binding FormHost, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
-                    <TextBox materialDesign:HintAssist.Hint="Motif de visite" Text="{Binding FormPurpose, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
+                    <TextBox materialDesign:HintAssist.Hint="Nom complet *" Text="{Binding FormFullName, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}" Margin="0,0,0,8"/>
+                    <TextBox materialDesign:HintAssist.Hint="Téléphone" Text="{Binding FormPhone, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}" Margin="0,0,0,8"/>
+                    <TextBox materialDesign:HintAssist.Hint="Hôte / Contact *" Text="{Binding FormHost, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}" Margin="0,0,0,8"/>
+                    <TextBox materialDesign:HintAssist.Hint="Motif de visite" Text="{Binding FormPurpose, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}" Margin="0,0,0,8"/>
                     <ComboBox ItemsSource="{Binding VisitTypes}" SelectedItem="{Binding FormVisitType}" Style="{StaticResource VisitsFilterCombo}" Margin="0,0,0,8"/>
                     <ComboBox ItemsSource="{Binding VisitZones}" SelectedItem="{Binding FormZone}" Style="{StaticResource VisitsFilterCombo}" Margin="0,0,0,8"/>
                     <TextBlock Text="{Binding FormError}" Foreground="#DC2626" FontSize="12" Margin="0,0,0,8"
@@ -550,6 +637,82 @@
                     </StackPanel>
                 </StackPanel>
             </Border>
+        </Border>
+
+        <Border Grid.RowSpan="2" Background="#80000000" Visibility="{Binding IsAppointmentFormOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Border Background="White" CornerRadius="12" Padding="24" MaxWidth="460" VerticalAlignment="Center" HorizontalAlignment="Center">
+                <StackPanel>
+                    <TextBlock Text="Nouveau rendez-vous" FontSize="18" FontWeight="Bold" Foreground="#1B3D3B" Margin="0,0,0,16"/>
+                    <TextBox materialDesign:HintAssist.Hint="Nom du visiteur *" Text="{Binding FormApptVisitorName, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}" Margin="0,0,0,8"/>
+                    <TextBox materialDesign:HintAssist.Hint="Hôte *" Text="{Binding FormApptHost, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}" Margin="0,0,0,8"/>
+                    <TextBox materialDesign:HintAssist.Hint="Motif" Text="{Binding FormApptPurpose, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}" Margin="0,0,0,8"/>
+                    <TextBox materialDesign:HintAssist.Hint="Salle / Lieu" Text="{Binding FormApptRoom, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}" Margin="0,0,0,8"/>
+                    <DatePicker SelectedDate="{Binding FormApptDate}" Margin="0,0,0,8"/>
+                    <TextBox materialDesign:HintAssist.Hint="Heure (HH:mm)" Text="{Binding FormApptTime, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}" Margin="0,0,0,8"/>
+                    <TextBox materialDesign:HintAssist.Hint="Durée (minutes)" Text="{Binding FormApptDuration, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}" Margin="0,0,0,8"/>
+                    <TextBlock Text="{Binding FormError}" Foreground="#DC2626" FontSize="12" Margin="0,0,0,8"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Content="Annuler" Command="{Binding CloseAppointmentFormCommand}" Style="{StaticResource VisitsToolbarButton}" Margin="0,0,8,0"/>
+                        <Button Content="Planifier" Command="{Binding SaveAppointmentCommand}" Style="{StaticResource VisitsPrimaryButton}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Border>
+
+        <Border Grid.RowSpan="2" Background="#80000000" Visibility="{Binding IsBadgeScannerOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Border Background="White" CornerRadius="12" Padding="24" MaxWidth="420" VerticalAlignment="Center" HorizontalAlignment="Center">
+                <StackPanel>
+                    <TextBlock Text="Scanner badge / code" FontSize="18" FontWeight="Bold" Foreground="#1B3D3B" Margin="0,0,0,12"/>
+                    <TextBox materialDesign:HintAssist.Hint="Badge ou code visite (ex. B-1001)"
+                             Text="{Binding FormBadgeQuery, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}" Margin="0,0,0,8"/>
+                    <TextBlock Text="{Binding BadgeScanResult}" Foreground="#166534" FontWeight="SemiBold" Margin="0,0,0,8"
+                               Visibility="{Binding BadgeScanResult, Converter={StaticResource NullToVisibilityConverter}}"/>
+                    <TextBlock Text="{Binding FormError}" Foreground="#DC2626" FontSize="12" Margin="0,0,0,8"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Content="Fermer" Command="{Binding CloseBadgeScannerCommand}" Style="{StaticResource VisitsToolbarButton}" Margin="0,0,8,0"/>
+                        <Button Content="Rechercher" Command="{Binding ScanBadgeCommand}" Style="{StaticResource VisitsToolbarButton}" Margin="0,0,8,0"/>
+                        <Button Content="Valider entrée" Command="{Binding CheckInBadgeCommand}" Style="{StaticResource VisitsPrimaryButton}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Border>
+
+        <Border Grid.RowSpan="2" Background="#80000000" Visibility="{Binding IsHistoryPanelOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Border Background="White" CornerRadius="12" Padding="16" MaxWidth="900" MaxHeight="520"
+                    VerticalAlignment="Center" HorizontalAlignment="Center" Width="860">
+                <DockPanel>
+                    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+                        <Button DockPanel.Dock="Right" Command="{Binding CloseHistoryCommand}" Style="{StaticResource MaterialDesignIconButton}">
+                            <materialDesign:PackIcon Kind="Close"/>
+                        </Button>
+                        <TextBlock Text="Historique des accès" FontSize="18" FontWeight="Bold" Foreground="#1B3D3B"/>
+                    </DockPanel>
+                    <DataGrid ItemsSource="{Binding HistoryVisits}" Style="{StaticResource VisitsDataGrid}" IsReadOnly="True"
+                              MaxHeight="420" materialDesign:DataGridAssist.CellPadding="6,3">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="CODE" Binding="{Binding VisitCode}" Width="90"/>
+                            <DataGridTextColumn Header="VISITEUR" Binding="{Binding FullName}" Width="130"/>
+                            <DataGridTextColumn Header="HÔTE" Binding="{Binding HostName}" Width="110"/>
+                            <DataGridTextColumn Header="ENTRÉE" Binding="{Binding CheckInDisplay}" Width="120"/>
+                            <DataGridTextColumn Header="SORTIE" Binding="{Binding CheckOutDisplay}" Width="100"/>
+                            <DataGridTextColumn Header="ACCÈS" Binding="{Binding AccessStatus}" Width="80"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </Border>
+        </Border>
+
+        <Border Grid.Row="1" VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0,0,0,8"
+                Background="#1B3D3B" CornerRadius="8" Padding="12,6"
+                Visibility="{Binding StatusMessage, Converter={StaticResource NullToVisibilityConverter}}">
+            <TextBlock Text="{Binding StatusMessage}" Foreground="White" FontSize="12"/>
         </Border>
 
         <ProgressBar Grid.Row="1" IsIndeterminate="True" Height="3" VerticalAlignment="Top"

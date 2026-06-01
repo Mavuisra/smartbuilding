@@ -31,10 +31,18 @@ public static class CloudApiAuth
         string password,
         CancellationToken cancellationToken = default)
     {
-        using var client = new CloudApiClient(baseUrl);
-        var result = await client
-            .PostJsonAsync("api/auth/login/", new { username, password }, cancellationToken)
-            .ConfigureAwait(false);
+        CloudApiClient.HttpResult result;
+        try
+        {
+            using var client = new CloudApiClient(baseUrl);
+            result = await client
+                .PostJsonAsync("api/auth/login/", new { username, password }, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (Exception)
+        {
+            return null;
+        }
 
         if (!result.IsSuccess || string.IsNullOrWhiteSpace(result.Body))
             return null;

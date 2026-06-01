@@ -23,8 +23,10 @@ from api.services.sync_metrics import (
     count_active_leases,
     count_tenants_total,
     ensure_dashboard_orm_materialized,
+    expenses_all_time_totals,
     expenses_month_totals,
     occupancy_totals,
+    rent_all_time_collected,
     rent_month_totals,
     revenue_chart_totals,
     sync_store_count,
@@ -44,8 +46,12 @@ def get_executive_summary() -> dict:
     rent_collected, rent_planned, late_count, rent_late_amount = rent_month_totals(
         today.year, today.month
     )
+    rent_collected_total = rent_all_time_collected()
 
     expenses_month = expenses_month_totals(month_start)
+    expenses_total = expenses_all_time_totals()
+    available_balance = rent_collected_total - expenses_total
+    available_this_month = rent_collected - expenses_month
 
     total_premises, occupied = occupancy_totals()
     occupancy = (occupied / total_premises * 100) if total_premises else 0
@@ -98,10 +104,17 @@ def get_executive_summary() -> dict:
         )
 
     return {
-        "monthlyRevenue": float(rent_collected),
-        "rentRevenue": float(rent_collected),
+        "monthlyRevenue": float(rent_collected_total),
+        "rentRevenue": float(rent_collected_total),
+        "rentCollectedTotal": float(rent_collected_total),
         "monthlyExpenses": float(expenses_month),
-        "netBalance": float(rent_collected - expenses_month),
+        "expensesThisMonth": float(expenses_month),
+        "totalExpenses": float(expenses_total),
+        "availableBalance": float(available_balance),
+        "availableThisMonth": float(available_this_month),
+        "netBalance": float(available_balance),
+        "netBalanceThisMonth": float(available_this_month),
+        "treasuryBalance": float(available_balance),
         "rentCollected": float(rent_collected),
         "rentPlanned": float(rent_planned),
         "rentLateAmount": float(rent_late_amount),
@@ -139,8 +152,11 @@ def get_executive_summary() -> dict:
             {"label": "Locataires", "value": str(total_tenants)},
             {"label": "Contrats actifs", "value": str(active_leases)},
             {"label": "Taux d'occupation", "value": f"{occupancy:.1f} %"},
+            {"label": "Loyers encaissés (total)", "value": _fc(rent_collected_total)},
             {"label": "Loyers du mois", "value": _fc(rent_collected)},
+            {"label": "Dépenses engagées (total)", "value": _fc(expenses_total)},
             {"label": "Dépenses (mois)", "value": _fc(expenses_month)},
+            {"label": "Trésorerie disponible", "value": _fc(available_balance)},
         ],
         "dataSources": {
             "rent": "RentPayments",

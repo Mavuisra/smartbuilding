@@ -19,10 +19,13 @@
 └──────────────┬─────────────────────────────┬────────────────┘
                │                             │
      ┌─────────▼─────────┐         ┌─────────▼─────────┐
-     │  SQLite (local)   │◄─Sync──►│ PostgreSQL (cloud)│
-     │  Offline-first    │  60s    │  via REST API     │
+     │  SQLite (local)   │──push──►│ PostgreSQL (web)  │
+     │  SOURCE DE VÉRITÉ │◄─pull── │  via API Django   │
+     │  Desktop attaché  │ manuel  │  Consomme l’API   │
      └───────────────────┘         └───────────────────┘
 ```
+
+**Règle produit :** la base est **attachée au desktop** (fichier SQLite local). Le web ne fait qu’**exposer des APIs** et afficher une copie synchronisée pour le PDG — il n’est pas requis pour faire tourner l’application bureau.
 
 ## Couches Clean Architecture
 
@@ -63,12 +66,13 @@ Toutes les entités héritent de `BaseEntity` :
 
 ## Synchronisation offline-first
 
-1. Toute modification locale met `IsSynced = false`
-2. Timer WPF : **60 secondes** (`SyncBackgroundService`)
-3. Push : entités non synchronisées → `POST /api/sync/push`
-4. Pull : changements serveur depuis `LastSyncAt` → `GET /api/sync/pull`
+1. Toute modification locale met `IsSynced = false` dans **SQLite desktop**
+2. Sync **manuelle** (module Synchronisation) ou auto uniquement si un jeton cloud existe déjà
+3. **Push (prioritaire)** : desktop → `POST /api/sync/push` → PostgreSQL web
+4. **Pull (secondaire)** : autres postes / rattrapage → `GET /api/sync/pull`
 5. Conflits : **Last Write Wins** (`UpdatedAt` le plus récent gagne)
-6. Journal : table `SyncLogs`
+6. Journal : table `SyncLogs` côté desktop
+7. **Sans sync** : le desktop reste pleinement utilisable (base locale seule)
 
 ## Sécurité
 

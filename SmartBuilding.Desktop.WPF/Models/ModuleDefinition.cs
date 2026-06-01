@@ -20,11 +20,11 @@ public sealed class ShellNavSectionHeader(string label) : ShellNavEntry
     public string Label { get; } = label;
 }
 
-public sealed class ShellNavModuleItem(ModuleDefinition Module) : ShellNavEntry
+public sealed class ShellNavModuleItem(ModuleDefinition Module, string? displayTitle = null) : ShellNavEntry
 {
     public ModuleDefinition Module { get; } = Module;
     public string Id => Module.Id;
-    public string Title => Module.Title;
+    public string Title => displayTitle ?? Module.Title;
     public string IconKind => Module.IconKind;
 }
 

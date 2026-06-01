@@ -694,8 +694,8 @@ def emails():
 def supervision():
     summary = get_executive_summary()
     rows = [
-        {"Indicateur": "Revenus mensuels", "Valeur": _money(summary["monthlyRevenue"]), "Statut": "Suivi"},
-        {"Indicateur": "Dépenses mensuelles", "Valeur": _money(summary["monthlyExpenses"]), "Statut": "À contrôler"},
+        {"Indicateur": "Revenus loyers (total)", "Valeur": _money(summary.get("rentCollectedTotal", summary["monthlyRevenue"])), "Statut": "Suivi"},
+        {"Indicateur": "Dépenses engagées (total)", "Valeur": _money(summary.get("totalExpenses", summary["monthlyExpenses"])), "Statut": "À contrôler"},
         {"Indicateur": "Occupation", "Valeur": f"{summary['occupancyRate']} %", "Statut": "Live"},
         {"Indicateur": "Incidents ouverts", "Valeur": summary["openIncidents"], "Statut": "Prioritaire"},
     ]

@@ -36,15 +36,23 @@ public static class ModuleRegistry
 
     public static IEnumerable<ShellNavEntry> BuildNavigation(SessionService session)
     {
+        var receptionOnly = session.IsReceptionOnly();
         var sectionLabels = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["gestion"] = "GESTION",
-            ["admin"] = "ADMINISTRATION"
+            ["admin"] = "ADMINISTRATION",
+            ["reception"] = "RÉCEPTION"
         };
 
-        foreach (var section in new[] { "main", "gestion", "admin" })
+        var sectionOrder = receptionOnly
+            ? new[] { "reception" }
+            : new[] { "main", "gestion", "admin" };
+
+        foreach (var section in sectionOrder)
         {
-            var modules = All.Where(m => m.Section == section && CanAccess(session, m)).ToList();
+            var modules = All
+                .Where(m => EffectiveSection(m, receptionOnly) == section && CanAccess(session, m))
+                .ToList();
             if (modules.Count == 0)
                 continue;
 
@@ -53,7 +61,6 @@ public static class ModuleRegistry
 
             foreach (var module in modules)
             {
-                // Location (menu déroulant) juste avant Personnel — pas de page racine « Local »
                 if (string.Equals(module.Id, "locations", StringComparison.OrdinalIgnoreCase)
                     && CanAccess(session, module))
                 {
@@ -71,8 +78,12 @@ public static class ModuleRegistry
                     continue;
                 }
 
-                yield return new ShellNavModuleItem(module);
+                var title = receptionOnly && module.Id == "visites" ? "Réception" : null;
+                yield return new ShellNavModuleItem(module, title);
             }
         }
     }
+
+    private static string EffectiveSection(ModuleDefinition module, bool receptionOnly) =>
+        receptionOnly && module.Id == "visites" ? "reception" : module.Section;
 }

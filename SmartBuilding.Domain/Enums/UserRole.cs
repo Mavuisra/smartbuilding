@@ -5,5 +5,6 @@ public enum UserRole
     Administrateur = 1,
     Comptable = 2,
     Technique = 3,
-    Gestionnaire = 4
+    Gestionnaire = 4,
+    Receptionniste = 5
 }

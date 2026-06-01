@@ -21,6 +21,8 @@ public class VisitsService
 
     public async Task<VisitsPageData> LoadAsync(CancellationToken cancellationToken = default)
     {
+        await RemoveLegacyDemoDataAsync(cancellationToken);
+
         var today = DateTime.Today;
         var visitors = await _db.Visitors.OrderByDescending(v => v.CheckInAt).ToListAsync(cancellationToken);
         var appointments = await _db.VisitorAppointments.OrderBy(a => a.ScheduledAt).ToListAsync(cancellationToken);
@@ -147,6 +149,116 @@ public class VisitsService
         v.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync(cancellationToken);
         return string.Empty;
+    }
+
+    public async Task<string> CreateAppointmentAsync(
+        VisitorAppointment appointment,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(appointment.VisitorName))
+            return "Le nom du visiteur est obligatoire.";
+        if (string.IsNullOrWhiteSpace(appointment.HostName))
+            return "L'hôte est obligatoire.";
+        if (appointment.ScheduledAt == default)
+            appointment.ScheduledAt = DateTime.Now.AddHours(1);
+
+        appointment.Status = string.IsNullOrWhiteSpace(appointment.Status) ? "Confirmé" : appointment.Status;
+        appointment.Room = string.IsNullOrWhiteSpace(appointment.Room) ? "Réception" : appointment.Room;
+        appointment.IsSynced = false;
+
+        _db.VisitorAppointments.Add(appointment);
+        await _db.SaveChangesAsync(cancellationToken);
+        return string.Empty;
+    }
+
+    public async Task<Visitor?> FindByBadgeOrCodeAsync(string query, CancellationToken cancellationToken = default)
+    {
+        var q = query.Trim();
+        if (string.IsNullOrWhiteSpace(q))
+            return null;
+
+        var lower = q.ToLowerInvariant();
+        return await _db.Visitors
+            .OrderByDescending(v => v.CheckInAt)
+            .FirstOrDefaultAsync(v =>
+                v.BadgeNumber == q
+                || v.VisitCode == q
+                || v.FullName.ToLower().Contains(lower),
+                cancellationToken);
+    }
+
+    public async Task<string> CheckInFromBadgeAsync(string badgeOrCode, CancellationToken cancellationToken = default)
+    {
+        var visitor = await FindByBadgeOrCodeAsync(badgeOrCode, cancellationToken);
+        if (visitor is null)
+            return "Aucun visiteur trouvé pour ce badge ou code.";
+
+        if (visitor.AccessStatus == "Actif" && !visitor.CheckOutAt.HasValue)
+            return $"Déjà enregistré : {visitor.FullName} ({visitor.Zone}).";
+
+        visitor.CheckInAt = DateTime.Now;
+        visitor.CheckOutAt = null;
+        visitor.AccessStatus = "Actif";
+        visitor.BadgeNumber ??= $"B-{DateTime.Now:HHmm}";
+        visitor.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync(cancellationToken);
+        return string.Empty;
+    }
+
+    public async Task<string> SetAccessStatusAsync(
+        Guid id,
+        string status,
+        CancellationToken cancellationToken = default)
+    {
+        var v = await _db.Visitors.FindAsync([id], cancellationToken);
+        if (v is null) return "Visite introuvable.";
+
+        v.AccessStatus = status;
+        v.UpdatedAt = DateTime.UtcNow;
+        if (status == "Sorti" && !v.CheckOutAt.HasValue)
+            v.CheckOutAt = DateTime.Now;
+
+        await _db.SaveChangesAsync(cancellationToken);
+        return string.Empty;
+    }
+
+    public async Task<IReadOnlyList<VisitListItem>> GetAccessHistoryAsync(
+        int take = 200,
+        CancellationToken cancellationToken = default)
+    {
+        var visitors = await _db.Visitors
+            .OrderByDescending(v => v.CheckInAt)
+            .Take(take)
+            .ToListAsync(cancellationToken);
+        return visitors.Select(MapVisit).ToList();
+    }
+
+    /// <summary>Supprime les visiteurs/RDV de démo créés automatiquement (anciennes versions).</summary>
+    private async Task RemoveLegacyDemoDataAsync(CancellationToken cancellationToken)
+    {
+        var demoNames = new[]
+        {
+            "Jean Dupont", "Marie Kabila", "Paul Technicien",
+            "Sophie Mbuyi", "Client externe"
+        };
+
+        var visitors = await _db.Visitors
+            .Where(v => demoNames.Contains(v.FullName))
+            .ToListAsync(cancellationToken);
+        if (visitors.Count > 0)
+        {
+            _db.Visitors.RemoveRange(visitors);
+            await _db.SaveChangesAsync(cancellationToken);
+        }
+
+        var appointments = await _db.VisitorAppointments
+            .Where(a => demoNames.Contains(a.VisitorName))
+            .ToListAsync(cancellationToken);
+        if (appointments.Count > 0)
+        {
+            _db.VisitorAppointments.RemoveRange(appointments);
+            await _db.SaveChangesAsync(cancellationToken);
+        }
     }
 
     private static VisitListItem MapVisit(Visitor v)

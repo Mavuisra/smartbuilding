@@ -16,18 +16,21 @@ public class SettingsService
     private readonly ISyncService _syncService;
     private readonly IConfiguration _configuration;
     private readonly AppConfigurationService _appConfiguration;
+    private readonly DesktopLocalDatabaseConfig _localDb;
     private readonly string _prefsPath;
 
     public SettingsService(
         SmartBuildingDbContext db,
         ISyncService syncService,
         IConfiguration configuration,
-        AppConfigurationService appConfiguration)
+        AppConfigurationService appConfiguration,
+        DesktopLocalDatabaseConfig localDb)
     {
         _db = db;
         _syncService = syncService;
         _configuration = configuration;
         _appConfiguration = appConfiguration;
+        _localDb = localDb;
         var folder = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "SBMS");
@@ -50,9 +53,21 @@ public class SettingsService
         var lastSync = _syncService.LastSyncAt;
 
         var prefs = LoadNotificationPrefs();
-        var dbPath = DesktopSqlitePaths.GetDatabaseFilePath();
-        var dbDir = DesktopSqlitePaths.DataDirectory;
-        var dbSize = File.Exists(dbPath) ? new FileInfo(dbPath).Length : 0L;
+        string dbPath;
+        string dbDir;
+        long dbSize;
+        if (_localDb.IsMySql)
+        {
+            dbPath = _localDb.ConnectionString;
+            dbDir = _localDb.DisplayLabel;
+            dbSize = 0;
+        }
+        else
+        {
+            dbPath = DesktopSqlitePaths.GetDatabaseFilePath();
+            dbDir = DesktopSqlitePaths.DataDirectory;
+            dbSize = File.Exists(dbPath) ? new FileInfo(dbPath).Length : 0L;
+        }
 
         var env = _configuration["ASPNETCORE_ENVIRONMENT"]
                   ?? (_configuration["Api:BaseUrl"]?.Contains("localhost") == true ? "Développement" : "Production");

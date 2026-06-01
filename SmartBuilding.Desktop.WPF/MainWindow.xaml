@@ -123,7 +123,8 @@
                     </StackPanel>
 
                     <StackPanel DockPanel.Dock="Bottom" Margin="12,8,12,12">
-                        <Border Background="#152E2C" CornerRadius="10" Padding="12" Margin="0,0,0,10">
+                        <Border Background="#152E2C" CornerRadius="10" Padding="12" Margin="0,0,0,10"
+                                Visibility="{Binding IsReceptionOnly, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}">
                             <StackPanel>
                                 <TextBlock Text="Trésorerie" Foreground="White" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6"/>
                                 <TextBlock Text="{Binding TreasuryAvailableDisplay}" Foreground="#95D5B2" FontWeight="Bold" FontSize="14"/>

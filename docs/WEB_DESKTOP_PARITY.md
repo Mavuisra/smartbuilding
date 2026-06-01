@@ -1,14 +1,25 @@
 # Parité Web ↔ Desktop SBMS
 
+## Principe fondamental (source de vérité)
+
+| Couche | Base de données | Rôle |
+|--------|-----------------|------|
+| **Desktop WPF** | **MySQL (XAMPP)** ou **SQLite** (secours) — voir `docs/OFFLINE_FIRST_XAMPP.md` | **Maître local** — toute saisie, modification, suppression |
+| **Web (Render)** | **PostgreSQL** | **Réplica / consommateur** — reçoit les données via `POST /api/sync/push`, affiche le PDG |
+
+- Le desktop **fonctionne sans Internet** : login, CRUD, rapports, PDF.
+- Le web **ne crée pas** la base métier du desktop ; il **lit** (et valide certaines dépenses) ce que le desktop a poussé.
+- La synchronisation est **optionnelle** et **déclenchée depuis le desktop** (module Synchronisation).
+
 ## Rôles des applications
 
 | Composant | Rôle |
 |-----------|------|
-| **SmartBuilding.Desktop.WPF** | Application opérationnelle complète (CRUD, offline SQLite, sync) |
-| **smartbuilding-web** | API REST (sync JWT) + portail web de **consultation / supervision** |
+| **SmartBuilding.Desktop.WPF** | Application opérationnelle complète (CRUD, SQLite locale, sync push/pull) |
+| **smartbuilding-web** | API REST (JWT) + portail de **consultation / supervision** sur données synchronisées |
 | **SmartBuilding.API** | API ASP.NET alternative (si déployée) |
 
-Le portail web **ne remplace pas** l’ensemble des écrans WPF MVVM (formulaires multi-étapes, PDF, IMAP, etc.). Il expose les **mêmes modules**, **permissions** et **données synchronisées** en lecture, avec validations PDG pour les dépenses.
+Le portail web **ne remplace pas** l’ensemble des écrans WPF MVVM (formulaires multi-étapes, PDF, IMAP, etc.). Il expose les **mêmes modules**, **permissions** et **données reçues par sync**, avec validations PDG pour les dépenses.
 
 ## Modules alignés (ModuleRegistry)
 
