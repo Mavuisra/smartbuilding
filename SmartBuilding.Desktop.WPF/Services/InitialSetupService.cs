@@ -1,10 +1,6 @@
 using System.IO;
-using System.Net.Http;
-using System.Net.Http.Json;
-using System.Text.Json;
-using Microsoft.Extensions.Configuration;
 using Microsoft.EntityFrameworkCore;
-using SmartBuilding.Application.Interfaces;
+using Microsoft.Extensions.Configuration;
 using SmartBuilding.Desktop.WPF.Models;
 using SmartBuilding.Domain.Entities.Auth;
 using SmartBuilding.Domain.Entities.Building;
@@ -20,27 +16,16 @@ public sealed class InitialSetupService
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "SBMS",
         "setup-completed.flag");
-    private static readonly string ApiTokenPath = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "SBMS",
-        "api-token.txt");
-
-    private readonly SmartBuildingDbContext _db;
     private readonly AppConfigurationService _appConfiguration;
-    private readonly ISyncService _syncService;
     private readonly IConfiguration _configuration;
     private readonly DesktopLocalDatabaseConfig _localDb;
 
     public InitialSetupService(
-        SmartBuildingDbContext db,
         AppConfigurationService appConfiguration,
-        ISyncService syncService,
         IConfiguration configuration,
         DesktopLocalDatabaseConfig localDb)
     {
-        _db = db;
         _appConfiguration = appConfiguration;
-        _syncService = syncService;
         _configuration = configuration;
         _localDb = localDb;
     }
@@ -152,19 +137,27 @@ public sealed class InitialSetupService
         var dbSettings = await ResolveDatabaseSettingsForSaveAsync(request, cancellationToken);
         DesktopAppSettingsWriter.SaveLocalDatabase(dbSettings);
 
-        if (_localDb.RequiresClientDatabaseConnection)
+        var setupConfig = LoadConfigurationAfterSave();
+        var targetLocalDb = DesktopLocalDatabaseBootstrap.Resolve(setupConfig);
+
+        if (targetLocalDb.RequiresClientDatabaseConnection)
         {
             throw new InvalidOperationException(
-                "Connexion MySQL au serveur impossible. À l'étape « Base de données », vérifiez XAMPP sur le serveur, " +
-                "testez la connexion, puis redémarrez SBMS avant de cliquer sur « Terminer ».");
+                "Connexion MySQL au serveur impossible. À l'étape « Base de données », testez la connexion, " +
+                "vérifiez XAMPP sur le serveur et le pare-feu (port 3306), puis réessayez « Terminer ».");
         }
 
-        await EnsureDatabaseReadyForSetupSaveAsync(cancellationToken);
-        await RemoveGhostBootstrapAccountsAsync(request.AdminUsername, cancellationToken);
+        await using var db = CreateSetupDbContext(targetLocalDb);
+        if (targetLocalDb.RunsSchemaMigrations)
+            await DesktopDatabaseInitializer.InitializeAsync(db, targetLocalDb, cancellationToken: cancellationToken);
+        else
+            await EnsureDatabaseReadyForSetupSaveAsync(db, targetLocalDb, cancellationToken);
 
-        var admin = await FindOrCreateSetupAdminAsync(request.AdminUsername, cancellationToken);
-        var adminEmail = await ResolveAdminEmailAsync(request, admin.Id, cancellationToken);
-        await ReleaseUniqueEmailAsync(adminEmail, admin.Id, cancellationToken);
+        await DatabaseSeeder.SeedReferenceDataAsync(db);
+
+        var admin = await FindOrCreateSetupAdminAsync(db, request.AdminUsername, cancellationToken);
+        var adminEmail = await ResolveAdminEmailAsync(db, request, admin.Id, cancellationToken);
+        await PrepareUsersForSetupAdminAsync(db, request.AdminUsername, adminEmail, admin.Id, cancellationToken);
 
         var requiresRestart = !string.Equals(
             _configuration["LocalDatabase:DeploymentMode"],
@@ -185,7 +178,7 @@ public sealed class InitialSetupService
         admin.IsSynced = false;
         admin.MarkUpdated();
 
-        var building = await _db.BuildingInfos
+        var building = await db.BuildingInfos
             .IgnoreQueryFilters()
             .OrderBy(b => b.CreatedAt)
             .FirstOrDefaultAsync(cancellationToken);
@@ -193,7 +186,7 @@ public sealed class InitialSetupService
         if (building is null)
         {
             building = new BuildingInfo();
-            _db.BuildingInfos.Add(building);
+            db.BuildingInfos.Add(building);
         }
         else if (building.DeletedAt is not null)
         {
@@ -220,7 +213,7 @@ public sealed class InitialSetupService
 
         try
         {
-            await _db.SaveChangesAsync(cancellationToken);
+            await db.SaveChangesAsync(cancellationToken);
         }
         catch (Exception ex)
         {
@@ -237,14 +230,14 @@ public sealed class InitialSetupService
 
         WriteSetupCompletedFlag();
 
-        await DatabaseSeeder.EnsureReservedAdminAccountsAsync(_db, cancellationToken);
+        await DatabaseSeeder.EnsureReservedAdminAccountsAsync(db, cancellationToken);
 
         var localDbLabel = FormatDatabaseLabel(dbSettings);
-        var localPersisted = await _db.Users.AnyAsync(
+        var localPersisted = await db.Users.AnyAsync(
                                  u => u.DeletedAt == null
                                       && u.Username.ToLower() == request.AdminUsername.Trim().ToLower(),
                                  cancellationToken)
-                             && await _db.BuildingInfos.AnyAsync(
+                             && await db.BuildingInfos.AnyAsync(
                                  b => b.DeletedAt == null && b.Name == request.BuildingName.Trim(),
                                  cancellationToken);
         if (!localPersisted)
@@ -254,60 +247,71 @@ public sealed class InitialSetupService
             ? " Redémarrez SBMS pour appliquer le mode serveur / poste client choisi."
             : "";
 
-        var online = await _syncService.IsOnlineAsync(cancellationToken);
-        if (!online)
-        {
-            return new InitialSetupResult(
-                LocalPersistenceOk: true,
-                LocalDbPath: localDbLabel,
-                RequiresAppRestart: requiresRestart,
-                CloudSyncAttempted: false,
-                CloudSyncSuccess: false,
-                CloudSyncMessage: "Configuration locale enregistrée. Synchronisation cloud reportée (hors ligne)." + restartNote);
-        }
-
-        var auth = await AuthenticateCloudWithFallbackAsync(
-            request.AdminUsername.Trim(),
-            request.AdminPassword,
-            cancellationToken);
-        if (!auth.Success)
-        {
-            return new InitialSetupResult(
-                LocalPersistenceOk: true,
-                LocalDbPath: localDbLabel,
-                RequiresAppRestart: requiresRestart,
-                CloudSyncAttempted: true,
-                CloudSyncSuccess: false,
-                CloudSyncMessage: $"Configuration locale OK, mais authentification cloud échouée: {auth.Message}" + restartNote);
-        }
-
-        var sync = await _syncService.SyncAsync(manual: true, cancellationToken);
+        // Sync cloud volontairement reportée : évite 30–120 s d'attente réseau au clic « Terminer ».
         return new InitialSetupResult(
             LocalPersistenceOk: true,
             LocalDbPath: localDbLabel,
             RequiresAppRestart: requiresRestart,
-            CloudSyncAttempted: true,
-            CloudSyncSuccess: sync.Success,
-            CloudSyncMessage: (sync.Success
-                ? $"Synchronisation cloud réussie ({sync.Pushed} envoyés, {sync.Pulled} reçus)."
-                : $"Configuration locale OK, mais sync cloud échouée: {sync.Error ?? "erreur inconnue"}") + restartNote);
+            CloudSyncAttempted: false,
+            CloudSyncSuccess: false,
+            CloudSyncMessage:
+                "Configuration locale enregistrée. La synchronisation cloud se fera depuis le module Synchronisation (ou en arrière-plan)." +
+                restartNote);
     }
 
     private static readonly string[] GhostBootstrapUsernames = ["admin", "admini", "admin2"];
 
-    /// <summary>Retire les comptes techniques (admin, admini, admin2) sauf le compte choisi — libère leurs e-mails pour l'index unique.</summary>
-    private async Task RemoveGhostBootstrapAccountsAsync(string chosenUsername, CancellationToken cancellationToken)
+    private static readonly string[] LegacyBootstrapEmails =
+    [
+        "admin@sbms.local",
+        "admini@sbms.local",
+        "admin2@sbms.local"
+    ];
+
+    private static IConfiguration LoadConfigurationAfterSave() =>
+        new ConfigurationBuilder()
+            .SetBasePath(AppContext.BaseDirectory)
+            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: false)
+            .Build();
+
+    private static SmartBuildingDbContext CreateSetupDbContext(DesktopLocalDatabaseConfig localDb)
+    {
+        var serverVersion = ServerVersion.Parse("8.0.36-mysql");
+        var options = new DbContextOptionsBuilder<SmartBuildingDbContext>()
+            .UseMySql(localDb.ConnectionString, serverVersion, mySql =>
+                mySql.EnableStringComparisonTranslations())
+            .Options;
+        return new SmartBuildingDbContext(options);
+    }
+
+    /// <summary>Une seule passe : fantômes bootstrap + conflits d'e-mail, puis un seul SaveChanges.</summary>
+    private static async Task PrepareUsersForSetupAdminAsync(
+        SmartBuildingDbContext db,
+        string chosenUsername,
+        string targetEmail,
+        Guid keepUserId,
+        CancellationToken cancellationToken)
     {
         var chosen = chosenUsername.Trim().ToLowerInvariant();
-        var ghosts = await _db.Users
+        var legacyEmails = new HashSet<string>(LegacyBootstrapEmails, StringComparer.OrdinalIgnoreCase);
+        var normalizedTarget = targetEmail.Trim().ToLowerInvariant();
+
+        var users = await db.Users
             .IgnoreQueryFilters()
+            .Where(u => u.Id != keepUserId)
             .ToListAsync(cancellationToken);
 
         var changed = false;
-        foreach (var user in ghosts)
+        foreach (var user in users)
         {
             var name = user.Username.Trim().ToLowerInvariant();
-            if (!GhostBootstrapUsernames.Contains(name) || name == chosen)
+            var email = user.Email.Trim();
+            var isGhostName = GhostBootstrapUsernames.Contains(name) && !string.Equals(name, chosen, StringComparison.Ordinal);
+            var isGhostEmail = legacyEmails.Contains(email);
+            var blocksTarget = !string.IsNullOrEmpty(normalizedTarget)
+                               && email.Equals(normalizedTarget, StringComparison.OrdinalIgnoreCase);
+
+            if (!isGhostName && !isGhostEmail && !blocksTarget)
                 continue;
 
             user.DeletedAt ??= DateTime.UtcNow;
@@ -318,13 +322,16 @@ public sealed class InitialSetupService
         }
 
         if (changed)
-            await _db.SaveChangesAsync(cancellationToken);
+            await db.SaveChangesAsync(cancellationToken);
     }
 
-    private async Task<User> FindOrCreateSetupAdminAsync(string adminUsername, CancellationToken cancellationToken)
+    private static async Task<User> FindOrCreateSetupAdminAsync(
+        SmartBuildingDbContext db,
+        string adminUsername,
+        CancellationToken cancellationToken)
     {
         var chosen = adminUsername.Trim().ToLowerInvariant();
-        var existing = await _db.Users
+        var existing = await db.Users
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(u => u.Username.ToLower() == chosen, cancellationToken);
 
@@ -336,41 +343,8 @@ public sealed class InitialSetupService
         }
 
         var created = new User();
-        _db.Users.Add(created);
+        db.Users.Add(created);
         return created;
-    }
-
-    /// <summary>Réattribue l'e-mail des autres lignes (y compris supprimées) pour respecter IX_Users_Email.</summary>
-    private async Task ReleaseUniqueEmailAsync(
-        string email,
-        Guid keepUserId,
-        CancellationToken cancellationToken)
-    {
-        if (string.IsNullOrWhiteSpace(email))
-            return;
-
-        var normalized = email.Trim().ToLowerInvariant();
-        var conflicts = await _db.Users
-            .IgnoreQueryFilters()
-            .Where(u => u.Id != keepUserId && u.Email.ToLower() == normalized)
-            .ToListAsync(cancellationToken);
-
-        if (conflicts.Count == 0)
-            return;
-
-        foreach (var user in conflicts)
-        {
-            user.Email = MakeArchivedEmail(user);
-            if (GhostBootstrapUsernames.Contains(user.Username.Trim().ToLowerInvariant()))
-            {
-                user.DeletedAt ??= DateTime.UtcNow;
-                user.IsActive = false;
-            }
-
-            user.MarkUpdated();
-        }
-
-        await _db.SaveChangesAsync(cancellationToken);
     }
 
     private static string MakeArchivedEmail(User user)
@@ -382,7 +356,8 @@ public sealed class InitialSetupService
         return $"{name}.archive.{user.Id:N}@sbms.local";
     }
 
-    private async Task<string> ResolveAdminEmailAsync(
+    private static async Task<string> ResolveAdminEmailAsync(
+        SmartBuildingDbContext db,
         InitialSetupRequest request,
         Guid adminId,
         CancellationToken cancellationToken)
@@ -393,7 +368,10 @@ public sealed class InitialSetupService
         if (string.IsNullOrWhiteSpace(desired))
             desired = $"{username}@sbms.local";
 
-        var emailTaken = await _db.Users
+        if (LegacyBootstrapEmails.Contains(desired, StringComparer.OrdinalIgnoreCase))
+            desired = $"{username}@sbms.local";
+
+        var emailTaken = await db.Users
             .IgnoreQueryFilters()
             .AnyAsync(
                 u => u.Id != adminId && u.Email.ToLower() == desired.ToLower(),
@@ -403,36 +381,39 @@ public sealed class InitialSetupService
             return desired;
 
         var fallback = $"{username}@sbms.local";
-        if (fallback.Equals(desired, StringComparison.OrdinalIgnoreCase))
-            return desired;
-
-        var fallbackTaken = await _db.Users
+        var fallbackTaken = await db.Users
             .IgnoreQueryFilters()
             .AnyAsync(
                 u => u.Id != adminId && u.Email.ToLower() == fallback.ToLower(),
                 cancellationToken);
 
-        return fallbackTaken ? $"{username}.{Guid.NewGuid():N}@sbms.local" : fallback;
+        if (!fallbackTaken)
+            return fallback;
+
+        return $"{username}.{Guid.NewGuid():N}@sbms.local";
     }
 
-    private async Task EnsureDatabaseReadyForSetupSaveAsync(CancellationToken cancellationToken)
+    private static async Task EnsureDatabaseReadyForSetupSaveAsync(
+        SmartBuildingDbContext db,
+        DesktopLocalDatabaseConfig localDb,
+        CancellationToken cancellationToken)
     {
-        if (!DesktopDatabaseInitializer.IsMySqlProvider(_db))
+        if (!DesktopDatabaseInitializer.IsMySqlProvider(db))
             return;
 
         try
         {
-            if (!await _db.Database.CanConnectAsync(cancellationToken))
+            if (!await db.Database.CanConnectAsync(cancellationToken))
             {
                 throw new InvalidOperationException(
-                    _localDb.IsLanClient
-                        ? $"Impossible d'accéder à MySQL sur le serveur {_localDb.ServerHost}."
+                    localDb.IsLanClient
+                        ? $"Impossible d'accéder à MySQL sur le serveur {localDb.ServerHost}."
                         : "Impossible d'accéder à MySQL sur ce PC. Démarrez MySQL dans XAMPP.");
             }
 
-            await _db.Users.IgnoreQueryFilters().AnyAsync(cancellationToken);
+            await db.Users.IgnoreQueryFilters().AnyAsync(cancellationToken);
         }
-        catch (Exception ex) when (_localDb.IsLanClient && !_localDb.RunsSchemaMigrations)
+        catch (Exception ex) when (localDb.IsLanClient && !localDb.RunsSchemaMigrations)
         {
             throw new InvalidOperationException(
                 "La base MySQL du serveur n'est pas encore prête pour ce poste client.\n\n" +
@@ -442,33 +423,39 @@ public sealed class InitialSetupService
         }
     }
 
-    private static async Task<LocalDatabaseSetupSettings> ResolveDatabaseSettingsForSaveAsync(
+    private static Task<LocalDatabaseSetupSettings> ResolveDatabaseSettingsForSaveAsync(
         InitialSetupRequest request,
         CancellationToken cancellationToken)
     {
+        _ = cancellationToken;
         var settings = request.ToLocalDatabaseSettings();
         if (!string.Equals(settings.DeploymentMode, "Client", StringComparison.OrdinalIgnoreCase))
-            return settings;
+            return Task.FromResult(settings);
 
         var section = BuildLocalDatabaseSection(settings);
-        var discovered = await Task.Run(
-            () => DesktopMySqlServerDiscovery.ResolveClientHost(section, settings.ServerHost?.Trim()),
-            cancellationToken);
+        var host = settings.ServerHost?.Trim();
 
-        if (discovered is null)
+        if (!string.IsNullOrWhiteSpace(host) && CanConnectMySqlHost(section, host))
+            return Task.FromResult(settings);
+
+        var cached = DesktopClientHostCache.Read();
+        if (!string.IsNullOrWhiteSpace(cached)
+            && !string.Equals(cached, host, StringComparison.OrdinalIgnoreCase)
+            && CanConnectMySqlHost(section, cached))
         {
-            throw new InvalidOperationException(
-                "Impossible de joindre le serveur MySQL. Vérifiez XAMPP sur le serveur, le réseau et le pare-feu (port 3306), " +
-                "ou saisissez l'IP manuellement puis « Tester la connexion ».");
+            request.ServerHost = cached;
+            return Task.FromResult(request.ToLocalDatabaseSettings());
         }
 
-        if (!string.Equals(settings.ServerHost, discovered, StringComparison.OrdinalIgnoreCase))
-        {
-            request.ServerHost = discovered;
-            settings = request.ToLocalDatabaseSettings();
-        }
+        throw new InvalidOperationException(
+            "Impossible de joindre le serveur MySQL. À l'étape « Base de données », saisissez l'IP du serveur " +
+            "et cliquez sur « Tester la connexion » avant « Terminer ».");
+    }
 
-        return settings;
+    private static bool CanConnectMySqlHost(IConfigurationSection section, string host)
+    {
+        var connectionString = DesktopMySqlConnectionBuilder.Build(section, host);
+        return DesktopLocalDatabaseBootstrap.CanConnectToMySql(connectionString);
     }
 
     private static IConfigurationSection BuildLocalDatabaseSection(LocalDatabaseSetupSettings settings) =>
@@ -519,59 +506,6 @@ public sealed class InitialSetupService
         var folder = Path.GetDirectoryName(SetupFlagPath)!;
         Directory.CreateDirectory(folder);
         File.WriteAllText(SetupFlagPath, DateTime.UtcNow.ToString("O"));
-    }
-
-
-    private async Task<(bool Success, string Message)> AuthenticateCloudAsync(
-        string username,
-        string password,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            var baseUrl = (_configuration["Api:BaseUrl"] ?? string.Empty).Trim();
-            if (string.IsNullOrWhiteSpace(baseUrl))
-                return (false, "URL API cloud non configurée.");
-
-            var token = await SmartBuilding.Infrastructure.Http.CloudApiAuth.TryLoginAsync(
-                baseUrl, username, password, cancellationToken);
-            if (string.IsNullOrWhiteSpace(token))
-                return (false, "Identifiants cloud refusés (vérifiez admin / Admin@2026).");
-
-            PersistApiToken(token);
-            return (true, "Authentification cloud OK.");
-        }
-        catch (Exception ex)
-        {
-            return (false, ex.Message);
-        }
-    }
-
-    private async Task<(bool Success, string Message)> AuthenticateCloudWithFallbackAsync(
-        string username,
-        string password,
-        CancellationToken cancellationToken)
-    {
-        var primary = await AuthenticateCloudAsync(username, password, cancellationToken);
-        if (primary.Success)
-            return primary;
-
-        // Le portail cloud possède un compte bootstrap admin/admin.
-        // Il sert uniquement à obtenir le JWT de synchronisation initiale.
-        var bootstrap = await AuthenticateCloudAsync("admin", "admin", cancellationToken);
-        if (bootstrap.Success)
-            return (true, "Authentification cloud OK via compte bootstrap admin.");
-
-        return (
-            false,
-            $"Compte local refusé ({primary.Message}); bootstrap admin/admin refusé ({bootstrap.Message}).");
-    }
-
-    private static void PersistApiToken(string token)
-    {
-        var folder = Path.GetDirectoryName(ApiTokenPath)!;
-        Directory.CreateDirectory(folder);
-        File.WriteAllText(ApiTokenPath, token.Trim());
     }
 }
 

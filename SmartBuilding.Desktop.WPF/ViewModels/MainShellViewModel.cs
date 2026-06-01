@@ -4,8 +4,10 @@ using System.Diagnostics;
 using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using SmartBuilding.Infrastructure.Persistence;
 using SmartBuilding.Application.Interfaces;
 using SmartBuilding.Desktop.WPF.Models;
 using SmartBuilding.Desktop.WPF.Services;
@@ -39,7 +41,7 @@ public partial class MainShellViewModel : BaseViewModel
     private readonly ISyncService _syncService;
     private readonly INetworkService _network;
     private readonly IConfiguration _configuration;
-    private readonly FinanceLedgerService _financeLedger;
+    private readonly IDbContextFactory<SmartBuildingDbContext> _dbContextFactory;
     private readonly AppConfigurationService _appConfiguration;
     private readonly Action _onLogout;
     private BaseViewModel? _trackedViewModel;
@@ -105,17 +107,13 @@ public partial class MainShellViewModel : BaseViewModel
         ISyncService syncService,
         INetworkService network,
         IConfiguration configuration,
-        FinanceLedgerService financeLedger,
+        IDbContextFactory<SmartBuildingDbContext> dbContextFactory,
         AppConfigurationService appConfiguration,
         Action onLogout)
     {
-        _financeLedger = financeLedger;
+        _dbContextFactory = dbContextFactory;
         _appConfiguration = appConfiguration;
-        _appConfiguration.ConfigurationChanged += async (_, _) =>
-        {
-            ApplyBrandingFromConfiguration();
-            await RefreshTreasuryAsync();
-        };
+        _appConfiguration.ConfigurationChanged += (_, _) => ApplyBrandingFromConfiguration();
         ApplyBrandingFromConfiguration();
         _session = session;
         ShellUserName = session.CurrentUser?.FullName ?? "Admin SBMS";
@@ -584,7 +582,8 @@ public partial class MainShellViewModel : BaseViewModel
 
     private async Task RefreshTreasuryAsync()
     {
-        var cash = await TreasuryLoader.LoadAsync(_financeLedger);
+        await using var db = await _dbContextFactory.CreateDbContextAsync();
+        var cash = await TreasuryLoader.LoadAsync(new FinanceLedgerService(db));
         TreasuryAvailableDisplay = FormatFc(cash.AvailableThisMonth);
         TreasuryDetailDisplay =
             $"Loyers ce mois {FormatFc(cash.RentCollectedThisMonth)} · Dépenses ce mois {FormatFc(cash.TotalExpensesThisMonth)} · Total encaissé {FormatFc(cash.RentCollectedTotal)}";

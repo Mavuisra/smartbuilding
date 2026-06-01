@@ -200,13 +200,13 @@ public partial class InitialSetupViewModel : ObservableObject
     private async Task FinishAsync()
     {
         ErrorMessage = null;
-        if (!ValidateCurrentStep())
+        if (!ValidateAllSteps())
             return;
 
         IsBusy = true;
         try
         {
-            SetupStatus = "Enregistrement local en cours...";
+            SetupStatus = "Enregistrement en cours (quelques secondes)…";
             var result = await _setupService.CompleteInitialSetupAsync(new InitialSetupRequest
             {
                 AdminFullName = AdminFullName,
@@ -233,16 +233,9 @@ public partial class InitialSetupViewModel : ObservableObject
                 SidebarColorHex = SelectedSidebarColor,
                 SecondaryColorHex = SelectedSecondaryColor
             });
-            SetupStatus = $"Base : {result.LocalDbPath}{Environment.NewLine}Cloud : {result.CloudSyncMessage}";
-            if (result.RequiresAppRestart)
-            {
-                SetupStatus += $"{Environment.NewLine}Important : fermez et relancez SBMS pour appliquer le mode serveur / poste client.";
-            }
-
-            if (result.CloudSyncAttempted && !result.CloudSyncSuccess)
-            {
-                ErrorMessage = "Configuration locale terminée. La synchronisation cloud sera relancée automatiquement depuis l'application.";
-            }
+            SetupStatus = result.RequiresAppRestart
+                ? $"{result.LocalDbPath} — redémarrez SBMS pour appliquer le réseau."
+                : $"{result.LocalDbPath} — configuration terminée.";
 
             CloseRequested?.Invoke(true);
         }
@@ -276,6 +269,12 @@ public partial class InitialSetupViewModel : ObservableObject
             _ => true
         };
     }
+
+    private bool ValidateAllSteps() =>
+        ValidateAdminStep()
+        && ValidateBuildingStep()
+        && ValidateCompanyStep()
+        && ValidateDatabaseStep();
 
     private LocalDatabaseSetupSettings BuildDatabaseSettings() => new()
     {

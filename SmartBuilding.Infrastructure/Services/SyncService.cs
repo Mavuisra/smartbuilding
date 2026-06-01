@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using SmartBuilding.Application.Interfaces;
@@ -17,6 +18,7 @@ public class SyncService : ISyncService
     private static readonly SemaphoreSlim SyncGate = new(1, 1);
 
     private readonly SmartBuildingDbContext _context;
+    private readonly IDbContextFactory<SmartBuildingDbContext> _contextFactory;
     private readonly INetworkService _network;
     private readonly IConfiguration _configuration;
     private readonly ILogger<SyncService> _logger;
@@ -28,11 +30,13 @@ public class SyncService : ISyncService
 
     public SyncService(
         SmartBuildingDbContext context,
+        IDbContextFactory<SmartBuildingDbContext> contextFactory,
         INetworkService network,
         IConfiguration configuration,
         ILogger<SyncService> logger)
     {
         _context = context;
+        _contextFactory = contextFactory;
         _network = network;
         _configuration = configuration;
         _logger = logger;
@@ -45,7 +49,11 @@ public class SyncService : ISyncService
 
     public async Task EnsureMetadataLoadedAsync(CancellationToken cancellationToken = default)
     {
-        _lastSyncAt ??= await SyncCoordinator.GetLastSuccessfulSyncAtAsync(_context, cancellationToken);
+        if (_lastSyncAt.HasValue)
+            return;
+
+        await using var readContext = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        _lastSyncAt = await SyncCoordinator.GetLastSuccessfulSyncAtAsync(readContext, cancellationToken);
     }
 
     public async Task<SyncResult> SyncAsync(bool manual = false, CancellationToken cancellationToken = default)

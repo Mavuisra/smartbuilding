@@ -67,7 +67,18 @@ public sealed class AppConfigurationService
         ApplyCulture(config);
         ApplyToApplication(config);
         ThemeRefreshHelper.RefreshOpenWindows();
-        ConfigurationChanged?.Invoke(this, EventArgs.Empty);
+
+        // Reporter l'événement : évite des accès MySQL concurrents sur le DbContext du shell.
+        var handlers = ConfigurationChanged;
+        if (handlers is null)
+            return;
+
+        var dispatcher = System.Windows.Application.Current?.Dispatcher;
+        if (dispatcher is null || dispatcher.CheckAccess())
+            handlers.Invoke(this, EventArgs.Empty);
+        else
+            _ = dispatcher.InvokeAsync(() => handlers.Invoke(this, EventArgs.Empty),
+                System.Windows.Threading.DispatcherPriority.Background);
     }
 
     public async Task ReloadAndApplyAsync(CancellationToken cancellationToken = default) =>

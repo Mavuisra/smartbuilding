@@ -11,6 +11,7 @@ public partial class MainWindow : Window
 {
     private readonly IServiceProvider _services;
     private readonly IServiceScopeFactory _scopeFactory;
+    private IServiceScope? _loginScope;
     private IServiceScope? _shellScope;
 
     public MainWindow(IServiceProvider services, IServiceScopeFactory scopeFactory)
@@ -24,6 +25,7 @@ public partial class MainWindow : Window
     protected override void OnClosed(EventArgs e)
     {
         _shellScope?.Dispose();
+        _loginScope?.Dispose();
         base.OnClosed(e);
     }
 
@@ -31,6 +33,8 @@ public partial class MainWindow : Window
     {
         _shellScope?.Dispose();
         _shellScope = null;
+        _loginScope?.Dispose();
+        _loginScope = _scopeFactory.CreateScope();
 
         ApplyLoginWindowLayout();
 
@@ -41,11 +45,14 @@ public partial class MainWindow : Window
         LoginChrome.Visibility = Visibility.Visible;
         LoginPanel.Visibility = Visibility.Visible;
         LoginPanel.DataContext = ActivatorUtilities.CreateInstance<LoginViewModel>(
-            _services, (Action)ShowShell);
+            _loginScope!.ServiceProvider, (Action)ShowShell);
     }
 
     private async void ShowShell()
     {
+        _loginScope?.Dispose();
+        _loginScope = null;
+
         ApplyShellWindowLayout();
 
         LoginBackdrop.Visibility = Visibility.Collapsed;
