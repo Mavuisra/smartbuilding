@@ -50,24 +50,29 @@ public static class DesktopLocalDatabaseBootstrap
         };
     }
 
-    /// <summary>PC client : connexion à la base du serveur (pas de base locale).</summary>
+    /// <summary>PC client : connexion à la base du serveur (découverte auto IP sur le LAN).</summary>
     private static DesktopLocalDatabaseConfig ResolveClient(IConfigurationSection section)
     {
-        var serverHost = section.GetValue<string>("ServerHost")?.Trim();
-        if (string.IsNullOrWhiteSpace(serverHost))
+        var configuredHost = section.GetValue<string>("ServerHost")?.Trim();
+        var serverHost = DesktopMySqlServerDiscovery.ResolveClientHost(section, configuredHost);
+
+        if (serverHost is null)
         {
-            throw new InvalidOperationException(
-                "Mode Client : renseignez LocalDatabase:ServerHost avec l'adresse IP du PC serveur (ex. 192.168.1.10).");
+            DesktopSqlitePaths.EnsureInitialized();
+            return new DesktopLocalDatabaseConfig
+            {
+                Provider = DesktopLocalDatabaseProvider.Sqlite,
+                ConnectionString = DesktopSqlitePaths.ConnectionString,
+                DisplayLabel = "Poste client — configuration base requise",
+                DeploymentMode = DesktopDatabaseDeploymentMode.Client,
+                ServerHost = configuredHost,
+                AutoFallbackToSqlite = false,
+                RunsSchemaMigrations = false,
+                RequiresClientDatabaseConnection = true
+            };
         }
 
         var connectionString = DesktopMySqlConnectionBuilder.Build(section, serverHost);
-
-        if (!CanConnectToMySql(connectionString))
-        {
-            throw new InvalidOperationException(
-                $"Mode Client : impossible de joindre MySQL sur {serverHost}. " +
-                "Vérifiez : MySQL démarré sur le serveur, IP correcte, pare-feu port 3306, utilisateur MySQL autorisé depuis le réseau.");
-        }
 
         return new DesktopLocalDatabaseConfig
         {
@@ -77,7 +82,8 @@ public static class DesktopLocalDatabaseBootstrap
             DeploymentMode = DesktopDatabaseDeploymentMode.Client,
             ServerHost = serverHost,
             AutoFallbackToSqlite = false,
-            RunsSchemaMigrations = false
+            RunsSchemaMigrations = false,
+            RequiresClientDatabaseConnection = false
         };
     }
 

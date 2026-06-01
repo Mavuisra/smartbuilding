@@ -54,6 +54,29 @@ public class OfflineFirstTests
     }
 
     [Fact]
+    public void ClientHostCache_RoundTrips()
+    {
+        var path = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "SBMS",
+            "mysql-server-host.txt");
+        var previous = File.Exists(path) ? File.ReadAllText(path) : null;
+
+        try
+        {
+            DesktopClientHostCache.Write("192.168.99.7");
+            Assert.Equal("192.168.99.7", DesktopClientHostCache.Read());
+        }
+        finally
+        {
+            if (previous is null)
+                File.Delete(path);
+            else
+                File.WriteAllText(path, previous);
+        }
+    }
+
+    [Fact]
     public void DesktopSyncDevice_Returns_Stable_Id()
     {
         var a = DesktopSyncDevice.GetOrCreateDeviceId();

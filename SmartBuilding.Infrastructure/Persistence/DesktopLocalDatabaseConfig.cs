@@ -19,6 +19,9 @@ public sealed class DesktopLocalDatabaseConfig
     public bool IsSqlite => Provider == DesktopLocalDatabaseProvider.Sqlite;
     public bool IsCentralServer => DeploymentMode == DesktopDatabaseDeploymentMode.Server;
     public bool IsLanClient => DeploymentMode == DesktopDatabaseDeploymentMode.Client;
+
+    /// <summary>Poste client : MySQL injoignable — l'assistant doit reconfigurer la connexion.</summary>
+    public bool RequiresClientDatabaseConnection { get; init; }
 }
 
 public enum DesktopLocalDatabaseProvider

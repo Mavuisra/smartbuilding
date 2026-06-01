@@ -3,10 +3,11 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:conv="clr-namespace:SmartBuilding.Desktop.WPF.Converters"
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
-        Title="Configuration initiale"
+        Title="Configuration initiale — obligatoire"
         Width="920" Height="700"
         WindowStartupLocation="CenterScreen"
         ResizeMode="NoResize"
+        WindowStyle="SingleBorderWindow"
         Background="#F5F8F6">
     <Window.Resources>
         <conv:IntEqualsToVisibilityConverter x:Key="IntEqualsToVisibilityConverter"/>
@@ -33,7 +34,7 @@
                 </StackPanel>
                 <Border Grid.Column="1" Background="#2D6A4F" CornerRadius="8" Padding="10,6" VerticalAlignment="Center">
                     <TextBlock Foreground="#F0FDF4" FontWeight="SemiBold">
-                        <Run Text="Étape "/><Run Text="{Binding StepNumber}"/><Run Text="/"/><Run Text="{Binding TotalSteps}"/>
+                        <Run Text="Étape "/><Run Text="{Binding StepNumber, Mode=OneWay}"/><Run Text="/"/><Run Text="{Binding TotalSteps, Mode=OneWay}"/>
                     </TextBlock>
                 </Border>
             </Grid>
@@ -162,10 +163,11 @@
 
                         <StackPanel Visibility="{Binding IsClientDeployment, Converter={StaticResource BoolToVisibilityConverter}}"
                                     Margin="0,0,0,12">
-                            <TextBlock Text="Adresse IP du PC serveur *" FontWeight="SemiBold"/>
+                            <TextBlock Text="Adresse IP du PC serveur" FontWeight="SemiBold"/>
                             <TextBox Text="{Binding ServerHost, UpdateSourceTrigger=PropertyChanged}"
-                                     Margin="0,4,0,0" ToolTip="Ex. 192.168.1.10 — IP fixe du PC admin avec XAMPP"/>
-                            <TextBlock Text="MySQL doit tourner sur le serveur ; ce poste n'a pas besoin de XAMPP."
+                                     Margin="0,4,0,0"
+                                     ToolTip="Laissé vide : SBMS cherche MySQL sur le réseau local. Sinon saisissez l'IP (ipconfig sur le serveur)."/>
+                            <TextBlock Text="SBMS détecte automatiquement le serveur MySQL sur votre réseau (Wi‑Fi/LAN). Sinon saisissez l'IP du PC avec XAMPP."
                                        FontSize="11" Foreground="#64748B" Margin="0,4,0,0" TextWrapping="Wrap"/>
                         </StackPanel>
 
@@ -245,12 +247,14 @@
 
         <DockPanel Grid.Row="2" Margin="0,14,0,0">
             <StackPanel>
-                <TextBlock Text="{Binding ErrorMessage}" Foreground="#DC2626" VerticalAlignment="Center"/>
-                <TextBlock Text="{Binding SetupStatus}" Foreground="#166534" VerticalAlignment="Center" Margin="0,4,0,0"/>
+                <TextBlock Text="{Binding ErrorMessage}" Foreground="#DC2626" VerticalAlignment="Center"
+                           TextWrapping="Wrap" MaxWidth="560"/>
+                <TextBlock Text="{Binding SetupStatus}" Foreground="#166534" VerticalAlignment="Center" Margin="0,4,0,0"
+                           TextWrapping="Wrap" MaxWidth="560"/>
             </StackPanel>
             <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
-                <Button Content="Annuler" Command="{Binding CancelCommand}" Margin="0,0,8,0"
-                        Background="#0F172A" Foreground="White"/>
+                <Button Content="Quitter SBMS" Command="{Binding CancelCommand}" Margin="0,0,8,0"
+                        Background="#0F172A" Foreground="White" ToolTip="Ferme l'application — la configuration reste obligatoire au prochain démarrage"/>
                 <Button Content="Précédent" Command="{Binding PreviousCommand}" Margin="0,0,8,0"
                         Background="#E2E8F0" Foreground="#0F172A"/>
                 <Button Content="Suivant" Command="{Binding NextCommand}" Margin="0,0,8,0"

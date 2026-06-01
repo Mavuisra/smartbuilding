@@ -167,44 +167,34 @@ public partial class App : System.Windows.Application
                 var localDb = scope.ServiceProvider.GetRequiredService<DesktopLocalDatabaseConfig>();
                 var logger = scope.ServiceProvider.GetService<ILogger<App>>();
                 await DesktopDatabaseInitializer.InitializeAsync(db, localDb, logger);
-                await DatabaseSeeder.SeedAsync(db);
+                await DatabaseSeeder.SeedReferenceDataAsync(db);
             }
 
             using (var setupScope = _host.Services.CreateScope())
             {
                 var setupService = setupScope.ServiceProvider.GetRequiredService<InitialSetupService>();
-                var needsSetup = await setupService.NeedsInitialSetupAsync();
-                if (needsSetup)
+
+                while (await setupService.NeedsInitialSetupAsync())
                 {
-                    splash.UpdateProgress(80, "Configuration initiale...");
+                    splash.UpdateProgress(80, "Configuration initiale obligatoire...");
                     await PumpUiAsync();
                     await splash.CloseAnimatedAsync();
 
                     var setupWindow = setupScope.ServiceProvider.GetRequiredService<InitialSetupWindow>();
-                    var setupOk = setupWindow.ShowDialog() == true;
-                    if (!setupOk)
-                    {
-                        // Ne jamais fermer l'app si l'assistant est annulé :
-                        // on laisse l'utilisateur accéder à l'écran de connexion.
-                        splash = new SplashWindow();
-                        splash.Show();
-                        await PumpUiAsync();
-                        splash.UpdateProgress(90, "Chargement de l'interface...");
-                        await PumpUiAsync();
-                    }
-                    else
-                    {
-                        splash = new SplashWindow();
-                        splash.Show();
-                        await PumpUiAsync();
-                        splash.UpdateProgress(90, "Chargement de l'interface...");
-                        await PumpUiAsync();
-                    }
+                    if (setupWindow.ShowDialog() == true)
+                        break;
+
+                    System.Windows.MessageBox.Show(
+                        "La configuration initiale (administrateur, bâtiment, base de données) est obligatoire pour utiliser SBMS.",
+                        "SBMS — Configuration requise",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+
+                    splash = new SplashWindow();
+                    splash.Show();
+                    await PumpUiAsync();
                 }
-                else
-                {
-                    setupService.EnsureSetupCompletedFlag();
-                }
+
             }
 
             splash.UpdateProgress(90, "Chargement de l'interface...");

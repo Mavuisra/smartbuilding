@@ -30,7 +30,7 @@ public static class DependencyInjection
                                ?? throw new InvalidOperationException("Connection string PostgreSQL requise.");
         }
 
-        services.AddDbContext<SmartBuildingDbContext>(options =>
+        void ConfigureDbContext(DbContextOptionsBuilder options)
         {
             if (isDesktop)
             {
@@ -49,7 +49,10 @@ public static class DependencyInjection
             {
                 options.UseNpgsql(connectionString);
             }
-        });
+        }
+
+        services.AddDbContext<SmartBuildingDbContext>(ConfigureDbContext);
+        services.AddDbContextFactory<SmartBuildingDbContext>(ConfigureDbContext);
 
         services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
         services.AddScoped<IUnitOfWork, UnitOfWork>();

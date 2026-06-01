@@ -43,6 +43,8 @@ public partial class MainShellViewModel : BaseViewModel
     private readonly AppConfigurationService _appConfiguration;
     private readonly Action _onLogout;
     private BaseViewModel? _trackedViewModel;
+    private bool _shellInitialized;
+    private Task? _shellInitTask;
 
     [ObservableProperty]
     private object? _currentViewModel;
@@ -160,15 +162,37 @@ public partial class MainShellViewModel : BaseViewModel
         RebuildNavigation();
         CurrentViewModel = IsReceptionOnly ? _visitsViewModel : _dashboardViewModel;
         SelectedModuleId = IsReceptionOnly ? "visites" : "dashboard";
-        _ = InitializeShellAsync();
     }
 
     public async Task NavigateToDefaultModuleAsync()
     {
+        await EnsureShellInitializedAsync();
+
         if (_session.IsReceptionOnly())
             await NavigateAsync("visites");
         else
             await NavigateAsync("dashboard");
+    }
+
+    private Task EnsureShellInitializedAsync()
+    {
+        if (_shellInitialized)
+            return Task.CompletedTask;
+
+        return _shellInitTask ??= InitializeShellCoreAsync();
+    }
+
+    private async Task InitializeShellCoreAsync()
+    {
+        try
+        {
+            await InitializeShellAsync();
+            _shellInitialized = true;
+        }
+        finally
+        {
+            _shellInitTask = null;
+        }
     }
 
     private async Task InitializeShellAsync()
@@ -314,6 +338,8 @@ public partial class MainShellViewModel : BaseViewModel
     {
         if (string.IsNullOrWhiteSpace(moduleId))
             return;
+
+        await EnsureShellInitializedAsync();
 
         var permissionModuleId = moduleId switch
         {

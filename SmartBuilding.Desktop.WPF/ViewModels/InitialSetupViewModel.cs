@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.Win32;
 using SmartBuilding.Desktop.WPF.Models;
 using SmartBuilding.Desktop.WPF.Services;
+using SmartBuilding.Infrastructure.Services;
 
 namespace SmartBuilding.Desktop.WPF.ViewModels;
 
@@ -35,7 +36,7 @@ public partial class InitialSetupViewModel : ObservableObject
     [ObservableProperty] private string _companyNationalId = string.Empty;
 
     [ObservableProperty] private string _selectedDeploymentOption = "Serveur — base unique sur ce PC";
-    [ObservableProperty] private string _serverHost = "192.168.1.10";
+    [ObservableProperty] private string _serverHost = string.Empty;
     [ObservableProperty] private string _databaseName = "sbms_local";
     [ObservableProperty] private int _mySqlPort = 3306;
     [ObservableProperty] private string _mySqlUser = "root";
@@ -60,6 +61,7 @@ public partial class InitialSetupViewModel : ObservableObject
     public IReadOnlyList<string> ColorOptions { get; } = ["#2D6A4F", "#1B3D3B", "#0F172A", "#000000", "#16A34A"];
 
     public event Action<bool>? CloseRequested;
+    public event Action? RequestApplicationExit;
 
     public InitialSetupViewModel(InitialSetupService setupService)
     {
@@ -73,6 +75,38 @@ public partial class InitialSetupViewModel : ObservableObject
         PreviousCommand.NotifyCanExecuteChanged();
         FinishCommand.NotifyCanExecuteChanged();
         TestDatabaseConnectionCommand.NotifyCanExecuteChanged();
+
+        if (value == 3 && IsClientDeployment)
+            _ = AutoDiscoverServerHostAsync();
+    }
+
+    private async Task AutoDiscoverServerHostAsync()
+    {
+        IsBusy = true;
+        SetupStatus = "Recherche automatique du serveur MySQL sur le réseau local…";
+        ErrorMessage = null;
+        try
+        {
+            var host = await _setupService.TryDiscoverClientServerHostAsync();
+            if (!string.IsNullOrWhiteSpace(host))
+            {
+                ServerHost = host;
+                SetupStatus = $"Serveur MySQL détecté : {host}";
+            }
+            else
+            {
+                SetupStatus =
+                    "Aucun serveur détecté. Saisissez l'IP du PC serveur (commande ipconfig sur ce PC) puis « Tester la connexion ».";
+            }
+        }
+        catch (Exception ex)
+        {
+            SetupStatus = $"Détection automatique : {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
     partial void OnIsBusyChanged(bool value)
@@ -141,11 +175,20 @@ public partial class InitialSetupViewModel : ObservableObject
             var (ok, message) = await _setupService.TestDatabaseConnectionAsync(BuildDatabaseSettings());
             SetupStatus = message;
             if (!ok)
+            {
                 ErrorMessage = message;
+            }
+            else if (IsClientDeployment)
+            {
+                var host = await _setupService.TryDiscoverClientServerHostAsync();
+                if (!string.IsNullOrWhiteSpace(host))
+                    ServerHost = host;
+            }
         }
         catch (Exception ex)
         {
-            ErrorMessage = ex.Message;
+            ErrorMessage = DbSaveExceptionTranslator.ToDetailedMessage(ex);
+            SetupStatus = null;
         }
         finally
         {
@@ -205,7 +248,8 @@ public partial class InitialSetupViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            ErrorMessage = ex.Message;
+            ErrorMessage = DbSaveExceptionTranslator.ToDetailedMessage(ex);
+            SetupStatus = null;
         }
         finally
         {
@@ -214,7 +258,7 @@ public partial class InitialSetupViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void Cancel() => CloseRequested?.Invoke(false);
+    private void Cancel() => RequestApplicationExit?.Invoke();
 
     private bool CanGoPrevious() => StepIndex > 0 && !IsBusy;
     private bool CanGoNext() => StepIndex < LastStepIndex && !IsBusy;
@@ -293,12 +337,6 @@ public partial class InitialSetupViewModel : ObservableObject
         if (string.IsNullOrWhiteSpace(DatabaseName))
         {
             ErrorMessage = "Indiquez le nom de la base (ex. sbms_local).";
-            return false;
-        }
-
-        if (IsClientDeployment && string.IsNullOrWhiteSpace(ServerHost))
-        {
-            ErrorMessage = "Indiquez l'adresse IP du PC serveur (ex. 192.168.1.10).";
             return false;
         }
 

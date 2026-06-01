@@ -85,7 +85,7 @@ public class UsersModuleServiceTests
         });
         await db.SaveChangesAsync();
 
-        await DatabaseSeeder.SeedAsync(db);
+        await DatabaseSeeder.EnsureReservedAdminAccountsAsync(db);
 
         var user = await db.Users.SingleAsync(u => u.Username == "admin");
         Assert.Equal(UserRole.Administrateur, user.Role);
@@ -93,7 +93,7 @@ public class UsersModuleServiceTests
     }
 
     [Fact]
-    public async Task SeedAsync_Creates_Admin2_When_Missing()
+    public async Task SeedAsync_Does_Not_Create_Admin2_Automatically()
     {
         await using var db = await CreateDbAsync();
         db.Users.Add(new User
@@ -110,9 +110,7 @@ public class UsersModuleServiceTests
         await DatabaseSeeder.SeedAsync(db);
 
         var admin2 = await db.Users.SingleOrDefaultAsync(u => u.Username == "admin2");
-        Assert.NotNull(admin2);
-        Assert.Equal(UserRole.Administrateur, admin2!.Role);
-        Assert.True(BCrypt.Net.BCrypt.Verify(DatabaseSeeder.BootstrapAdminPassword, admin2.PasswordHash));
+        Assert.Null(admin2);
     }
 
     [Fact]

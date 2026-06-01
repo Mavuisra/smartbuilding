@@ -3,22 +3,35 @@ using System.Windows.Media;
 using Microsoft.Extensions.DependencyInjection;
 using SmartBuilding.Desktop.WPF.Services;
 using SmartBuilding.Desktop.WPF.ViewModels;
+using SmartBuilding.Infrastructure.Services;
 
 namespace SmartBuilding.Desktop.WPF;
 
 public partial class MainWindow : Window
 {
     private readonly IServiceProvider _services;
+    private readonly IServiceScopeFactory _scopeFactory;
+    private IServiceScope? _shellScope;
 
-    public MainWindow(IServiceProvider services)
+    public MainWindow(IServiceProvider services, IServiceScopeFactory scopeFactory)
     {
         _services = services;
+        _scopeFactory = scopeFactory;
         InitializeComponent();
         ShowLogin();
     }
 
+    protected override void OnClosed(EventArgs e)
+    {
+        _shellScope?.Dispose();
+        base.OnClosed(e);
+    }
+
     private void ShowLogin()
     {
+        _shellScope?.Dispose();
+        _shellScope = null;
+
         ApplyLoginWindowLayout();
 
         DataContext = null;
@@ -40,8 +53,11 @@ public partial class MainWindow : Window
         LoginPanel.Visibility = Visibility.Collapsed;
         ShellPanel.Visibility = Visibility.Visible;
 
+        _shellScope?.Dispose();
+        _shellScope = _scopeFactory.CreateScope();
+
         var shellVm = ActivatorUtilities.CreateInstance<MainShellViewModel>(
-            _services, (Action)ShowLogin);
+            _shellScope.ServiceProvider, (Action)ShowLogin);
         DataContext = shellVm;
         ShellPanel.DataContext = shellVm;
 
@@ -52,7 +68,7 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             MessageBox.Show(
-                $"Impossible de charger le tableau de bord.\n\n{ex.Message}",
+                $"Impossible de charger le tableau de bord.\n\n{DbSaveExceptionTranslator.ToDetailedMessage(ex)}",
                 "SBMS",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning);

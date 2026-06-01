@@ -9,25 +9,25 @@ namespace SmartBuilding.Infrastructure.Services;
 
 public class DashboardService : IDashboardService
 {
-    private readonly SmartBuildingDbContext _context;
-    private readonly FinanceLedgerService _financeLedger;
+    private readonly IDbContextFactory<SmartBuildingDbContext> _contextFactory;
 
-    public DashboardService(SmartBuildingDbContext context, FinanceLedgerService financeLedger)
+    public DashboardService(IDbContextFactory<SmartBuildingDbContext> contextFactory)
     {
-        _context = context;
-        _financeLedger = financeLedger;
+        _contextFactory = contextFactory;
     }
 
     public async Task<DashboardSummaryDto> GetSummaryAsync(CancellationToken cancellationToken = default)
     {
-        await _financeLedger.ReconcileAllAsync(cancellationToken);
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        var financeLedger = new FinanceLedgerService(context);
+        await financeLedger.ReconcileAllAsync(cancellationToken);
 
         var today = DateTime.Today;
         var monthStart = new DateTime(today.Year, today.Month, 1);
         var chartStart = monthStart.AddMonths(-5);
         var trendStart = today.AddDays(-6);
 
-        var transactions = await _context.FinancialTransactions
+        var transactions = await context.FinancialTransactions
             .Where(t => t.TransactionDate >= chartStart)
             .Select(t => new { t.TransactionDate, t.Type, t.Amount, t.Category, t.Description, t.Reference })
             .ToListAsync(cancellationToken);
@@ -40,7 +40,7 @@ public class DashboardService : IDashboardService
         var expenses = monthTransactions.Where(t => t.Type == TransactionType.Depense).Sum(t => t.Amount);
 
         // Source unique des loyers : table RentPayments (pas le ledger, qui peut être désaligné).
-        var allRentPayments = await _context.RentPayments
+        var allRentPayments = await context.RentPayments
             .Select(p => new { p.Year, p.Month, p.AmountDue, p.AmountPaid, p.IsLate, p.PaidDate })
             .ToListAsync(cancellationToken);
 
@@ -58,30 +58,30 @@ public class DashboardService : IDashboardService
 
         var latePayments = rentPayments.Count(p => p.IsLate || (p.AmountPaid < p.AmountDue && p.PaidDate == null));
 
-        var cashPosition = await _financeLedger.GetCashPositionAsync(cancellationToken);
+        var cashPosition = await financeLedger.GetCashPositionAsync(cancellationToken);
         rentRevenue = cashPosition.RentCollectedTotal;
         revenue = rentRevenue;
 
-        var totalPremises = await _context.Premises.CountAsync(cancellationToken);
-        var occupied = await _context.Premises.CountAsync(p => p.IsOccupied, cancellationToken);
+        var totalPremises = await context.Premises.CountAsync(cancellationToken);
+        var occupied = await context.Premises.CountAsync(p => p.IsOccupied, cancellationToken);
         var occupancy = totalPremises > 0 ? (double)occupied / totalPremises * 100 : 0;
 
-        var consumptionCost = (await _context.ConsumptionRecords
+        var consumptionCost = (await context.ConsumptionRecords
             .Where(c => c.PeriodEnd >= monthStart)
             .Select(c => c.Cost)
             .ToListAsync(cancellationToken)).Sum();
 
-        var openIncidents = await _context.Incidents
+        var openIncidents = await context.Incidents
             .CountAsync(i => i.Status != IncidentStatus.Cloture && i.Status != IncidentStatus.Resolu, cancellationToken);
 
-        var totalEmployees = await _context.Employees.CountAsync(e => e.IsActive, cancellationToken);
-        var activeLeases = await _context.LeaseContracts.CountAsync(l => l.Status == LeaseStatus.Actif, cancellationToken);
-        var visitorsToday = await _context.Visitors
+        var totalEmployees = await context.Employees.CountAsync(e => e.IsActive, cancellationToken);
+        var activeLeases = await context.LeaseContracts.CountAsync(l => l.Status == LeaseStatus.Actif, cancellationToken);
+        var visitorsToday = await context.Visitors
             .CountAsync(v => v.CheckInAt.Date == today, cancellationToken);
-        var pendingMaintenance = await _context.MaintenanceRecords
+        var pendingMaintenance = await context.MaintenanceRecords
             .CountAsync(m => m.CompletedDate == null, cancellationToken);
-        var totalSuppliers = await _context.Suppliers.CountAsync(cancellationToken);
-        var inventoryCount = await _context.InventoryItems.CountAsync(cancellationToken);
+        var totalSuppliers = await context.Suppliers.CountAsync(cancellationToken);
+        var inventoryCount = await context.InventoryItems.CountAsync(cancellationToken);
 
         var last6Months = Enumerable.Range(0, 6).Select(i => monthStart.AddMonths(-i)).OrderBy(d => d).ToList();
         var revenueChart = new List<ChartPointDto>();
@@ -207,7 +207,7 @@ public class DashboardService : IDashboardService
                 Timestamp = DateTime.UtcNow
             });
 
-        var syncLogs = await _context.SyncLogs.OrderByDescending(s => s.StartedAt).Take(5).ToListAsync(cancellationToken);
+        var syncLogs = await context.SyncLogs.OrderByDescending(s => s.StartedAt).Take(5).ToListAsync(cancellationToken);
         var recentActivity = syncLogs.Select(s => new ActivityItemDto
         {
             Text = s.Success
