@@ -8,6 +8,8 @@ namespace SmartBuilding.Desktop.WPF.ViewModels;
 
 public partial class InitialSetupViewModel : ObservableObject
 {
+    private const int LastStepIndex = 4;
+
     private readonly InitialSetupService _setupService;
 
     [ObservableProperty] private int _stepIndex;
@@ -32,10 +34,27 @@ public partial class InitialSetupViewModel : ObservableObject
     [ObservableProperty] private string _companyWebsite = string.Empty;
     [ObservableProperty] private string _companyNationalId = string.Empty;
 
+    [ObservableProperty] private string _selectedDeploymentOption = "Serveur — base unique sur ce PC";
+    [ObservableProperty] private string _serverHost = "192.168.1.10";
+    [ObservableProperty] private string _databaseName = "sbms_local";
+    [ObservableProperty] private int _mySqlPort = 3306;
+    [ObservableProperty] private string _mySqlUser = "root";
+    [ObservableProperty] private string _mySqlPassword = string.Empty;
+
     [ObservableProperty] private string _selectedThemeMode = "Clair";
     [ObservableProperty] private string _selectedPrimaryColor = "#2D6A4F";
     [ObservableProperty] private string _selectedSidebarColor = "#1B3D3B";
     [ObservableProperty] private string _selectedSecondaryColor = "#0D9488";
+
+    public int StepNumber => StepIndex + 1;
+    public int TotalSteps => LastStepIndex + 1;
+    public bool IsClientDeployment => SelectedDeploymentOption.StartsWith("Poste", StringComparison.OrdinalIgnoreCase);
+
+    public IReadOnlyList<string> DeploymentOptions { get; } =
+    [
+        "Serveur — base unique sur ce PC",
+        "Poste client — se connecter au serveur"
+    ];
 
     public IReadOnlyList<string> ThemeModes { get; } = ["Clair", "Sombre", "Personnalisé"];
     public IReadOnlyList<string> ColorOptions { get; } = ["#2D6A4F", "#1B3D3B", "#0F172A", "#000000", "#16A34A"];
@@ -49,9 +68,11 @@ public partial class InitialSetupViewModel : ObservableObject
 
     partial void OnStepIndexChanged(int value)
     {
+        OnPropertyChanged(nameof(StepNumber));
         NextCommand.NotifyCanExecuteChanged();
         PreviousCommand.NotifyCanExecuteChanged();
         FinishCommand.NotifyCanExecuteChanged();
+        TestDatabaseConnectionCommand.NotifyCanExecuteChanged();
     }
 
     partial void OnIsBusyChanged(bool value)
@@ -59,6 +80,21 @@ public partial class InitialSetupViewModel : ObservableObject
         NextCommand.NotifyCanExecuteChanged();
         PreviousCommand.NotifyCanExecuteChanged();
         FinishCommand.NotifyCanExecuteChanged();
+        TestDatabaseConnectionCommand.NotifyCanExecuteChanged();
+    }
+
+    partial void OnSelectedDeploymentOptionChanged(string value)
+    {
+        OnPropertyChanged(nameof(IsClientDeployment));
+        if (value.StartsWith("Poste", StringComparison.OrdinalIgnoreCase))
+        {
+            if (MySqlUser == "root")
+                MySqlUser = "sbms";
+        }
+        else
+        {
+            MySqlUser = "root";
+        }
     }
 
     [RelayCommand(CanExecute = nameof(CanGoPrevious))]
@@ -91,6 +127,32 @@ public partial class InitialSetupViewModel : ObservableObject
             LogoPath = dialog.FileName;
     }
 
+    [RelayCommand(CanExecute = nameof(CanTestDatabase))]
+    private async Task TestDatabaseConnectionAsync()
+    {
+        ErrorMessage = null;
+        SetupStatus = null;
+        if (!ValidateDatabaseStep())
+            return;
+
+        IsBusy = true;
+        try
+        {
+            var (ok, message) = await _setupService.TestDatabaseConnectionAsync(BuildDatabaseSettings());
+            SetupStatus = message;
+            if (!ok)
+                ErrorMessage = message;
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
     [RelayCommand(CanExecute = nameof(CanFinish))]
     private async Task FinishAsync()
     {
@@ -117,16 +179,28 @@ public partial class InitialSetupViewModel : ObservableObject
                 CompanyEmail = CompanyEmail,
                 CompanyWebsite = CompanyWebsite,
                 CompanyNationalId = CompanyNationalId,
+                DeploymentMode = IsClientDeployment ? "Client" : "Server",
+                ServerHost = IsClientDeployment ? ServerHost.Trim() : null,
+                DatabaseName = DatabaseName.Trim(),
+                MySqlPort = MySqlPort > 0 ? MySqlPort : 3306,
+                MySqlUser = MySqlUser.Trim(),
+                MySqlPassword = MySqlPassword,
                 ThemeMode = ParseTheme(SelectedThemeMode),
                 PrimaryColorHex = SelectedPrimaryColor,
                 SidebarColorHex = SelectedSidebarColor,
                 SecondaryColorHex = SelectedSecondaryColor
             });
-            SetupStatus = $"Local : OK ({result.LocalDbPath}){Environment.NewLine}Cloud : {result.CloudSyncMessage}";
+            SetupStatus = $"Base : {result.LocalDbPath}{Environment.NewLine}Cloud : {result.CloudSyncMessage}";
+            if (result.RequiresAppRestart)
+            {
+                SetupStatus += $"{Environment.NewLine}Important : fermez et relancez SBMS pour appliquer le mode serveur / poste client.";
+            }
+
             if (result.CloudSyncAttempted && !result.CloudSyncSuccess)
             {
                 ErrorMessage = "Configuration locale terminée. La synchronisation cloud sera relancée automatiquement depuis l'application.";
             }
+
             CloseRequested?.Invoke(true);
         }
         catch (Exception ex)
@@ -143,8 +217,9 @@ public partial class InitialSetupViewModel : ObservableObject
     private void Cancel() => CloseRequested?.Invoke(false);
 
     private bool CanGoPrevious() => StepIndex > 0 && !IsBusy;
-    private bool CanGoNext() => StepIndex < 3 && !IsBusy;
-    private bool CanFinish() => StepIndex == 3 && !IsBusy;
+    private bool CanGoNext() => StepIndex < LastStepIndex && !IsBusy;
+    private bool CanFinish() => StepIndex == LastStepIndex && !IsBusy;
+    private bool CanTestDatabase() => StepIndex == 3 && !IsBusy;
 
     private bool ValidateCurrentStep()
     {
@@ -153,9 +228,20 @@ public partial class InitialSetupViewModel : ObservableObject
             0 => ValidateAdminStep(),
             1 => ValidateBuildingStep(),
             2 => ValidateCompanyStep(),
+            3 => ValidateDatabaseStep(),
             _ => true
         };
     }
+
+    private LocalDatabaseSetupSettings BuildDatabaseSettings() => new()
+    {
+        DeploymentMode = IsClientDeployment ? "Client" : "Server",
+        ServerHost = ServerHost,
+        Database = DatabaseName.Trim(),
+        MySqlPort = MySqlPort > 0 ? MySqlPort : 3306,
+        User = MySqlUser.Trim(),
+        Password = MySqlPassword
+    };
 
     private bool ValidateAdminStep()
     {
@@ -199,6 +285,29 @@ public partial class InitialSetupViewModel : ObservableObject
             ErrorMessage = "Veuillez renseigner un email valide pour l'entreprise.";
             return false;
         }
+        return true;
+    }
+
+    private bool ValidateDatabaseStep()
+    {
+        if (string.IsNullOrWhiteSpace(DatabaseName))
+        {
+            ErrorMessage = "Indiquez le nom de la base (ex. sbms_local).";
+            return false;
+        }
+
+        if (IsClientDeployment && string.IsNullOrWhiteSpace(ServerHost))
+        {
+            ErrorMessage = "Indiquez l'adresse IP du PC serveur (ex. 192.168.1.10).";
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(MySqlUser))
+        {
+            ErrorMessage = "Indiquez l'utilisateur MySQL.";
+            return false;
+        }
+
         return true;
     }
 

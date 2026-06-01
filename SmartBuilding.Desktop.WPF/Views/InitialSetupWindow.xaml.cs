@@ -30,4 +30,9 @@ public partial class InitialSetupWindow : Window
     {
         _vm.AdminPasswordConfirm = PasswordBoxConfirm.Password;
     }
+
+    private void MySqlPasswordBox_OnPasswordChanged(object sender, RoutedEventArgs e)
+    {
+        _vm.MySqlPassword = MySqlPasswordBox.Password;
+    }
 }

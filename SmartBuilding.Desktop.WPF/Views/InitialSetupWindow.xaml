@@ -4,12 +4,13 @@
         xmlns:conv="clr-namespace:SmartBuilding.Desktop.WPF.Converters"
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         Title="Configuration initiale"
-        Width="900" Height="640"
+        Width="920" Height="700"
         WindowStartupLocation="CenterScreen"
         ResizeMode="NoResize"
         Background="#F5F8F6">
     <Window.Resources>
         <conv:IntEqualsToVisibilityConverter x:Key="IntEqualsToVisibilityConverter"/>
+        <conv:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
     </Window.Resources>
 
     <Grid Margin="20">
@@ -31,7 +32,9 @@
                                Foreground="#D1FAE5" FontSize="13"/>
                 </StackPanel>
                 <Border Grid.Column="1" Background="#2D6A4F" CornerRadius="8" Padding="10,6" VerticalAlignment="Center">
-                    <TextBlock Text="{Binding StepIndex, StringFormat=Étape {0}/3}" Foreground="#F0FDF4" FontWeight="SemiBold"/>
+                    <TextBlock Foreground="#F0FDF4" FontWeight="SemiBold">
+                        <Run Text="Étape "/><Run Text="{Binding StepNumber}"/><Run Text="/"/><Run Text="{Binding TotalSteps}"/>
+                    </TextBlock>
                 </Border>
             </Grid>
         </Border>
@@ -44,10 +47,11 @@
                 </Grid.RowDefinitions>
 
                 <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,10">
-                    <TextBlock Text="1. Administrateur" Margin="12,0" FontWeight="SemiBold"/>
-                    <TextBlock Text="2. Bâtiment" Margin="12,0" FontWeight="SemiBold"/>
-                    <TextBlock Text="3. Entreprise" Margin="12,0" FontWeight="SemiBold"/>
-                    <TextBlock Text="4. Thème" Margin="12,0" FontWeight="SemiBold"/>
+                    <TextBlock Text="1. Admin" Margin="8,0" FontWeight="SemiBold" FontSize="11"/>
+                    <TextBlock Text="2. Bâtiment" Margin="8,0" FontWeight="SemiBold" FontSize="11"/>
+                    <TextBlock Text="3. Entreprise" Margin="8,0" FontWeight="SemiBold" FontSize="11"/>
+                    <TextBlock Text="4. Base données" Margin="8,0" FontWeight="SemiBold" FontSize="11" Foreground="#2D6A4F"/>
+                    <TextBlock Text="5. Thème" Margin="8,0" FontWeight="SemiBold" FontSize="11"/>
                 </StackPanel>
 
                 <Grid Grid.Row="1">
@@ -145,8 +149,67 @@
                         </Grid>
                     </StackPanel>
 
-                    <!-- Etape 3 -->
+                    <!-- Etape 3 : Base de données -->
                     <StackPanel Visibility="{Binding StepIndex, Converter={StaticResource IntEqualsToVisibilityConverter}, ConverterParameter=3}">
+                        <TextBlock Text="Base de données et rôle de ce PC" FontSize="20" FontWeight="Bold" Margin="0,0,0,8"/>
+                        <TextBlock Text="Choisissez si ce poste héberge la base unique (serveur) ou s'il se connecte à un autre PC (client)."
+                                   Foreground="#64748B" TextWrapping="Wrap" Margin="0,0,0,12"/>
+
+                        <TextBlock Text="Type de poste" FontWeight="SemiBold"/>
+                        <ComboBox ItemsSource="{Binding DeploymentOptions}"
+                                  SelectedItem="{Binding SelectedDeploymentOption}"
+                                  Margin="0,4,0,12"/>
+
+                        <StackPanel Visibility="{Binding IsClientDeployment, Converter={StaticResource BoolToVisibilityConverter}}"
+                                    Margin="0,0,0,12">
+                            <TextBlock Text="Adresse IP du PC serveur *" FontWeight="SemiBold"/>
+                            <TextBox Text="{Binding ServerHost, UpdateSourceTrigger=PropertyChanged}"
+                                     Margin="0,4,0,0" ToolTip="Ex. 192.168.1.10 — IP fixe du PC admin avec XAMPP"/>
+                            <TextBlock Text="MySQL doit tourner sur le serveur ; ce poste n'a pas besoin de XAMPP."
+                                       FontSize="11" Foreground="#64748B" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                        </StackPanel>
+
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <StackPanel Margin="0,0,8,8">
+                                <TextBlock Text="Nom de la base"/>
+                                <TextBox Text="{Binding DatabaseName, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,0"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Margin="8,0,0,8">
+                                <TextBlock Text="Port MySQL"/>
+                                <TextBox Text="{Binding MySqlPort, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,0"/>
+                            </StackPanel>
+                            <StackPanel Grid.Row="1" Margin="0,0,8,0">
+                                <TextBlock Text="Utilisateur MySQL"/>
+                                <TextBox Text="{Binding MySqlUser, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,0"/>
+                            </StackPanel>
+                            <StackPanel Grid.Row="1" Grid.Column="1" Margin="8,0,0,0">
+                                <TextBlock Text="Mot de passe MySQL"/>
+                                <PasswordBox x:Name="MySqlPasswordBox" Margin="0,4,0,0"
+                                             PasswordChanged="MySqlPasswordBox_OnPasswordChanged"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <Button Content="Tester la connexion MySQL"
+                                Command="{Binding TestDatabaseConnectionCommand}"
+                                Margin="0,14,0,0" Padding="12,8"
+                                Background="#2D6A4F" Foreground="White" BorderThickness="0"/>
+
+                        <Border Background="#EFF6FF" BorderBrush="#BFDBFE" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,12,0,0">
+                            <TextBlock TextWrapping="Wrap" Foreground="#1E3A8A" FontSize="12">
+                                <Bold>Serveur :</Bold> installez XAMPP, démarrez MySQL, puis Terminer — la base sbms_local sera créée sur ce PC.
+                                <LineBreak/><LineBreak/>
+                                <Bold>Poste client :</Bold> configurez d'abord le serveur, puis indiquez son IP ici. Après Terminer, relancez SBMS si demandé.
+                            </TextBlock>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- Etape 4 : Thème -->
+                    <StackPanel Visibility="{Binding StepIndex, Converter={StaticResource IntEqualsToVisibilityConverter}, ConverterParameter=4}">
                         <TextBlock Text="Choisir le thème visuel" FontSize="20" FontWeight="Bold" Margin="0,0,0,12"/>
                         <Grid>
                             <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
@@ -172,7 +235,7 @@
                             </StackPanel>
                         </Grid>
                         <Border Background="#F0FDF4" BorderBrush="#BBF7D0" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,8,0,0">
-                            <TextBlock Text="Après validation, vous pourrez vous connecter immédiatement avec le compte administrateur créé."
+                            <TextBlock Text="Après validation, vous pourrez vous connecter avec le compte administrateur créé."
                                        Foreground="#14532D" TextWrapping="Wrap"/>
                         </Border>
                     </StackPanel>

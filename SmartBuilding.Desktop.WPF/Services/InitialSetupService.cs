@@ -52,8 +52,70 @@ public sealed class InitialSetupService
         return users.Count == 0;
     }
 
+    public Task<(bool Success, string Message)> TestDatabaseConnectionAsync(
+        LocalDatabaseSetupSettings settings,
+        CancellationToken cancellationToken = default)
+    {
+        _ = cancellationToken;
+        try
+        {
+            var host = string.Equals(settings.DeploymentMode, "Client", StringComparison.OrdinalIgnoreCase)
+                ? settings.ServerHost?.Trim()
+                : "127.0.0.1";
+
+            if (string.Equals(settings.DeploymentMode, "Client", StringComparison.OrdinalIgnoreCase)
+                && string.IsNullOrWhiteSpace(host))
+            {
+                return Task.FromResult<(bool, string)>((false, "Indiquez l'adresse IP du PC serveur."));
+            }
+
+            var section = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["LocalDatabase:Database"] = settings.Database,
+                    ["LocalDatabase:MySqlPort"] = settings.MySqlPort.ToString(),
+                    ["LocalDatabase:User"] = settings.User,
+                    ["LocalDatabase:Password"] = settings.Password
+                })
+                .Build()
+                .GetSection("LocalDatabase");
+
+            var connectionString = DesktopMySqlConnectionBuilder.Build(section, host!);
+
+            if (string.Equals(settings.DeploymentMode, "Server", StringComparison.OrdinalIgnoreCase))
+                DesktopLocalDatabaseBootstrap.EnsureMySqlDatabaseExists(connectionString);
+
+            if (!DesktopLocalDatabaseBootstrap.CanConnectToMySql(connectionString))
+            {
+                return Task.FromResult<(bool, string)>((false,
+                    string.Equals(settings.DeploymentMode, "Client", StringComparison.OrdinalIgnoreCase)
+                        ? $"Impossible de joindre MySQL sur {host}. Vérifiez XAMPP sur le serveur, l'IP et le pare-feu (port 3306)."
+                        : "Impossible de joindre MySQL sur ce PC. Démarrez MySQL dans XAMPP."));
+            }
+
+            return Task.FromResult<(bool, string)>((true, "Connexion MySQL réussie."));
+        }
+        catch (Exception ex)
+        {
+            return Task.FromResult<(bool, string)>((false, ex.Message));
+        }
+    }
+
     public async Task<InitialSetupResult> CompleteInitialSetupAsync(InitialSetupRequest request, CancellationToken cancellationToken = default)
     {
+        var dbSettings = request.ToLocalDatabaseSettings();
+        DesktopAppSettingsWriter.SaveLocalDatabase(dbSettings);
+
+        var requiresRestart = !string.Equals(
+            _configuration["LocalDatabase:DeploymentMode"],
+            dbSettings.DeploymentMode,
+            StringComparison.OrdinalIgnoreCase)
+            || (string.Equals(dbSettings.DeploymentMode, "Client", StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(
+                    _configuration["LocalDatabase:ServerHost"]?.Trim(),
+                    dbSettings.ServerHost?.Trim(),
+                    StringComparison.OrdinalIgnoreCase));
+
         var admin = await _db.Users
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(
@@ -110,27 +172,31 @@ public sealed class InitialSetupService
 
         WriteSetupCompletedFlag();
 
-        var localDbPath = DesktopSqlitePaths.GetDatabaseFilePath();
+        var localDbLabel = FormatDatabaseLabel(dbSettings);
         var localPersisted = await _db.Users.AnyAsync(
                                  u => u.DeletedAt == null
                                       && u.Username.ToLower() == request.AdminUsername.Trim().ToLower(),
                                  cancellationToken)
                              && await _db.BuildingInfos.AnyAsync(
                                  b => b.DeletedAt == null && b.Name == request.BuildingName.Trim(),
-                                 cancellationToken)
-                             && File.Exists(localDbPath);
+                                 cancellationToken);
         if (!localPersisted)
             throw new InvalidOperationException("Échec de persistance locale des données de configuration.");
+
+        var restartNote = requiresRestart
+            ? " Redémarrez SBMS pour appliquer le mode serveur / poste client choisi."
+            : "";
 
         var online = await _syncService.IsOnlineAsync(cancellationToken);
         if (!online)
         {
             return new InitialSetupResult(
                 LocalPersistenceOk: true,
-                LocalDbPath: localDbPath,
+                LocalDbPath: localDbLabel,
+                RequiresAppRestart: requiresRestart,
                 CloudSyncAttempted: false,
                 CloudSyncSuccess: false,
-                CloudSyncMessage: "Configuration locale enregistrée. Synchronisation cloud reportée (hors ligne).");
+                CloudSyncMessage: "Configuration locale enregistrée. Synchronisation cloud reportée (hors ligne)." + restartNote);
         }
 
         var auth = await AuthenticateCloudWithFallbackAsync(
@@ -141,22 +207,29 @@ public sealed class InitialSetupService
         {
             return new InitialSetupResult(
                 LocalPersistenceOk: true,
-                LocalDbPath: localDbPath,
+                LocalDbPath: localDbLabel,
+                RequiresAppRestart: requiresRestart,
                 CloudSyncAttempted: true,
                 CloudSyncSuccess: false,
-                CloudSyncMessage: $"Configuration locale OK, mais authentification cloud échouée: {auth.Message}");
+                CloudSyncMessage: $"Configuration locale OK, mais authentification cloud échouée: {auth.Message}" + restartNote);
         }
 
         var sync = await _syncService.SyncAsync(manual: true, cancellationToken);
         return new InitialSetupResult(
             LocalPersistenceOk: true,
-            LocalDbPath: localDbPath,
+            LocalDbPath: localDbLabel,
+            RequiresAppRestart: requiresRestart,
             CloudSyncAttempted: true,
             CloudSyncSuccess: sync.Success,
-            CloudSyncMessage: sync.Success
+            CloudSyncMessage: (sync.Success
                 ? $"Synchronisation cloud réussie ({sync.Pushed} envoyés, {sync.Pulled} reçus)."
-                : $"Configuration locale OK, mais sync cloud échouée: {sync.Error ?? "erreur inconnue"}");
+                : $"Configuration locale OK, mais sync cloud échouée: {sync.Error ?? "erreur inconnue"}") + restartNote);
     }
+
+    private static string FormatDatabaseLabel(LocalDatabaseSetupSettings settings) =>
+        string.Equals(settings.DeploymentMode, "Client", StringComparison.OrdinalIgnoreCase)
+            ? $"MySQL client → {settings.ServerHost}/{settings.Database}"
+            : $"MySQL serveur local ({settings.Database})";
 
     private static string? PersistLogo(string? sourcePath)
     {
@@ -248,6 +321,7 @@ public sealed class InitialSetupService
 public sealed record InitialSetupResult(
     bool LocalPersistenceOk,
     string LocalDbPath,
+    bool RequiresAppRestart,
     bool CloudSyncAttempted,
     bool CloudSyncSuccess,
     string CloudSyncMessage);
@@ -274,4 +348,22 @@ public sealed class InitialSetupRequest
     public string PrimaryColorHex { get; set; } = "#2D6A4F";
     public string SidebarColorHex { get; set; } = "#1B3D3B";
     public string SecondaryColorHex { get; set; } = "#0D9488";
+
+    /// <summary>Server = base unique sur ce PC ; Client = poste distant.</summary>
+    public string DeploymentMode { get; set; } = "Server";
+    public string? ServerHost { get; set; }
+    public string DatabaseName { get; set; } = "sbms_local";
+    public int MySqlPort { get; set; } = 3306;
+    public string MySqlUser { get; set; } = "root";
+    public string MySqlPassword { get; set; } = "";
+
+    public LocalDatabaseSetupSettings ToLocalDatabaseSettings() => new()
+    {
+        DeploymentMode = DeploymentMode,
+        ServerHost = ServerHost,
+        Database = DatabaseName,
+        MySqlPort = MySqlPort,
+        User = MySqlUser,
+        Password = MySqlPassword
+    };
 }
