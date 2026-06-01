@@ -66,7 +66,7 @@ public partial class SettingsViewModel : BaseViewModel
     [ObservableProperty] private string _activeSessionsLabel = "1";
     [ObservableProperty] private string _authorizedDevicesLabel = "1";
     [ObservableProperty] private string _appVersion = "v1.0.0";
-    [ObservableProperty] private string _databaseLabel = "SQLite (données utilisateur)";
+    [ObservableProperty] private string _databaseLabel = "MySQL (XAMPP)";
     [ObservableProperty] private string _databasePathDisplay = "—";
     [ObservableProperty] private string _databaseDataDirectoryDisplay = "—";
     [ObservableProperty] private string _databasePersistenceMessage =
@@ -257,7 +257,7 @@ public partial class SettingsViewModel : BaseViewModel
             AuthorizedDevicesLabel = data.AuthorizedDevices.ToString();
             AppVersion = data.AppVersion;
             EnvironmentName = data.EnvironmentName;
-            DatabaseLabel = "SQLite (données utilisateur)";
+            DatabaseLabel = data.DatabaseDataDirectory;
             DatabasePathDisplay = data.DatabaseFilePath;
             DatabaseDataDirectoryDisplay = data.DatabaseDataDirectory;
             StorageLabel = FormatBytes(data.DatabaseSizeBytes);
@@ -633,10 +633,7 @@ public partial class SettingsViewModel : BaseViewModel
     [RelayCommand]
     private void OpenDatabaseFolder()
     {
-        var dir = DesktopSqlitePaths.DataDirectory;
-        if (!Directory.Exists(dir))
-            Directory.CreateDirectory(dir);
-
+        var dir = AppContext.BaseDirectory;
         Process.Start(new ProcessStartInfo
         {
             FileName = dir,
@@ -647,7 +644,7 @@ public partial class SettingsViewModel : BaseViewModel
     [RelayCommand]
     private async Task ResetLocalDatabaseAsync()
     {
-        if (!ConfirmDatabaseReset("base locale (SQLite sur ce PC)"))
+        if (!ConfirmDatabaseReset("base MySQL locale (sbms_local sur ce PC ou le serveur)"))
             return;
 
         IsBusy = true;

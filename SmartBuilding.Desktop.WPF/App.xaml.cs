@@ -163,11 +163,14 @@ public partial class App : System.Windows.Application
 
             using (var scope = _host.Services.CreateScope())
             {
-                var db = scope.ServiceProvider.GetRequiredService<SmartBuildingDbContext>();
                 var localDb = scope.ServiceProvider.GetRequiredService<DesktopLocalDatabaseConfig>();
-                var logger = scope.ServiceProvider.GetService<ILogger<App>>();
-                await DesktopDatabaseInitializer.InitializeAsync(db, localDb, logger);
-                await DatabaseSeeder.SeedReferenceDataAsync(db);
+                if (!localDb.RequiresClientDatabaseConnection)
+                {
+                    var db = scope.ServiceProvider.GetRequiredService<SmartBuildingDbContext>();
+                    var logger = scope.ServiceProvider.GetService<ILogger<App>>();
+                    await DesktopDatabaseInitializer.InitializeAsync(db, localDb, logger);
+                    await DatabaseSeeder.SeedReferenceDataAsync(db);
+                }
             }
 
             using (var setupScope = _host.Services.CreateScope())

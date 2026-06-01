@@ -62,10 +62,8 @@ public class DocumentsModuleService
         docs.AddRange(await LoadUserLibraryAsync(cancellationToken));
 
         var active = docs.Where(d => !d.IsDeleted).ToList();
-        var dbPath = DesktopSqlitePaths.GetDatabaseFilePath();
-        var dbBytes = File.Exists(dbPath) ? new FileInfo(dbPath).Length : 0L;
         var contentBytes = active.Sum(d => d.SizeBytes);
-        var usedBytes = dbBytes + contentBytes;
+        var usedBytes = contentBytes;
         var quota = DefaultQuotaBytes;
         var storagePercent = quota == 0 ? 0 : Math.Min(100, Math.Round(usedBytes * 100.0 / quota, 1));
 

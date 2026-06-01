@@ -1,12 +1,9 @@
-using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using SmartBuilding.Infrastructure.Persistence;
 
 namespace SmartBuilding.Infrastructure.Services;
 
-/// <summary>
-/// Réinitialise la base SQLite locale du Desktop (hors dossier d'installation).
-/// </summary>
+/// <summary>Réinitialise la base MySQL locale (serveur ou poste autonome).</summary>
 public static class DesktopDatabaseResetService
 {
     private static readonly string SetupFlagPath = Path.Combine(
@@ -20,42 +17,24 @@ public static class DesktopDatabaseResetService
         "api-token.txt");
 
     public static async Task ResetLocalDatabaseAsync(
-        SmartBuildingDbContext? activeContext = null,
+        SmartBuildingDbContext activeContext,
         CancellationToken cancellationToken = default)
     {
-        var isMySql = activeContext?.Database.ProviderName?.Contains("MySql", StringComparison.OrdinalIgnoreCase) == true;
+        ArgumentNullException.ThrowIfNull(activeContext);
 
-        if (activeContext is not null)
+        if (!DesktopDatabaseInitializer.IsMySqlProvider(activeContext))
         {
-            await activeContext.Database.CloseConnectionAsync();
+            throw new InvalidOperationException(
+                "La réinitialisation locale ne concerne que MySQL (XAMPP).");
         }
 
-        if (isMySql && activeContext is not null)
-        {
-            await activeContext.Database.EnsureDeletedAsync(cancellationToken);
-            await activeContext.Database.MigrateAsync(cancellationToken);
-            await DatabaseSeeder.SeedAsync(activeContext);
-            return;
-        }
+        await activeContext.Database.CloseConnectionAsync();
+        await activeContext.Database.EnsureDeletedAsync(cancellationToken);
+        await activeContext.Database.MigrateAsync(cancellationToken);
+        await DatabaseSeeder.SeedAsync(activeContext);
 
-        SqliteConnection.ClearAllPools();
-
-        var dbPath = DesktopSqlitePaths.DatabaseFilePath;
-        DeleteIfExists(dbPath);
-        DeleteIfExists(dbPath + "-wal");
-        DeleteIfExists(dbPath + "-shm");
         DeleteIfExists(SetupFlagPath);
         DeleteIfExists(ApiTokenPath);
-
-        DesktopSqlitePaths.ResetInitializationState();
-        DesktopSqlitePaths.EnsureInitialized();
-
-        await using var fresh = new SmartBuildingDbContext(
-            new DbContextOptionsBuilder<SmartBuildingDbContext>()
-                .UseSqlite(DesktopSqlitePaths.ConnectionString)
-                .Options);
-
-        await DatabaseSeeder.SeedAsync(fresh);
     }
 
     private static void DeleteIfExists(string path)

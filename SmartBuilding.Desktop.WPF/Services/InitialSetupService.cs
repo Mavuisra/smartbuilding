@@ -152,14 +152,11 @@ public sealed class InitialSetupService
         var dbSettings = await ResolveDatabaseSettingsForSaveAsync(request, cancellationToken);
         DesktopAppSettingsWriter.SaveLocalDatabase(dbSettings);
 
-        if (string.Equals(dbSettings.DeploymentMode, "Client", StringComparison.OrdinalIgnoreCase)
-            && _localDb.RequiresClientDatabaseConnection)
+        if (_localDb.RequiresClientDatabaseConnection)
         {
             throw new InvalidOperationException(
-                "La connexion au serveur MySQL est enregistrée, mais SBMS utilise encore une base temporaire locale.\n\n" +
-                "1. Fermez complètement SBMS.\n" +
-                "2. Relancez l'application (la connexion au serveur sera appliquée).\n" +
-                "3. Revenez à cet assistant et cliquez à nouveau sur « Terminer ».");
+                "Connexion MySQL au serveur impossible. À l'étape « Base de données », vérifiez XAMPP sur le serveur, " +
+                "testez la connexion, puis redémarrez SBMS avant de cliquer sur « Terminer ».");
         }
 
         await EnsureDatabaseReadyForSetupSaveAsync(cancellationToken);

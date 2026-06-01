@@ -189,7 +189,7 @@
                             </StackPanel>
                             <StackPanel Grid.Row="1" Margin="0,8,0,0">
                                 <TextBlock Text="{Binding DataSizeDisplay}" FontSize="22" FontWeight="Bold" Foreground="#1B3D3B"/>
-                                <TextBlock Text="Base locale SQLite" FontSize="10" Foreground="{StaticResource SbmsTextMutedBrush}" Margin="0,2,0,0"/>
+                                <TextBlock Text="Base locale MySQL" FontSize="10" Foreground="{StaticResource SbmsTextMutedBrush}" Margin="0,2,0,0"/>
                             </StackPanel>
                             <lvc:CartesianChart Grid.Row="2" Series="{Binding SizeSparkline}" Height="36" Margin="0,4,0,0"/>
                         </Grid>
@@ -256,7 +256,7 @@
                                     <StackPanel>
                                         <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                                             <materialDesign:PackIcon Kind="Database" Foreground="#2D6A4F" Width="20" Height="20" VerticalAlignment="Center"/>
-                                            <TextBlock Text="Base Locale (SQLite)" FontWeight="SemiBold" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="Base locale (MySQL)" FontWeight="SemiBold" Margin="8,0,0,0" VerticalAlignment="Center"/>
                                         </StackPanel>
                                         <TextBlock Text="{Binding LocalDbPath}" FontSize="10" Foreground="{StaticResource SbmsTextMutedBrush}" TextWrapping="Wrap"/>
                                         <TextBlock Margin="0,6,0,0" FontSize="11">
@@ -434,7 +434,7 @@
                                     <TextBlock Grid.Row="1" Text="Version application" FontSize="11" Foreground="{StaticResource SbmsTextMutedBrush}"/>
                                     <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding AppVersion}" FontWeight="SemiBold" FontSize="11"/>
                                     <TextBlock Grid.Row="2" Text="Base locale" FontSize="11" Foreground="{StaticResource SbmsTextMutedBrush}"/>
-                                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SqliteVersion}" FontWeight="SemiBold" FontSize="11"/>
+                                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding LocalDatabaseEngine}" FontWeight="SemiBold" FontSize="11"/>
                                     <TextBlock Grid.Row="3" Text="Base cloud" FontSize="11" Foreground="{StaticResource SbmsTextMutedBrush}"/>
                                     <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding PostgresVersion}" FontWeight="SemiBold" FontSize="11"/>
                                     <TextBlock Grid.Row="4" Text="Connexion" FontSize="11" Foreground="{StaticResource SbmsTextMutedBrush}"/>

@@ -21,6 +21,12 @@ public static class DependencyInjection
         if (isDesktop)
         {
             localDb = DesktopLocalDatabaseBootstrap.Resolve(configuration);
+            if (!localDb.IsMySql)
+            {
+                throw new InvalidOperationException(
+                    "SBMS desktop requiert MySQL (XAMPP). La base SQLite n'est plus prise en charge.");
+            }
+
             connectionString = localDb.ConnectionString;
             services.AddSingleton(localDb);
         }
@@ -34,16 +40,9 @@ public static class DependencyInjection
         {
             if (isDesktop)
             {
-                if (localDb!.IsMySql)
-                {
-                    var serverVersion = ServerVersion.Parse("8.0.36-mysql");
-                    options.UseMySql(connectionString, serverVersion, mySql =>
-                        mySql.EnableStringComparisonTranslations());
-                }
-                else
-                {
-                    options.UseSqlite(connectionString);
-                }
+                var serverVersion = ServerVersion.Parse("8.0.36-mysql");
+                options.UseMySql(connectionString, serverVersion, mySql =>
+                    mySql.EnableStringComparisonTranslations());
             }
             else
             {
@@ -73,7 +72,6 @@ public static class DependencyInjection
                 baseUrl += "/";
             client.BaseAddress = new Uri(baseUrl);
             client.Timeout = TimeSpan.FromSeconds(30);
-            // runserver Django = HTTP/1.1 ; évite pipelining/corruption sur connexion partagée
             client.DefaultRequestVersion = HttpVersion.Version11;
             client.DefaultVersionPolicy = HttpVersionPolicy.RequestVersionExact;
         });

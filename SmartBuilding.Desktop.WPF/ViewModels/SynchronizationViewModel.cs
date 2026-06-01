@@ -61,7 +61,7 @@ public partial class SynchronizationViewModel : BaseViewModel
     [ObservableProperty] private string? _lastSyncError;
 
     [ObservableProperty] private string _appVersion = "v1.0.0";
-    [ObservableProperty] private string _sqliteVersion = "3.x";
+    [ObservableProperty] private string _localDatabaseEngine = "MySQL 8";
     [ObservableProperty] private string _postgresVersion = "15.x";
     [ObservableProperty] private string _connectionSecurity = "Sécurisée SSL/TLS";
     [ObservableProperty] private string _environmentName = "Développement";

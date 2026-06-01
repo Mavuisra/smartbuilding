@@ -53,21 +53,9 @@ public class SettingsService
         var lastSync = _syncService.LastSyncAt;
 
         var prefs = LoadNotificationPrefs();
-        string dbPath;
-        string dbDir;
-        long dbSize;
-        if (_localDb.IsMySql)
-        {
-            dbPath = _localDb.ConnectionString;
-            dbDir = _localDb.DisplayLabel;
-            dbSize = 0;
-        }
-        else
-        {
-            dbPath = DesktopSqlitePaths.GetDatabaseFilePath();
-            dbDir = DesktopSqlitePaths.DataDirectory;
-            dbSize = File.Exists(dbPath) ? new FileInfo(dbPath).Length : 0L;
-        }
+        var dbPath = MaskConnectionString(_localDb.ConnectionString);
+        var dbDir = _localDb.DisplayLabel;
+        const long dbSize = 0;
 
         var env = _configuration["ASPNETCORE_ENVIRONMENT"]
                   ?? (_configuration["Api:BaseUrl"]?.Contains("localhost") == true ? "Développement" : "Production");
@@ -221,7 +209,7 @@ public class SettingsService
             },
             new()
             {
-                Name = "Base SQLite locale",
+                Name = "Base MySQL (XAMPP)",
                 Description = "Stockage hors ligne",
                 StatusLabel = "Opérationnelle",
                 IsConnected = true
@@ -432,6 +420,21 @@ public class SettingsService
 
     public Task ResetLocalDatabaseAsync(CancellationToken cancellationToken = default) =>
         DesktopDatabaseResetService.ResetLocalDatabaseAsync(_db, cancellationToken);
+
+    private static string MaskConnectionString(string connectionString)
+    {
+        if (string.IsNullOrWhiteSpace(connectionString))
+            return "—";
+
+        var parts = connectionString.Split(';', StringSplitOptions.RemoveEmptyEntries);
+        for (var i = 0; i < parts.Length; i++)
+        {
+            if (parts[i].StartsWith("Password=", StringComparison.OrdinalIgnoreCase))
+                parts[i] = "Password=***";
+        }
+
+        return string.Join(';', parts);
+    }
 
     private sealed class NotificationPrefs
     {

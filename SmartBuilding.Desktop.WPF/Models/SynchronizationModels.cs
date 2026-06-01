@@ -8,7 +8,7 @@ public sealed class SyncPageData
     public long LocalDbSizeBytes { get; init; }
     public int TotalRecords { get; init; }
     public string LocalDbPath { get; init; } = string.Empty;
-    public string LocalDatabaseLabel { get; init; } = "SQLite";
+    public string LocalDatabaseLabel { get; init; } = "MySQL";
     public string DeviceLabel { get; init; } = string.Empty;
     public DateTime? LocalDbLastWrite { get; init; }
     public string CloudServerUrl { get; init; } = string.Empty;

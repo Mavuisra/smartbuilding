@@ -4,7 +4,7 @@
 
 | Couche | Base de données | Rôle |
 |--------|-----------------|------|
-| **Desktop WPF** | **MySQL (XAMPP)** ou **SQLite** (secours) — voir `docs/OFFLINE_FIRST_XAMPP.md` | **Maître local** — toute saisie, modification, suppression |
+| **Desktop WPF** | **MySQL (XAMPP)** — voir `docs/OFFLINE_FIRST_XAMPP.md` | **Maître local** — toute saisie, modification, suppression |
 | **Web (Render)** | **PostgreSQL** | **Réplica / consommateur** — reçoit les données via `POST /api/sync/push`, affiche le PDG |
 
 - Le desktop **fonctionne sans Internet** : login, CRUD, rapports, PDF.
@@ -15,7 +15,7 @@
 
 | Composant | Rôle |
 |-----------|------|
-| **SmartBuilding.Desktop.WPF** | Application opérationnelle complète (CRUD, SQLite locale, sync push/pull) |
+| **SmartBuilding.Desktop.WPF** | Application opérationnelle complète (CRUD, MySQL locale, sync push/pull) |
 | **smartbuilding-web** | API REST (JWT) + portail de **consultation / supervision** sur données synchronisées |
 | **SmartBuilding.API** | API ASP.NET alternative (si déployée) |
 

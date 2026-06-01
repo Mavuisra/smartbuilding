@@ -4,9 +4,7 @@ using SmartBuilding.Infrastructure.Services;
 
 namespace SmartBuilding.Infrastructure.Persistence;
 
-/// <summary>
-/// Applique le schéma local : migrations EF pour MySQL (XAMPP), EnsureCreated + upgrade pour SQLite.
-/// </summary>
+/// <summary>Applique le schéma local : migrations EF MySQL (XAMPP).</summary>
 public static class DesktopDatabaseInitializer
 {
     public static async Task InitializeAsync(
@@ -15,14 +13,13 @@ public static class DesktopDatabaseInitializer
         ILogger? logger = null,
         CancellationToken cancellationToken = default)
     {
-        if (localDb.IsMySql)
+        if (!localDb.IsMySql)
         {
-            await InitializeMySqlAsync(context, localDb, logger, cancellationToken);
-            return;
+            throw new InvalidOperationException(
+                "SBMS desktop utilise uniquement MySQL (XAMPP). Vérifiez LocalDatabase:DeploymentMode et démarrez MySQL.");
         }
 
-        await context.Database.EnsureCreatedAsync(cancellationToken);
-        await DatabaseSchemaUpgrader.UpgradeAsync(context, cancellationToken);
+        await InitializeMySqlAsync(context, localDb, logger, cancellationToken);
     }
 
     private static async Task InitializeMySqlAsync(

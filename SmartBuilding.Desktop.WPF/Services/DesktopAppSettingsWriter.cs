@@ -31,8 +31,7 @@ public static class DesktopAppSettingsWriter
             ["Database"] = settings.Database,
             ["MySqlPort"] = settings.MySqlPort,
             ["User"] = settings.User,
-            ["Password"] = settings.Password,
-            ["AutoFallbackToSqlite"] = false
+            ["Password"] = settings.Password
         };
 
         if (string.Equals(settings.DeploymentMode, "Client", StringComparison.OrdinalIgnoreCase))

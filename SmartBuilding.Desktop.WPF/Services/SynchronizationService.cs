@@ -47,9 +47,7 @@ public class SynchronizationService
 
         var apiUrl = _configuration["Api:BaseUrl"] ?? "https://localhost:7001/";
         var interval = _configuration.GetValue("Sync:IntervalSeconds", 60);
-        var dbPath = _localDb.IsMySql
-            ? MaskConnectionString(_localDb.ConnectionString)
-            : DesktopSqlitePaths.GetDatabaseFilePath();
+        var dbPath = MaskConnectionString(_localDb.ConnectionString);
         (long Size, DateTime? LastWrite) dbInfo = _localDb.IsMySql
             ? (0L, null)
             : GetDbFileInfo(dbPath);

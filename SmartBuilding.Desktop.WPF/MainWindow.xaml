@@ -157,7 +157,7 @@
                                     <TextBlock Grid.Column="2" Text="{Binding CloudStatusLabel}" Foreground="White" FontSize="11"/>
                                 </Grid>
                                 <DockPanel Margin="0,0,0,6" LastChildFill="True">
-                                    <TextBlock DockPanel.Dock="Left" Text="Base Locale (SQLite)" Foreground="#A8C5C0" FontSize="11"/>
+                                    <TextBlock DockPanel.Dock="Left" Text="Base locale (MySQL)" Foreground="#A8C5C0" FontSize="11"/>
                                     <TextBlock Text="{Binding LocalDbStatusLabel}" Foreground="White" FontSize="11" HorizontalAlignment="Right"/>
                                 </DockPanel>
                                 <TextBlock FontSize="11" Foreground="#A8C5C0">
