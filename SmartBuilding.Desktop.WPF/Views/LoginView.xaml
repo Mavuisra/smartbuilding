@@ -1,12 +1,16 @@
 <UserControl x:Class="SmartBuilding.Desktop.WPF.Views.LoginView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes">
+             xmlns:conv="clr-namespace:SmartBuilding.Desktop.WPF.Converters"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             x:Name="LoginRoot">
     <UserControl.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="/Themes/LoginStyles.xaml"/>
             </ResourceDictionary.MergedDictionaries>
+            <conv:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+            <conv:InverseBoolConverter x:Key="InverseBoolConverter"/>
         </ResourceDictionary>
     </UserControl.Resources>
 
@@ -16,10 +20,14 @@
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
-        <!-- PHOTO 50% -->
+        <!-- Panneau gauche -->
         <Grid Grid.Column="0" ClipToBounds="True">
             <Image Source="/Assets/Images/login-building-bg.png"
-                   Stretch="UniformToFill" RenderOptions.BitmapScalingMode="HighQuality"/>
+                   Stretch="UniformToFill" RenderOptions.BitmapScalingMode="HighQuality">
+                <Image.RenderTransform>
+                    <ScaleTransform x:Name="HeroScale" ScaleX="1" ScaleY="1" CenterX="400" CenterY="300"/>
+                </Image.RenderTransform>
+            </Image>
             <Rectangle>
                 <Rectangle.Fill>
                     <LinearGradientBrush StartPoint="0,1" EndPoint="1,0">
@@ -39,13 +47,32 @@
                 </Rectangle.Fill>
             </Rectangle>
 
-            <!-- Textes empilés verticalement, sans chevauchement -->
+            <!-- Accent animé -->
+            <Border Width="4" HorizontalAlignment="Left" VerticalAlignment="Stretch" Margin="0,80,0,80" Opacity="0.85">
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                        <GradientStop Color="#10B981" Offset="0"/>
+                        <GradientStop Color="#F59E0B" Offset="0.5"/>
+                        <GradientStop Color="#10B981" Offset="1"/>
+                    </LinearGradientBrush>
+                </Border.Background>
+                <Border.Triggers>
+                    <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                        <BeginStoryboard>
+                            <Storyboard RepeatBehavior="Forever" AutoReverse="True">
+                                <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                 From="0.5" To="1" Duration="0:0:2.2"/>
+                            </Storyboard>
+                        </BeginStoryboard>
+                    </EventTrigger>
+                </Border.Triggers>
+            </Border>
+
             <StackPanel VerticalAlignment="Bottom" HorizontalAlignment="Left"
                         Margin="32,0,24,36" MaxWidth="420">
-                <!-- Bloc marque : logo + SBMS + sous-titre -->
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,28">
                     <Border Width="48" Height="48" CornerRadius="10"
-                            Background="#25FFFFFF" BorderBrush="#55FFFFFF" BorderThickness="1"
+                            Background="#55B8E6CF" BorderBrush="#88FFFFFF" BorderThickness="1"
                             VerticalAlignment="Top">
                         <Grid VerticalAlignment="Bottom" Margin="0,0,0,6">
                             <Border Width="9" Height="20" BorderBrush="{StaticResource LoginEmeraldBrush}" BorderThickness="2"
@@ -57,15 +84,13 @@
                         </Grid>
                     </Border>
                     <StackPanel Margin="14,2,0,0" VerticalAlignment="Center">
-                        <TextBlock Text="SBMS" FontSize="26" FontWeight="Bold" Foreground="White"
-                                   LineHeight="30"/>
+                        <TextBlock Text="SBMS" FontSize="26" FontWeight="Bold" Foreground="White" LineHeight="30"/>
                         <TextBlock Text="Smart Building Management System"
                                    FontSize="12" Foreground="#E2E8F0" TextWrapping="Wrap"
                                    LineHeight="18" Margin="0,6,0,0" MaxWidth="280"/>
                     </StackPanel>
                 </StackPanel>
 
-                <!-- Accroche : deux lignes distinctes -->
                 <TextBlock Text="Gérez votre bâtiment en toute"
                            FontSize="28" FontWeight="SemiBold" Foreground="White"
                            LineHeight="34" TextWrapping="Wrap"/>
@@ -76,177 +101,204 @@
             </StackPanel>
         </Grid>
 
-        <!-- FORMULAIRE 50% — occupe 75% de cette zone, sans scroll -->
-        <Grid Grid.Column="1" Background="{StaticResource LoginFormBgBrush}">
+        <!-- Formulaire -->
+        <Grid Grid.Column="1" Margin="12,16">
+            <Grid.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                    <GradientStop Color="#E8F5F0" Offset="0"/>
+                    <GradientStop Color="#D1FAE5" Offset="0.5"/>
+                    <GradientStop Color="#ECFDF5" Offset="1"/>
+                </LinearGradientBrush>
+            </Grid.Background>
             <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="1.25*"/>
-                    <RowDefinition Height="7.5*"/>
-                    <RowDefinition Height="1.25*"/>
-                </Grid.RowDefinitions>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="1.25*"/>
-                    <ColumnDefinition Width="7.5*"/>
-                    <ColumnDefinition Width="1.25*"/>
-                </Grid.ColumnDefinitions>
+                <Border x:Name="FormCard" Style="{StaticResource LoginGlassCard}" Opacity="1">
 
-                <Border Grid.Row="1" Grid.Column="1" Background="White" CornerRadius="4" Padding="28,20">
-                    <Border.Effect>
-                        <DropShadowEffect BlurRadius="20" ShadowDepth="0" Opacity="0.08" Color="#0F172A"/>
-                    </Border.Effect>
+                    <Grid IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
 
-                    <DockPanel LastChildFill="True">
-                        <!-- Haut -->
-                        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
-                            <ComboBox DockPanel.Dock="Right" Width="100" Height="32" FontSize="12" SelectedIndex="0"
-                                      VerticalContentAlignment="Center" Background="#F8FAFC" BorderBrush="#E2E8F0">
-                                <ComboBoxItem Content="Français"/>
-                            </ComboBox>
-                            <Button DockPanel.Dock="Right" Command="{Binding ToggleDarkModeCommand}"
-                                    Width="32" Height="32" Margin="0,0,6,0" Cursor="Hand"
-                                    Background="#F8FAFC" BorderBrush="#E2E8F0" BorderThickness="1">
-                                <Button.Template>
-                                    <ControlTemplate TargetType="Button">
-                                        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
-                                                BorderThickness="1" CornerRadius="8">
-                                            <materialDesign:PackIcon Kind="WeatherNight" Width="16" Height="16" Foreground="#64748B"
-                                                                     HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                        </Border>
-                                    </ControlTemplate>
-                                </Button.Template>
-                            </Button>
+                        <DockPanel Grid.Row="0" Margin="0,0,0,8">
+                                <ComboBox DockPanel.Dock="Right" Width="100" Height="32" FontSize="12" SelectedIndex="0"
+                                          VerticalContentAlignment="Center" Background="#F8FAFC" BorderBrush="#E2E8F0">
+                                    <ComboBoxItem Content="Français"/>
+                                </ComboBox>
+                                <Button DockPanel.Dock="Right" Command="{Binding ToggleDarkModeCommand}"
+                                        Width="32" Height="32" Margin="0,0,6,0" Cursor="Hand"
+                                        Background="#F8FAFC" BorderBrush="#E2E8F0" BorderThickness="1">
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                                    BorderThickness="1" CornerRadius="8">
+                                                <materialDesign:PackIcon Kind="WeatherNight" Width="16" Height="16" Foreground="#64748B"
+                                                                         HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+                                        </ControlTemplate>
+                                    </Button.Template>
+                                </Button>
                         </DockPanel>
 
-                        <!-- Bas -->
-                        <StackPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">
-                            <DockPanel Margin="0,0,0,8">
+                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled"
+                                      Padding="0,2">
+                            <StackPanel>
+                                <Border Width="64" Height="64" CornerRadius="16" HorizontalAlignment="Center" Margin="0,0,0,10"
+                                        Background="{StaticResource LoginGlassCardBrush}"
+                                        BorderBrush="{StaticResource LoginGlassCardBorderBrush}"
+                                        BorderThickness="1">
+                                    <materialDesign:PackIcon Kind="OfficeBuilding" Width="34" Height="34"
+                                                             Foreground="#059669"
+                                                             HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+
+                                <TextBlock Text="Bienvenue !" FontSize="24" FontWeight="Bold"
+                                           Foreground="#0F172A" HorizontalAlignment="Center"/>
+                                <TextBlock Text="Connectez-vous pour continuer" FontSize="13"
+                                           Foreground="#64748B"
+                                           HorizontalAlignment="Center" Margin="0,4,0,2"/>
+                                <TextBlock Text="Mode local · MySQL (XAMPP)" FontSize="11"
+                                           Foreground="#94A3B8" HorizontalAlignment="Center" Margin="0,0,0,14"/>
+
+                                <TextBlock Text="Nom d'utilisateur" FontSize="12" FontWeight="SemiBold"
+                                           Foreground="{StaticResource LoginTextDarkBrush}" Margin="0,0,0,6"/>
+                                <Border Style="{StaticResource LoginInputBorder}" Margin="0,0,0,12">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="40"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <materialDesign:PackIcon Kind="AccountOutline" Width="20" Height="20" Foreground="#94A3B8"
+                                                                 HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        <TextBox Grid.Column="1" Style="{StaticResource LoginInnerTextBox}"
+                                                 Text="{Binding Username, UpdateSourceTrigger=PropertyChanged}"
+                                                 materialDesign:HintAssist.Hint="Entrez votre nom d'utilisateur"/>
+                                    </Grid>
+                                </Border>
+
+                                <TextBlock Text="Mot de passe" FontSize="12" FontWeight="SemiBold"
+                                           Foreground="{StaticResource LoginTextDarkBrush}" Margin="0,0,0,6"/>
+                                <Border Style="{StaticResource LoginInputBorder}" Margin="0,0,0,10">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="40"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="44"/>
+                                        </Grid.ColumnDefinitions>
+                                        <materialDesign:PackIcon Kind="LockOutline" Width="20" Height="20" Foreground="#94A3B8"
+                                                                 HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        <PasswordBox x:Name="PasswordBox" Grid.Column="1"
+                                                     Style="{StaticResource LoginInnerPasswordBox}"
+                                                     materialDesign:HintAssist.Hint="Entrez votre mot de passe"
+                                                     PasswordChanged="PasswordBox_OnPasswordChanged"/>
+                                        <Button x:Name="TogglePasswordButton" Grid.Column="2"
+                                                Style="{StaticResource LoginPasswordToggleButton}"
+                                                Click="TogglePasswordVisibility_Click"
+                                                ToolTip="Afficher le mot de passe"
+                                                Panel.ZIndex="1">
+                                            <materialDesign:PackIcon x:Name="EyeIcon" Kind="EyeOutline"
+                                                                     Width="22" Height="22" Foreground="#64748B"/>
+                                        </Button>
+                                    </Grid>
+                                </Border>
+
+                                <Grid Margin="0,0,0,14">
+                                    <CheckBox Content="Se souvenir de moi" IsChecked="{Binding RememberMe}"
+                                              Style="{StaticResource LoginRememberCheckBox}" HorizontalAlignment="Left"/>
+                                    <TextBlock HorizontalAlignment="Right" VerticalAlignment="Center">
+                                        <Hyperlink Foreground="{StaticResource LoginEmeraldBrush}" TextDecorations="None"
+                                                   FontSize="12">Mot de passe oublié ?</Hyperlink>
+                                    </TextBlock>
+                                </Grid>
+
+                                <Button Command="{Binding LoginCommand}"
+                                        IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}"
+                                        Style="{StaticResource LoginPrimaryButton}" HorizontalAlignment="Stretch"
+                                        Foreground="White">
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                        <materialDesign:PackIcon Kind="Login" Width="20" Height="20" VerticalAlignment="Center"
+                                                                 Margin="0,0,8,0" Foreground="White"/>
+                                        <TextBlock Text="Se connecter" VerticalAlignment="Center" FontSize="15"
+                                                   Foreground="White" FontWeight="SemiBold"/>
+                                        <materialDesign:PackIcon Kind="ArrowRight" Width="18" Height="18"
+                                                                 VerticalAlignment="Center" Margin="8,0,0,0" Foreground="White"/>
+                                    </StackPanel>
+                                </Button>
+
+                                <Grid Margin="0,12,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Border Grid.Column="0" Height="1" Background="#E2E8F0" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="1" Text="ou" Margin="12,0" Foreground="#94A3B8" FontSize="12" VerticalAlignment="Center"/>
+                                    <Border Grid.Column="2" Height="1" Background="#E2E8F0" VerticalAlignment="Center"/>
+                                </Grid>
+
+                                <Button Command="{Binding UseAlternateAccountCommand}"
+                                        Style="{StaticResource LoginSecondaryButton}" HorizontalAlignment="Stretch">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="AccountSwitchOutline" Width="18" Height="18"
+                                                                 VerticalAlignment="Center" Margin="0,0,6,0" Foreground="#64748B"/>
+                                        <TextBlock Text="Utiliser un autre compte" VerticalAlignment="Center" Foreground="#0F172A"/>
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </ScrollViewer>
+
+                        <StackPanel Grid.Row="2" Margin="0,10,0,0">
+                            <DockPanel Margin="0,0,0,6">
                                 <TextBlock Text="Version 1.0.0" FontSize="10" Foreground="#94A3B8" DockPanel.Dock="Left"/>
                                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                                    <Ellipse Width="7" Height="7" Fill="{StaticResource LoginEmeraldBrush}" Margin="0,0,5,0"/>
+                                    <Ellipse Width="7" Height="7" Fill="#10B981" Margin="0,0,5,0"/>
                                     <TextBlock Text="Mode hors ligne" FontSize="10" Foreground="#64748B"/>
                                 </StackPanel>
                             </DockPanel>
                             <TextBlock Text="© 2025 SBMS — Tous droits réservés" FontSize="10" Foreground="#94A3B8"
                                        HorizontalAlignment="Center"/>
                         </StackPanel>
+                    </Grid>
+                </Border>
 
-                        <!-- Centre : tout le formulaire visible -->
-                        <StackPanel VerticalAlignment="Center">
-                            <Border Width="60" Height="60" CornerRadius="30" HorizontalAlignment="Center" Margin="0,0,0,12">
-                                <Border.Background>
-                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                        <GradientStop Color="#D1FAE5" Offset="0"/>
-                                        <GradientStop Color="#ECFDF5" Offset="1"/>
-                                    </LinearGradientBrush>
-                                </Border.Background>
-                                <materialDesign:PackIcon Kind="OfficeBuilding" Width="30" Height="30"
-                                                         Foreground="{StaticResource LoginEmeraldBrush}"
-                                                         HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            </Border>
-
-                            <TextBlock Text="Bienvenue !" FontSize="24" FontWeight="Bold"
-                                       Foreground="{StaticResource LoginTextDarkBrush}" HorizontalAlignment="Center"/>
-                            <TextBlock Text="Connectez-vous pour continuer (mode local, sans Internet)" FontSize="13"
-                                       Foreground="{StaticResource LoginTextMutedBrush}"
-                                       HorizontalAlignment="Center" Margin="0,4,0,4"/>
-                            <TextBlock Text="Première connexion : admin / Admin@2026" FontSize="11"
-                                       Foreground="{StaticResource LoginTextMutedBrush}"
-                                       HorizontalAlignment="Center" Margin="0,0,0,16"/>
-
-                            <Border Background="#FEF2F2" BorderBrush="#FECACA" BorderThickness="1"
-                                    CornerRadius="8" Padding="10,8" Margin="0,0,0,12"
-                                    Visibility="{Binding ErrorMessage, Converter={StaticResource NullToVisibilityConverter}}">
-                                <TextBlock Text="{Binding ErrorMessage}" Foreground="#DC2626" FontSize="12" TextWrapping="Wrap"/>
-                            </Border>
-
-                            <TextBlock Text="Nom d'utilisateur" FontSize="12" FontWeight="SemiBold"
-                                       Foreground="{StaticResource LoginTextDarkBrush}" Margin="0,0,0,6"/>
-                            <Border Style="{StaticResource LoginInputBorder}" Margin="0,0,0,12">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="40"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <materialDesign:PackIcon Kind="AccountOutline" Width="20" Height="20" Foreground="#94A3B8"
-                                                             HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                    <TextBox Grid.Column="1" Style="{StaticResource LoginInnerTextBox}"
-                                             Text="{Binding Username, UpdateSourceTrigger=PropertyChanged}"
-                                             materialDesign:HintAssist.Hint="Entrez votre nom d'utilisateur"/>
-                                </Grid>
-                            </Border>
-
-                            <TextBlock Text="Mot de passe" FontSize="12" FontWeight="SemiBold"
-                                       Foreground="{StaticResource LoginTextDarkBrush}" Margin="0,0,0,6"/>
-                            <Border Style="{StaticResource LoginInputBorder}" Margin="0,0,0,10">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="40"/>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="44"/>
-                                    </Grid.ColumnDefinitions>
-                                    <materialDesign:PackIcon Kind="LockOutline" Width="20" Height="20" Foreground="#94A3B8"
-                                                             HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                    <PasswordBox x:Name="PasswordBox" Grid.Column="1"
-                                                 Style="{StaticResource LoginInnerPasswordBox}"
-                                                 materialDesign:HintAssist.Hint="Entrez votre mot de passe"
-                                                 PasswordChanged="PasswordBox_OnPasswordChanged"/>
-                                    <Button x:Name="TogglePasswordButton" Grid.Column="2"
-                                            Style="{StaticResource LoginPasswordToggleButton}"
-                                            Click="TogglePasswordVisibility_Click"
-                                            ToolTip="Afficher le mot de passe"
-                                            Panel.ZIndex="1">
-                                        <materialDesign:PackIcon x:Name="EyeIcon" Kind="EyeOutline"
-                                                                 Width="22" Height="22" Foreground="#64748B"/>
-                                    </Button>
-                                </Grid>
-                            </Border>
-
-                            <Grid Margin="0,0,0,14">
-                                <CheckBox Content="Se souvenir de moi" IsChecked="{Binding RememberMe}"
-                                          Style="{StaticResource LoginRememberCheckBox}" HorizontalAlignment="Left"/>
-                                <TextBlock HorizontalAlignment="Right" VerticalAlignment="Center">
-                                    <Hyperlink Foreground="{StaticResource LoginEmeraldBrush}" TextDecorations="None"
-                                               FontSize="12">Mot de passe oublié ?</Hyperlink>
-                                </TextBlock>
-                            </Grid>
-
-                            <Button Command="{Binding LoginCommand}"
-                                    IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}"
-                                    Style="{StaticResource LoginPrimaryButton}" HorizontalAlignment="Stretch">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="Se connecter" VerticalAlignment="Center"/>
-                                    <materialDesign:PackIcon Kind="ArrowRight" Width="18" Height="18"
-                                                             VerticalAlignment="Center" Margin="8,0,0,0"/>
-                                </StackPanel>
-                            </Button>
-
-                            <ProgressBar IsIndeterminate="True" Height="3" Margin="0,10,0,0"
-                                         Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibilityConverter}}"
-                                         Foreground="{StaticResource LoginEmeraldBrush}"/>
-
-                            <Grid Margin="0,14,0,12">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <Border Grid.Column="0" Height="1" Background="#E2E8F0" VerticalAlignment="Center"/>
-                                <TextBlock Grid.Column="1" Text="ou" Margin="12,0" Foreground="#94A3B8" FontSize="12" VerticalAlignment="Center"/>
-                                <Border Grid.Column="2" Height="1" Background="#E2E8F0" VerticalAlignment="Center"/>
-                            </Grid>
-
-                            <Button Command="{Binding UseAlternateAccountCommand}"
-                                    Style="{StaticResource LoginSecondaryButton}" HorizontalAlignment="Stretch">
-                                <StackPanel Orientation="Horizontal">
-                                    <materialDesign:PackIcon Kind="AccountSwitchOutline" Width="18" Height="18"
-                                                             VerticalAlignment="Center" Margin="0,0,6,0" Foreground="#64748B"/>
-                                    <TextBlock Text="Utiliser un autre compte" VerticalAlignment="Center"/>
-                                </StackPanel>
-                            </Button>
-                        </StackPanel>
-                    </DockPanel>
+                <!-- Overlay chargement -->
+                <Border Style="{StaticResource LoginBusyOverlay}"
+                        Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibilityConverter}}"
+                        CornerRadius="12" Panel.ZIndex="20">
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Width="300">
+                        <ProgressBar Style="{StaticResource LoginBusyProgressBar}" Width="280"/>
+                        <TextBlock Text="{Binding LoginProgressText}"
+                                   FontSize="14" FontWeight="SemiBold"
+                                   Foreground="#0F172A"
+                                   HorizontalAlignment="Center" TextAlignment="Center"
+                                   Margin="0,18,0,6"/>
+                        <TextBlock Text="Merci de patienter quelques instants…"
+                                   FontSize="12" Foreground="#64748B"
+                                   HorizontalAlignment="Center" TextAlignment="Center"/>
+                    </StackPanel>
                 </Border>
             </Grid>
         </Grid>
+
+        <!-- Popup erreur -->
+        <Border Grid.ColumnSpan="2" Background="#990F172A"
+                Visibility="{Binding IsErrorDialogVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                Panel.ZIndex="100">
+            <Border Style="{StaticResource LoginErrorDialogCard}" VerticalAlignment="Center" HorizontalAlignment="Center">
+                <StackPanel>
+                    <Border Width="56" Height="56" CornerRadius="28" Background="#FEE2E2" HorizontalAlignment="Center" Margin="0,0,0,16">
+                        <materialDesign:PackIcon Kind="AlertCircleOutline" Width="32" Height="32"
+                                                 Foreground="#DC2626" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <TextBlock Text="Connexion impossible" FontSize="20" FontWeight="Bold"
+                               Foreground="{StaticResource LoginTextDarkBrush}" HorizontalAlignment="Center"/>
+                    <TextBlock Text="{Binding ErrorDialogMessage}" FontSize="13" TextWrapping="Wrap" TextAlignment="Center"
+                               Foreground="{StaticResource LoginTextMutedBrush}" Margin="0,12,0,0" LineHeight="20"/>
+                    <Button Content="Compris" Command="{Binding DismissErrorDialogCommand}"
+                            Style="{StaticResource LoginDialogOkButton}" HorizontalAlignment="Stretch"/>
+                </StackPanel>
+            </Border>
+        </Border>
     </Grid>
 </UserControl>

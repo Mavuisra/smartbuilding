@@ -93,7 +93,7 @@ public partial class MainWindow : Window
         var workArea = SystemParameters.WorkArea;
 
         const double widthRatio = 0.75;
-        const double heightRatio = 0.72;
+        const double heightRatio = 0.82;
 
         var loginWidth = workArea.Width * widthRatio;
         var loginHeight = workArea.Height * heightRatio;

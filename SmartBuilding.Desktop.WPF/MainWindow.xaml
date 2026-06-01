@@ -69,14 +69,29 @@
     </Window.Resources>
     <Grid>
         <!-- Fond login (opaque — AllowsTransparency ne peut pas changer après Show) -->
-        <Grid x:Name="LoginBackdrop" Visibility="Visible" Background="#E8EFED"/>
+        <Grid x:Name="LoginBackdrop" Visibility="Visible">
+            <Grid.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                    <GradientStop Color="#0D1F1E" Offset="0"/>
+                    <GradientStop Color="#1B4332" Offset="0.5"/>
+                    <GradientStop Color="#D1FAE5" Offset="1"/>
+                </LinearGradientBrush>
+            </Grid.Background>
+        </Grid>
 
         <!-- Conteneur login centré, 75% écran, coins arrondis -->
         <Border x:Name="LoginChrome" Visibility="Visible"
-                CornerRadius="16" ClipToBounds="True" Background="White"
+                CornerRadius="16" ClipToBounds="True"
                 HorizontalAlignment="Center" VerticalAlignment="Center">
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                    <GradientStop Color="#1B4332" Offset="0"/>
+                    <GradientStop Color="#2D6A4F" Offset="0.45"/>
+                    <GradientStop Color="#ECFDF5" Offset="1"/>
+                </LinearGradientBrush>
+            </Border.Background>
             <Border.Effect>
-                <DropShadowEffect BlurRadius="48" ShadowDepth="0" Opacity="0.25" Color="#0F172A"/>
+                <DropShadowEffect BlurRadius="48" ShadowDepth="0" Opacity="0.3" Color="#0F172A"/>
             </Border.Effect>
             <views:LoginView x:Name="LoginPanel"/>
         </Border>

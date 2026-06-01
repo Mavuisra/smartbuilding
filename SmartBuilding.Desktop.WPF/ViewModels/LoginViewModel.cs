@@ -18,6 +18,9 @@ public partial class LoginViewModel : BaseViewModel
     [ObservableProperty] private string _password = string.Empty;
     [ObservableProperty] private bool _rememberMe = true;
     [ObservableProperty] private bool _isDarkMode;
+    [ObservableProperty] private bool _isErrorDialogVisible;
+    [ObservableProperty] private string? _errorDialogMessage;
+    [ObservableProperty] private string _loginProgressText = "Connexion en cours…";
 
     public LoginViewModel(
         IAuthService authService,
@@ -33,10 +36,24 @@ public partial class LoginViewModel : BaseViewModel
     [RelayCommand]
     private async Task LoginAsync()
     {
-        ErrorMessage = null;
+        DismissErrorDialog();
         IsBusy = true;
+        LoginProgressText = "Vérification des identifiants…";
+
         try
         {
+            if (string.IsNullOrWhiteSpace(Username))
+            {
+                ShowLoginError("Veuillez saisir votre nom d'utilisateur.");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(Password))
+            {
+                ShowLoginError("Veuillez saisir votre mot de passe.");
+                return;
+            }
+
             var result = await _authService.LoginAsync(new LoginRequest
             {
                 Username = Username.Trim(),
@@ -45,9 +62,13 @@ public partial class LoginViewModel : BaseViewModel
 
             if (result is null)
             {
-                ErrorMessage = "Nom d'utilisateur ou mot de passe incorrect. Essayez admin / Admin@2026 (compte local).";
+                ShowLoginError(
+                    "Nom d'utilisateur ou mot de passe incorrect.\n\n" +
+                    "Utilisez le compte créé lors de la configuration initiale, ou admin / Admin@2026 si c'est une ancienne base.");
                 return;
             }
+
+            LoginProgressText = "Ouverture de l'application…";
 
             if (RememberMe)
                 SaveRememberedUsername(Username.Trim());
@@ -62,12 +83,28 @@ public partial class LoginViewModel : BaseViewModel
         }
         catch (Exception ex)
         {
-            ErrorMessage = DbSaveExceptionTranslator.ToUserMessage(ex);
+            ShowLoginError(DbSaveExceptionTranslator.ToUserMessage(ex));
         }
         finally
         {
             IsBusy = false;
+            LoginProgressText = "Connexion en cours…";
         }
+    }
+
+    [RelayCommand]
+    private void DismissErrorDialog()
+    {
+        IsErrorDialogVisible = false;
+        ErrorDialogMessage = null;
+        ErrorMessage = null;
+    }
+
+    private void ShowLoginError(string message)
+    {
+        ErrorMessage = message;
+        ErrorDialogMessage = message;
+        IsErrorDialogVisible = true;
     }
 
     [RelayCommand]
@@ -75,7 +112,7 @@ public partial class LoginViewModel : BaseViewModel
     {
         Username = string.Empty;
         Password = string.Empty;
-        ErrorMessage = null;
+        DismissErrorDialog();
     }
 
     [RelayCommand]

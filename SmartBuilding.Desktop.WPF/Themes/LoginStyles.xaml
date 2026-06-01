@@ -6,13 +6,30 @@
     <SolidColorBrush x:Key="LoginAmberAccentBrush" Color="#F59E0B"/>
     <SolidColorBrush x:Key="LoginEmeraldLightBrush" Color="#D1FAE5"/>
     <SolidColorBrush x:Key="LoginFormBgBrush" Color="#FAFBFC"/>
+  <!-- Carte verre vert léger (comme le splash SBMS) -->
+    <SolidColorBrush x:Key="LoginGlassCardBrush" Color="#66B8E6CF"/>
+    <SolidColorBrush x:Key="LoginGlassCardBorderBrush" Color="#99FFFFFF"/>
+    <SolidColorBrush x:Key="LoginGlassInputBgBrush" Color="#F8FFFB"/>
     <SolidColorBrush x:Key="LoginInputBorderBrush" Color="#E2E8F0"/>
     <SolidColorBrush x:Key="LoginInputFocusBrush" Color="#10B981"/>
     <SolidColorBrush x:Key="LoginTextDarkBrush" Color="#0F172A"/>
     <SolidColorBrush x:Key="LoginTextMutedBrush" Color="#64748B"/>
 
+    <Style x:Key="LoginGlassCard" TargetType="Border">
+        <Setter Property="Background" Value="{StaticResource LoginGlassCardBrush}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource LoginGlassCardBorderBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="12"/>
+        <Setter Property="Padding" Value="22,16"/>
+        <Setter Property="Effect">
+            <Setter.Value>
+                <DropShadowEffect BlurRadius="28" ShadowDepth="0" Opacity="0.12" Color="#0F172A"/>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <Style x:Key="LoginInputBorder" TargetType="Border">
-        <Setter Property="Background" Value="White"/>
+        <Setter Property="Background" Value="{StaticResource LoginGlassInputBgBrush}"/>
         <Setter Property="BorderBrush" Value="{StaticResource LoginInputBorderBrush}"/>
         <Setter Property="BorderThickness" Value="1.5"/>
         <Setter Property="CornerRadius" Value="12"/>
@@ -153,6 +170,37 @@
         <Setter Property="Foreground" Value="{StaticResource LoginTextMutedBrush}"/>
         <Setter Property="FontSize" Value="13"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
+    </Style>
+
+    <Style x:Key="LoginBusyOverlay" TargetType="Border">
+        <Setter Property="Background" Value="#B3D1FAE5"/>
+        <Setter Property="CornerRadius" Value="12"/>
+    </Style>
+
+    <Style x:Key="LoginErrorDialogCard" TargetType="Border">
+        <Setter Property="Background" Value="White"/>
+        <Setter Property="CornerRadius" Value="16"/>
+        <Setter Property="Padding" Value="28,24"/>
+        <Setter Property="MaxWidth" Value="420"/>
+        <Setter Property="Effect">
+            <Setter.Value>
+                <DropShadowEffect BlurRadius="32" ShadowDepth="0" Opacity="0.22" Color="#0F172A"/>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="LoginDialogOkButton" TargetType="Button" BasedOn="{StaticResource LoginPrimaryButton}">
+        <Setter Property="MinHeight" Value="46"/>
+        <Setter Property="Padding" Value="20,12"/>
+        <Setter Property="Margin" Value="0,20,0,0"/>
+    </Style>
+
+    <Style x:Key="LoginBusyProgressBar" TargetType="ProgressBar">
+        <Setter Property="Height" Value="6"/>
+        <Setter Property="IsIndeterminate" Value="True"/>
+        <Setter Property="Foreground" Value="{StaticResource LoginEmeraldBrush}"/>
+        <Setter Property="Background" Value="#E2E8F0"/>
+        <Setter Property="BorderThickness" Value="0"/>
     </Style>
 
 </ResourceDictionary>
