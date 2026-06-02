@@ -1,4 +1,5 @@
 using System.IO;
+using System.Net.Sockets;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using SmartBuilding.Desktop.WPF.Models;
@@ -95,6 +96,17 @@ public sealed class InitialSetupService
             if (isClient)
             {
                 var preferred = settings.ServerHost?.Trim();
+
+                if (!string.IsNullOrWhiteSpace(preferred)
+                    && !DesktopLocalDatabaseBootstrap.CanConnectToMySql(
+                        DesktopMySqlConnectionBuilder.Build(section, preferred))
+                    && IsTcpPortOpen(preferred, settings.MySqlPort > 0 ? settings.MySqlPort : 3306))
+                {
+                    return (false,
+                        $"Serveur MySQL joignable sur {preferred}, mais authentification refusée. " +
+                        "Vérifiez l'utilisateur/mot de passe MySQL (ex. sbms) et les droits réseau (sbms@%).");
+                }
+
                 var discovered = await Task.Run(
                     () => DesktopMySqlServerDiscovery.ResolveClientHost(section, preferred),
                     cancellationToken);
@@ -456,6 +468,22 @@ public sealed class InitialSetupService
     {
         var connectionString = DesktopMySqlConnectionBuilder.Build(section, host);
         return DesktopLocalDatabaseBootstrap.CanConnectToMySql(connectionString);
+    }
+
+    private static bool IsTcpPortOpen(string host, int port)
+    {
+        try
+        {
+            using var client = new TcpClient();
+            var connect = client.ConnectAsync(host, port);
+            if (!connect.Wait(350))
+                return false;
+            return client.Connected;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private static IConfigurationSection BuildLocalDatabaseSection(LocalDatabaseSetupSettings settings) =>

@@ -124,10 +124,13 @@ public partial class InitialSetupViewModel : ObservableObject
         {
             if (MySqlUser == "root")
                 MySqlUser = "sbms";
+            if (string.IsNullOrWhiteSpace(MySqlPassword))
+                MySqlPassword = "Sbms@2026!";
         }
         else
         {
             MySqlUser = "root";
+            MySqlPassword = string.Empty;
         }
     }
 

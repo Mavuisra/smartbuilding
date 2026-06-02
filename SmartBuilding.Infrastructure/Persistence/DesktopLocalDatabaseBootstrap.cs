@@ -31,6 +31,7 @@ public static class DesktopLocalDatabaseBootstrap
     {
         var connectionString = DesktopMySqlConnectionBuilder.Build(section, "127.0.0.1");
         return BuildMySqlConfig(
+            section,
             connectionString,
             "MySQL serveur (base unique)",
             DesktopDatabaseDeploymentMode.Server,
@@ -62,6 +63,7 @@ public static class DesktopLocalDatabaseBootstrap
 
         var connectionString = DesktopMySqlConnectionBuilder.Build(section, serverHost);
         return BuildMySqlConfig(
+            section,
             connectionString,
             $"MySQL client → {serverHost}",
             DesktopDatabaseDeploymentMode.Client,
@@ -73,6 +75,7 @@ public static class DesktopLocalDatabaseBootstrap
     {
         var connectionString = DesktopMySqlConnectionBuilder.Build(section, "127.0.0.1");
         return BuildMySqlConfig(
+            section,
             connectionString,
             "MySQL (XAMPP)",
             DesktopDatabaseDeploymentMode.Standalone,
@@ -81,6 +84,7 @@ public static class DesktopLocalDatabaseBootstrap
     }
 
     private static DesktopLocalDatabaseConfig BuildMySqlConfig(
+        IConfigurationSection section,
         string connectionString,
         string displayLabel,
         DesktopDatabaseDeploymentMode deploymentMode,
@@ -88,6 +92,7 @@ public static class DesktopLocalDatabaseBootstrap
         bool runsSchemaMigrations)
     {
         EnsureMySqlDatabaseExists(connectionString);
+        EnsureNetworkClientUser(section, connectionString, deploymentMode, serverHost);
 
         if (!CanConnectToMySql(connectionString))
         {
@@ -139,4 +144,57 @@ public static class DesktopLocalDatabaseBootstrap
             $"CREATE DATABASE IF NOT EXISTS `{databaseName}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;";
         cmd.ExecuteNonQuery();
     }
+
+    private static void EnsureNetworkClientUser(
+        IConfigurationSection section,
+        string adminConnectionString,
+        DesktopDatabaseDeploymentMode deploymentMode,
+        string serverHost)
+    {
+        if (deploymentMode == DesktopDatabaseDeploymentMode.Client)
+            return;
+
+        if (!string.Equals(serverHost, "127.0.0.1", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(serverHost, "localhost", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        try
+        {
+            var user = section.GetValue<string>("NetworkUser")?.Trim();
+            if (string.IsNullOrWhiteSpace(user))
+                user = "sbms";
+
+            var password = section.GetValue<string>("NetworkPassword");
+            if (string.IsNullOrWhiteSpace(password))
+                password = "Sbms@2026!";
+
+            var builder = new MySqlConnectionStringBuilder(adminConnectionString);
+            var databaseName = builder.Database;
+            if (string.IsNullOrWhiteSpace(databaseName))
+                return;
+
+            var userSql = EscapeSqlLiteral(user);
+            var passwordSql = EscapeSqlLiteral(password);
+            var dbSql = EscapeSqlIdentifier(databaseName);
+
+            builder.Database = "";
+            using var connection = new MySqlConnection(builder.ConnectionString);
+            connection.Open();
+            using var cmd = connection.CreateCommand();
+            cmd.CommandText = $@"
+CREATE USER IF NOT EXISTS '{userSql}'@'%' IDENTIFIED BY '{passwordSql}';
+ALTER USER '{userSql}'@'%' IDENTIFIED BY '{passwordSql}';
+GRANT ALL PRIVILEGES ON `{dbSql}`.* TO '{userSql}'@'%';
+FLUSH PRIVILEGES;";
+            cmd.ExecuteNonQuery();
+        }
+        catch
+        {
+            // Ne bloque pas le démarrage si l'utilisateur courant n'a pas les droits CREATE USER/GRANT.
+            // L'application peut continuer avec l'utilisateur admin local.
+        }
+    }
+
+    private static string EscapeSqlLiteral(string value) => value.Replace("'", "''");
+    private static string EscapeSqlIdentifier(string value) => value.Replace("`", "``");
 }
