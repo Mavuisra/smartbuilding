@@ -689,7 +689,7 @@
                     <Grid.ColumnDefinitions><ColumnDefinition Width="140"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                     <Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
                     <TextBlock Grid.Row="0" Text="Application" Foreground="{StaticResource SbmsTextMutedBrush}"/>
-                    <TextBlock Grid.Row="0" Grid.Column="1" Text="SBMS — Smart Building Management System" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                    <TextBlock Grid.Row="0" Grid.Column="1" Text="Bloom Prosperity — Gestion immobilière" FontWeight="SemiBold" TextWrapping="Wrap"/>
                     <TextBlock Grid.Row="1" Text="Version" Foreground="{StaticResource SbmsTextMutedBrush}"/>
                     <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding AppVersion}" FontWeight="SemiBold"/>
                     <TextBlock Grid.Row="2" Text="Base de données" Foreground="{StaticResource SbmsTextMutedBrush}"/>
@@ -715,7 +715,7 @@
                         <TextBlock Text="{Binding ApiBaseUrl, StringFormat='API en ligne : {0}'}" FontSize="11" Margin="0,8,0,0"/>
                         <TextBlock Text="Phrase de confirmation (saisie exacte) :" FontSize="11" FontWeight="SemiBold" Margin="0,10,0,4"/>
                         <TextBox Text="{Binding ResetConfirmPhrase, UpdateSourceTrigger=PropertyChanged}" Padding="8,6"/>
-                        <TextBlock Text="REINITIALISER SBMS" FontSize="10" Foreground="#B91C1C" Margin="0,4,0,0"/>
+                        <TextBlock Text="REINITIALISER BLOOM" FontSize="10" Foreground="#B91C1C" Margin="0,4,0,0"/>
                         <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
                             <Button Content="Réinitialiser base locale" Command="{Binding ResetLocalDatabaseCommand}"
                                     IsEnabled="{Binding CanConfirmDatabaseReset}"
@@ -727,7 +727,7 @@
                     </StackPanel>
                 </Border>
 
-                <TextBlock Text="© 2026 SBMS. Tous droits réservés." Foreground="{StaticResource SbmsTextMutedBrush}" FontSize="11" Margin="0,16,0,0"/>
+                <TextBlock Text="© 2026 Bloom Prosperity. Tous droits réservés." Foreground="{StaticResource SbmsTextMutedBrush}" FontSize="11" Margin="0,16,0,0"/>
             </StackPanel>
         </Border>
     </StackPanel>

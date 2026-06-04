@@ -165,7 +165,7 @@ public partial class LocationsService
         if (contract is not null)
         {
             await LogTenantActivityAsync(contract.TenantId, "Paiement", "Paiement modifié",
-                $"{payment.Month:00}/{payment.Year} — {payment.AmountPaid:N2} FC", cancellationToken);
+                $"{payment.Month:00}/{payment.Year} — {Fc(payment.AmountPaid)}", cancellationToken);
         }
 
         return await _db.SaveChangesWithMessageAsync(cancellationToken);
@@ -201,7 +201,7 @@ public partial class LocationsService
         _db.LeaseGuarantees.Add(guarantee);
 
         await LogTenantActivityAsync(contract.TenantId, "Garantie", "Garantie enregistrée",
-            $"Caution {guarantee.Amount:N2} FC — {contract.ContractNumber}", cancellationToken);
+            $"Caution {Fc(guarantee.Amount)} — {contract.ContractNumber}", cancellationToken);
         return await _db.SaveChangesWithMessageAsync(cancellationToken);
     }
 
@@ -225,7 +225,7 @@ public partial class LocationsService
         guarantee.MarkUpdated();
 
         await LogTenantActivityAsync(guarantee.LeaseContract.TenantId, "Garantie", "Garantie modifiée",
-            $"Caution {guarantee.Amount:N2} FC", cancellationToken);
+            $"Caution {Fc(guarantee.Amount)}", cancellationToken);
         return await _db.SaveChangesWithMessageAsync(cancellationToken);
     }
 

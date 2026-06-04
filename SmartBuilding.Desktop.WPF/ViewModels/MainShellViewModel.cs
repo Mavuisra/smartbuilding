@@ -10,6 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using SmartBuilding.Infrastructure.Persistence;
 using SmartBuilding.Application.Interfaces;
 using SmartBuilding.Desktop.WPF.Models;
+using SmartBuilding.Shared.Constants;
 using SmartBuilding.Desktop.WPF.Services;
 using SmartBuilding.Infrastructure.Services;
 
@@ -73,11 +74,11 @@ public partial class MainShellViewModel : BaseViewModel
     [ObservableProperty] private string _treasuryAvailableDisplay = MoneyFormatter.ZeroDisplay;
     [ObservableProperty] private string _treasuryDetailDisplay = "Loyers encaissés : 0 USD";
     [ObservableProperty] private bool _isTreasuryDepleted;
-    [ObservableProperty] private string _shellBrandName = "SBMS";
-    [ObservableProperty] private string _shellBrandSubtitle = "Smart Building Management";
+    [ObservableProperty] private string _shellBrandName = BrandConstants.AppName;
+    [ObservableProperty] private string _shellBrandSubtitle = BrandConstants.AppSubtitle;
     [ObservableProperty] private string? _shellLogoPath;
     [ObservableProperty] private bool _hasShellLogo;
-    [ObservableProperty] private string _windowTitle = "SBMS — Smart Building Management";
+    [ObservableProperty] private string _windowTitle = BrandConstants.WindowTitle;
     [ObservableProperty] private bool _isReceptionOnly;
 
     public ObservableCollection<ShellNavEntry> NavigationItems { get; } = [];
@@ -116,7 +117,7 @@ public partial class MainShellViewModel : BaseViewModel
         _appConfiguration.ConfigurationChanged += (_, _) => ApplyBrandingFromConfiguration();
         ApplyBrandingFromConfiguration();
         _session = session;
-        ShellUserName = session.CurrentUser?.FullName ?? "Admin SBMS";
+        ShellUserName = session.CurrentUser?.FullName ?? "Administrateur";
         ShellUserRole = session.CurrentUser?.Role ?? "Administrateur";
         ShellUserInitials = GetInitials(ShellUserName);
         _services = services;
@@ -208,7 +209,7 @@ public partial class MainShellViewModel : BaseViewModel
         ShellBrandSubtitle = c.AppSubtitle;
         ShellLogoPath = c.LogoPath;
         HasShellLogo = !string.IsNullOrWhiteSpace(c.LogoPath) && File.Exists(c.LogoPath);
-        WindowTitle = $"{c.CompanyName} — Smart Building Management";
+        WindowTitle = $"{c.CompanyName} — {BrandConstants.AppSubtitle}";
     }
 
     private void RebuildNavigation()

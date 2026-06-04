@@ -28,7 +28,7 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel>
-                    <TextBlock Text="Bienvenue dans SBMS" Foreground="White" FontSize="26" FontWeight="Bold"/>
+                    <TextBlock Text="Bienvenue dans Bloom Prosperity" Foreground="White" FontSize="26" FontWeight="Bold"/>
                     <TextBlock Text="Assistant de première configuration locale"
                                Foreground="#D1FAE5" FontSize="13"/>
                 </StackPanel>

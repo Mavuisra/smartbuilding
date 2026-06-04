@@ -1,4 +1,5 @@
 using SmartBuilding.Domain.Entities.Building;
+using SmartBuilding.Shared.Constants;
 
 namespace SmartBuilding.Desktop.WPF.Models;
 
@@ -6,8 +7,8 @@ namespace SmartBuilding.Desktop.WPF.Models;
 public sealed class AppConfiguration
 {
     public string CompanyName { get; init; } = BuildingInfoDefaults.CompanyName;
-    public string AppTitle { get; init; } = "SBMS";
-    public string AppSubtitle { get; init; } = "Smart Building Management";
+    public string AppTitle { get; init; } = BrandConstants.AppName;
+    public string AppSubtitle { get; init; } = BrandConstants.AppSubtitle;
     public string? LogoPath { get; init; }
 
     public string Address { get; init; } = BuildingInfoDefaults.Address;

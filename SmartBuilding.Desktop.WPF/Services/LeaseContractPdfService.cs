@@ -17,7 +17,7 @@ public class LeaseContractPdfService
         QuestPDF.Settings.License = LicenseType.Community;
     }
 
-    public string Generate(LeaseContract contract, string companyName = "SBMS")
+    public string Generate(LeaseContract contract, string companyName = "Bloom Prosperity")
     {
         var culture = CultureInfo.GetCultureInfo("fr-FR");
         var folder = Path.Combine(
@@ -41,7 +41,7 @@ public class LeaseContractPdfService
                     {
                         row.RelativeItem().Column(left =>
                         {
-                            left.Item().Text("SBMS").Bold().FontSize(20).FontColor(_navy);
+                            left.Item().Text("Bloom Prosperity").Bold().FontSize(20).FontColor(_navy);
                             left.Item().Text(companyName).FontSize(8).FontColor("#64748B");
                         });
                         row.RelativeItem(2).AlignCenter().Column(center =>
@@ -70,8 +70,8 @@ public class LeaseContractPdfService
                         row.ConstantItem(12);
                         row.RelativeItem().Element(c => PdfThemeHelper.SectionBox(c, "CONDITIONS FINANCIÈRES", _navy, col =>
                         {
-                            PdfThemeHelper.InfoLine(col, "Loyer mensuel", $"{contract.MonthlyRent:N2} FC");
-                            PdfThemeHelper.InfoLine(col, "Caution / garantie", $"{contract.Deposit:N2} FC");
+                            PdfThemeHelper.InfoLine(col, "Loyer mensuel", MoneyFormatter.Format(contract.MonthlyRent));
+                            PdfThemeHelper.InfoLine(col, "Caution / garantie", MoneyFormatter.Format(contract.Deposit));
                             PdfThemeHelper.InfoLine(col, "Période", $"{contract.StartDate:dd/MM/yyyy} → {contract.EndDate:dd/MM/yyyy}");
                             col.Item().PaddingTop(6).Background(PdfThemeHelper.NavyLight).Padding(8).Text($"Statut : {contract.Status}")
                                 .Bold().FontColor(_green);

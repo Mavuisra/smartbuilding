@@ -30,7 +30,7 @@ public partial class App : System.Windows.Application
         {
             MessageBox.Show(
                 DbSaveExceptionTranslator.ToDetailedMessage(args.Exception),
-                "SBMS",
+                "Bloom Prosperity",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
             args.Handled = true;
@@ -226,7 +226,7 @@ public partial class App : System.Windows.Application
             splash.Close();
             MessageBox.Show(
                 $"Impossible de démarrer l'application.\n\n{ex.Message}",
-                "SBMS",
+                "Bloom Prosperity",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
             Shutdown(1);

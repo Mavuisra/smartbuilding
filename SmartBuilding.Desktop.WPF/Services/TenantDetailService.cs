@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using SmartBuilding.Domain.Entities.Location;
 using SmartBuilding.Domain.Enums;
 using SmartBuilding.Desktop.WPF.Models;
+using SmartBuilding.Desktop.WPF.Services;
 using SmartBuilding.Infrastructure.Persistence;
 
 namespace SmartBuilding.Desktop.WPF.Services;
@@ -85,14 +86,14 @@ public class TenantDetailService
             ActiveContracts = active.Count,
             TotalContracts = contracts.Count,
             TotalRentMonthly = active.Sum(c => c.MonthlyRent),
-            TotalRentDisplay = $"{active.Sum(c => c.MonthlyRent):N2} FC / mois",
+            TotalRentDisplay = $"{MoneyFormatter.Format(active.Sum(c => c.MonthlyRent))} / mois",
             LatePaymentsCount = lateCount,
             Contracts = contracts.Select(c => new TenantContractRow
             {
                 ContractNumber = c.ContractNumber,
                 PremiseLabel = $"{c.Premise?.Code} — {c.Premise?.Name}",
                 PeriodDisplay = $"{c.StartDate:dd/MM/yyyy} → {c.EndDate:dd/MM/yyyy}",
-                RentDisplay = $"{c.MonthlyRent:N2} FC",
+                RentDisplay = MoneyFormatter.Format(c.MonthlyRent),
                 StatusLabel = LocationContractStatusHelper.ToLabel(c.Status),
                 StatusColor = c.Status == LeaseStatus.Actif ? "#22C55E" : c.Status == LeaseStatus.Resilie ? "#94A3B8" : "#F59E0B"
             }).ToList(),
@@ -104,7 +105,7 @@ public class TenantDetailService
                 {
                     PeriodDisplay = $"{x.Payment.Month:00}/{x.Payment.Year}",
                     PremiseLabel = $"{x.Contract.Premise?.Code} — {x.Contract.Premise?.Name}",
-                    AmountDisplay = $"{x.Payment.AmountDue:N2} FC (payé {x.Payment.AmountPaid:N2})",
+                    AmountDisplay = $"{MoneyFormatter.Format(x.Payment.AmountDue)} (payé {MoneyFormatter.Format(x.Payment.AmountPaid)})",
                     StatusLabel = paid ? "Payé" : late ? "En retard" : "En attente",
                     StatusColor = paid ? "#22C55E" : late ? "#EF4444" : "#F59E0B"
                 };
@@ -114,8 +115,8 @@ public class TenantDetailService
                 .SelectMany(c => c.Guarantees.Select(g => new TenantGuaranteeRow
                 {
                     ContractNumber = c.ContractNumber,
-                    AmountDisplay = $"{g.Amount:N2} FC",
-                    RefundedDisplay = $"{g.AmountRefunded:N2} FC",
+                    AmountDisplay = MoneyFormatter.Format(g.Amount),
+                    RefundedDisplay = MoneyFormatter.Format(g.AmountRefunded),
                     Status = g.Status
                 }))
                 .ToList()
@@ -157,7 +158,7 @@ public class TenantDetailService
                 DateDisplay = c.StartDate.ToString("dd/MM/yyyy HH:mm"),
                 Category = "Contrat",
                 Title = $"Contrat {c.ContractNumber}",
-                Description = $"Location {c.Premise?.Name} — loyer {c.MonthlyRent:N2} FC",
+                Description = $"Location {c.Premise?.Name} — loyer {MoneyFormatter.Format(c.MonthlyRent)}",
                 IconKind = "FileDocumentOutline",
                 Color = "#2563EB"
             });

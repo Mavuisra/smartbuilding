@@ -87,7 +87,7 @@ def materialize_building_info(data: dict):
     obj.name = (
         pick(data, "BuildingDisplayName", "buildingDisplayName")
         or pick(data, "Name", "name")
-        or "Patrimoine SBMS"
+        or "Patrimoine Bloom Prosperity"
     )
     obj.address = pick(data, "Address", "address") or ""
     obj.city = pick(data, "City", "city") or ""

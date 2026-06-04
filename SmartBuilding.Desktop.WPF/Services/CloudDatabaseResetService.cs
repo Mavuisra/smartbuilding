@@ -9,7 +9,7 @@ namespace SmartBuilding.Desktop.WPF.Services;
 /// </summary>
 public class CloudDatabaseResetService
 {
-    public const string ConfirmPhrase = "REINITIALISER SBMS";
+    public const string ConfirmPhrase = "REINITIALISER BLOOM";
 
     private readonly IConfiguration _configuration;
 

@@ -241,7 +241,7 @@ public partial class LocationsService
                 Code = c.Premise!.Code,
                 Name = c.Premise!.Name,
                 MonthlyRent = c.MonthlyRent,
-                RentDisplay = $"{c.MonthlyRent:N2} FC"
+                RentDisplay = Fc(c.MonthlyRent)
             })
             .ToListAsync(cancellationToken);
 
@@ -525,7 +525,7 @@ public partial class LocationsService
         if (amountPaid > remaining)
             return remaining <= 0
                 ? $"Le loyer de {month:00}/{year} est déjà soldé."
-                : $"Montant trop élevé : il reste {remaining:N2} FC à encaisser pour {month:00}/{year}.";
+                : $"Montant trop élevé : il reste {Fc(remaining)} à encaisser pour {month:00}/{year}.";
 
         if (payment is null)
         {
@@ -561,7 +561,7 @@ public partial class LocationsService
         await _financeLedger.RecordRentCollectionAsync(payment, contract, amountPaid, cancellationToken);
 
         await LogTenantActivityAsync(contract.TenantId, "Paiement", "Loyer encaissé",
-            $"{amountPaid:N2} FC — {payment.Month:00}/{payment.Year}", cancellationToken);
+            $"{Fc(amountPaid)} — {payment.Month:00}/{payment.Year}", cancellationToken);
         var saveError = await _db.SaveChangesWithMessageAsync(cancellationToken);
         if (!string.IsNullOrEmpty(saveError))
             return saveError;
@@ -606,10 +606,10 @@ public partial class LocationsService
         var fullyPaid = RentPaymentRules.IsFullyPaid(amountDue, amountPaid, status);
 
         var summary = fullyPaid
-            ? $"Mois {month:00}/{year} : entièrement payé ({amountPaid:N2} FC)."
+            ? $"Mois {month:00}/{year} : entièrement payé ({Fc(amountPaid)})."
             : remaining < amountDue
-                ? $"Mois {month:00}/{year} : {amountPaid:N2} / {amountDue:N2} FC — reste {remaining:N2} FC."
-                : $"Mois {month:00}/{year} : {amountDue:N2} FC à encaisser.";
+                ? $"Mois {month:00}/{year} : {Fc(amountPaid)} / {Fc(amountDue)} — reste {Fc(remaining)}."
+                : $"Mois {month:00}/{year} : {Fc(amountDue)} à encaisser.";
 
         return new RentPeriodPaymentInfo
         {
@@ -654,7 +654,7 @@ public partial class LocationsService
                 payment.LeaseContract.TenantId,
                 "Paiement",
                 "Double paiement annulé",
-                $"Surplus de {excess:N2} FC annulé pour {payment.Month:00}/{payment.Year} — montant ramené à {payment.AmountDue:N2} FC.",
+                $"Surplus de {Fc(excess)} annulé pour {payment.Month:00}/{payment.Year} — montant ramené à {Fc(payment.AmountDue)}.",
                 cancellationToken);
         }
 
@@ -730,7 +730,7 @@ public partial class LocationsService
             TenantEmail = contract?.Tenant?.Email ?? "—",
             TenantCompany = contract?.Tenant?.Company ?? "—",
             MonthlyRent = contract?.MonthlyRent ?? p.MonthlyRent,
-            RentDisplay = $"{(contract?.MonthlyRent ?? p.MonthlyRent):N2} FC",
+            RentDisplay = Fc(contract?.MonthlyRent ?? p.MonthlyRent),
             StatusLabel = occupied ? "Occupé" : "Disponible",
             StatusBadgeBackground = occupied ? "#DCFCE7" : "#DBEAFE",
             StatusBadgeForeground = occupied ? "#166534" : "#1D4ED8",
@@ -757,7 +757,7 @@ public partial class LocationsService
             TenantName = c.Tenant?.Name ?? "—",
             StartDisplay = c.StartDate.ToString("dd/MM/yyyy"),
             EndDisplay = c.EndDate.ToString("dd/MM/yyyy"),
-            RentDisplay = $"{c.MonthlyRent:N2} FC",
+            RentDisplay = Fc(c.MonthlyRent),
             MonthlyRent = c.MonthlyRent,
             Deposit = c.Deposit,
             StatusLabel = LocationContractStatusHelper.ToLabel(c.Status),
@@ -785,8 +785,8 @@ public partial class LocationsService
                 PremiseLabel = $"{p.LeaseContract.Premise?.Code} — {p.LeaseContract.Premise?.Name}",
                 TenantName = p.LeaseContract.Tenant?.Name ?? "—",
                 PeriodDisplay = $"{p.Month:00}/{p.Year}",
-                AmountDisplay = $"{p.AmountDue:N2} FC",
-                AmountPaidDisplay = $"{p.AmountPaid:N2} FC",
+                AmountDisplay = Fc(p.AmountDue),
+                AmountPaidDisplay = Fc(p.AmountPaid),
                 DueDisplay = p.DueDate.ToString("dd/MM/yyyy"),
                 PaidDisplay = p.PaidDate?.ToString("dd/MM/yyyy") ?? "—",
                 LateLabel = late ? "Oui" : "Non",
@@ -822,8 +822,8 @@ public partial class LocationsService
             TenantName = g.LeaseContract?.Tenant?.Name ?? "—",
             TypeLabel = "Caution",
             Amount = g.Amount,
-            AmountDisplay = $"{g.Amount:N2} FC",
-            RefundedDisplay = $"{g.AmountRefunded:N2} FC",
+            AmountDisplay = Fc(g.Amount),
+            RefundedDisplay = Fc(g.AmountRefunded),
             DateDisplay = g.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy"),
             Status = g.Status,
             StatusBadgeBackground = GuaranteeBadgeBg(g.Status),

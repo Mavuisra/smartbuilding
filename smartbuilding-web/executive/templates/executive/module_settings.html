@@ -54,7 +54,7 @@
         <p class="small mb-2" id="reset-hint"></p>
         <label class="small fw-bold">Phrase de confirmation (saisie exacte)</label>
         <input type="text" class="form-control confirm-input mb-1" id="confirm-phrase" autocomplete="off" />
-        <div class="small text-muted mb-3">Texte requis : <code id="phrase-label">REINITIALISER SBMS</code></div>
+        <div class="small text-muted mb-3">Texte requis : <code id="phrase-label">REINITIALISER BLOOM</code></div>
         <div class="d-flex flex-wrap gap-2">
           <button type="button" class="btn-danger" id="btn-reset-server" disabled>Réinitialiser cette base</button>
           <button type="button" class="btn-danger-outline" id="btn-reset-remote" disabled hidden>Réinitialiser base en ligne (Render)</button>
@@ -71,7 +71,7 @@ if (!Sbms.requireAuth()) throw new Error('auth');
 document.getElementById('logout-btn').onclick = Sbms.logout;
 const apiFetch = Sbms.apiFetch;
 let dbInfo = null;
-const REQUIRED = 'REINITIALISER SBMS';
+const REQUIRED = 'REINITIALISER BLOOM';
 
 function phraseOk() {
   return document.getElementById('confirm-phrase').value.trim() === REQUIRED;

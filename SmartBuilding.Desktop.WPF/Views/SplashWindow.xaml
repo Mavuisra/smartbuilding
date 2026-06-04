@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
-        Title="SBMS"
+        Title="Bloom Prosperity"
         WindowStartupLocation="CenterScreen"
         WindowStyle="None"
         ResizeMode="NoResize"
@@ -103,9 +103,9 @@
                                              Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                 </Border>
 
-                <TextBlock Text="SBMS" FontSize="30" FontWeight="Bold" Foreground="White"
+                <TextBlock Text="Bloom Prosperity" FontSize="30" FontWeight="Bold" Foreground="White"
                            HorizontalAlignment="Center"/>
-                <TextBlock Text="Smart Building Management" FontSize="13" Foreground="#D1FAE5"
+                <TextBlock Text="Gestion immobilière" FontSize="13" Foreground="#D1FAE5"
                            HorizontalAlignment="Center" Margin="0,4,0,28"/>
 
                 <!-- Anneau de chargement -->

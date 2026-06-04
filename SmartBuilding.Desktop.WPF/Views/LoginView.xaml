@@ -84,8 +84,8 @@
                         </Grid>
                     </Border>
                     <StackPanel Margin="14,2,0,0" VerticalAlignment="Center">
-                        <TextBlock Text="SBMS" FontSize="26" FontWeight="Bold" Foreground="White" LineHeight="30"/>
-                        <TextBlock Text="Smart Building Management System"
+                        <TextBlock Text="Bloom Prosperity" FontSize="26" FontWeight="Bold" Foreground="White" LineHeight="30"/>
+                        <TextBlock Text="Gestion immobilière"
                                    FontSize="12" Foreground="#E2E8F0" TextWrapping="Wrap"
                                    LineHeight="18" Margin="0,6,0,0" MaxWidth="280"/>
                     </StackPanel>
@@ -256,7 +256,7 @@
                                     <TextBlock Text="Mode hors ligne" FontSize="10" Foreground="#64748B"/>
                                 </StackPanel>
                             </DockPanel>
-                            <TextBlock Text="© 2025 SBMS — Tous droits réservés" FontSize="10" Foreground="#94A3B8"
+                            <TextBlock Text="© 2025 Bloom Prosperity — Tous droits réservés" FontSize="10" Foreground="#94A3B8"
                                        HorizontalAlignment="Center"/>
                         </StackPanel>
                     </Grid>

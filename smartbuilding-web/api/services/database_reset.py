@@ -12,7 +12,7 @@ from django.db import connection, transaction
 
 User = get_user_model()
 
-CONFIRM_PHRASE = "REINITIALISER SBMS"
+CONFIRM_PHRASE = "REINITIALISER BLOOM"
 
 # Modèles métier à vider (ordre : enfants d'abord)
 _RESET_ORDER = [

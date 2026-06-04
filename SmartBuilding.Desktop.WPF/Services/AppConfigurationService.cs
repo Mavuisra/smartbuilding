@@ -157,7 +157,7 @@ public sealed class AppConfigurationService
         {
             CompanyName = companyName,
             AppTitle = companyName.Length > 24 ? companyName[..24] + "…" : companyName,
-            AppSubtitle = "Smart Building Management",
+            AppSubtitle = BrandConstants.AppSubtitle,
             LogoPath = building.LogoPath,
             Address = string.IsNullOrWhiteSpace(building.Address) ? BuildingInfoDefaults.Address : building.Address,
             City = string.IsNullOrWhiteSpace(building.City) ? BuildingInfoDefaults.City : building.City,

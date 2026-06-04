@@ -306,8 +306,8 @@ public partial class LocationsService
 
         await LogTenantActivityAsync(g.LeaseContract.TenantId, "Garantie", "Remboursement garantie",
             isFullyRefunded && !string.IsNullOrWhiteSpace(g.DischargePdfPath)
-                ? $"{amount:N2} FC remboursés — décharge : {g.DischargePdfPath}"
-                : $"{amount:N2} FC remboursés.",
+                ? $"{Fc(amount)} remboursés — décharge : {g.DischargePdfPath}"
+                : $"{Fc(amount)} remboursés.",
             cancellationToken);
         return await _db.SaveChangesWithMessageAsync(cancellationToken);
     }
