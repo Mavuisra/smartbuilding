@@ -252,8 +252,11 @@ public class SettingsService
 
     public async Task SaveBuildingProfileAsync(
         BuildingProfileInput input,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        bool reloadApplicationConfiguration = true)
     {
+        using (await DbContextAccessLock.AcquireAsync(cancellationToken))
+        {
         var building = await _db.BuildingInfos.FirstOrDefaultAsync(cancellationToken);
         if (building is null)
         {
@@ -297,7 +300,10 @@ public class SettingsService
             building.Currency = "USD";
         building.MarkUpdated();
         await _db.SaveChangesAsync(cancellationToken);
-        await _appConfiguration.ReloadAndApplyAsync(cancellationToken);
+        }
+
+        if (reloadApplicationConfiguration)
+            await _appConfiguration.ReloadAndApplyAsync(cancellationToken);
     }
 
     public async Task SaveAppearancePrefsAsync(

@@ -12,6 +12,7 @@ public partial class LocationsPatrimoineViewModel : BaseViewModel
 {
     private readonly SettingsService _settingsService;
     private readonly PropertyStructureService _propertyStructureService;
+    private readonly AppConfigurationService _appConfiguration;
     private readonly SessionService _session;
     private readonly ShellNavigationService _shellNavigation;
 
@@ -28,11 +29,13 @@ public partial class LocationsPatrimoineViewModel : BaseViewModel
     public LocationsPatrimoineViewModel(
         SettingsService settingsService,
         PropertyStructureService propertyStructureService,
+        AppConfigurationService appConfiguration,
         SessionService session,
         ShellNavigationService shellNavigation)
     {
         _settingsService = settingsService;
         _propertyStructureService = propertyStructureService;
+        _appConfiguration = appConfiguration;
         _session = session;
         _shellNavigation = shellNavigation;
     }
@@ -112,10 +115,13 @@ public partial class LocationsPatrimoineViewModel : BaseViewModel
                 return;
             }
 
-            await _settingsService.SaveBuildingProfileAsync(BuildProfileInput());
+            await _settingsService.SaveBuildingProfileAsync(
+                BuildProfileInput(),
+                reloadApplicationConfiguration: false);
             await LoadGestionAsync();
             StatusMessage = "Patrimoine enregistré.";
             await LoadAsync();
+            await _appConfiguration.ReloadAndApplyAsync();
         }
         catch (Exception ex)
         {

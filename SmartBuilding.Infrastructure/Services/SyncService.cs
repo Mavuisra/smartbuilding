@@ -17,7 +17,6 @@ public class SyncService : ISyncService
 
     private static readonly SemaphoreSlim SyncGate = new(1, 1);
 
-    private readonly SmartBuildingDbContext _context;
     private readonly IDbContextFactory<SmartBuildingDbContext> _contextFactory;
     private readonly INetworkService _network;
     private readonly IConfiguration _configuration;
@@ -29,13 +28,11 @@ public class SyncService : ISyncService
     public bool IsSyncing { get; private set; }
 
     public SyncService(
-        SmartBuildingDbContext context,
         IDbContextFactory<SmartBuildingDbContext> contextFactory,
         INetworkService network,
         IConfiguration configuration,
         ILogger<SyncService> logger)
     {
-        _context = context;
         _contextFactory = contextFactory;
         _network = network;
         _configuration = configuration;
@@ -91,11 +88,14 @@ public class SyncService : ISyncService
         var hadFailure = false;
         var failures = new List<string>();
 
+        using (await DbContextAccessLock.AcquireAsync(cancellationToken))
+        await using (var context = await _contextFactory.CreateDbContextAsync(cancellationToken))
+        {
         try
         {
-            await DatabaseSchemaUpgrader.UpgradeAsync(_context, cancellationToken);
+            await DatabaseSchemaUpgrader.UpgradeAsync(context, cancellationToken);
 
-            _lastSyncAt ??= await SyncCoordinator.GetLastSuccessfulSyncAtAsync(_context, cancellationToken);
+            _lastSyncAt ??= await SyncCoordinator.GetLastSuccessfulSyncAtAsync(context, cancellationToken);
             var lastSync = _lastSyncAt ?? DateTime.MinValue;
             var baseUrl = GetApiBaseUrl();
 
@@ -131,6 +131,7 @@ public class SyncService : ISyncService
                 var typePushed = await PushAllPendingAsync(
                     api,
                     baseUrl,
+                    context,
                     adapter,
                     entityType,
                     cancellationToken);
@@ -146,7 +147,7 @@ public class SyncService : ISyncService
                 }
             }
 
-            await _context.SaveChangesAsync(cancellationToken);
+            await context.SaveChangesAsync(cancellationToken);
 
             // Phase 2 — Pull : récupérer les changements des autres postes via PostgreSQL.
             foreach (var entityType in SyncEntityRegistry.SyncableTypes)
@@ -160,6 +161,7 @@ public class SyncService : ISyncService
                     var pullResult = await PullEntityTypeAsync(
                         api,
                         baseUrl,
+                        context,
                         entityType,
                         lastSync,
                         cancellationToken,
@@ -174,14 +176,14 @@ public class SyncService : ISyncService
                 }
             }
 
-            await _context.SaveChangesAsync(cancellationToken);
+            await context.SaveChangesAsync(cancellationToken);
 
-            await DatabaseSeeder.EnsureReservedAdminAccountsAsync(_context, cancellationToken);
+            await DatabaseSeeder.EnsureReservedAdminAccountsAsync(context, cancellationToken);
 
-            var remainingPending = await SyncCoordinator.CountAllUnsyncedAsync(_context, cancellationToken);
+            var remainingPending = await SyncCoordinator.CountAllUnsyncedAsync(context, cancellationToken);
             if (remainingPending > 0)
             {
-                var pendingDetail = await SyncCoordinator.DescribeUnsyncedAsync(_context, 8, cancellationToken);
+                var pendingDetail = await SyncCoordinator.DescribeUnsyncedAsync(context, 8, cancellationToken);
                 if (!string.IsNullOrWhiteSpace(pendingDetail))
                     failures.Add($"En attente : {pendingDetail}");
             }
@@ -219,20 +221,22 @@ public class SyncService : ISyncService
         finally
         {
             log.CompletedAt = DateTime.UtcNow;
-            _context.SyncLogs.Add(log);
-            await _context.SaveChangesAsync(cancellationToken);
+            context.SyncLogs.Add(log);
+            await context.SaveChangesAsync(cancellationToken);
             IsSyncing = false;
 
             if (log.Success)
                 _lastSyncAt = log.CompletedAt;
             else
-                _lastSyncAt = await SyncCoordinator.GetLastSuccessfulSyncAtAsync(_context, cancellationToken);
+                _lastSyncAt = await SyncCoordinator.GetLastSuccessfulSyncAtAsync(context, cancellationToken);
+        }
         }
     }
 
     private async Task<(int Pulled, int Conflicts)> PullEntityTypeAsync(
         CloudApiClient api,
         string baseUrl,
+        SmartBuildingDbContext context,
         string entityType,
         DateTime lastSync,
         CancellationToken cancellationToken,
@@ -260,7 +264,7 @@ public class SyncService : ISyncService
                 break;
 
             conflicts += await SyncCoordinator.ApplyPullAsync(
-                _context, entityType, entities, cancellationToken);
+                context, entityType, entities, cancellationToken);
             pulled += entities.Count;
 
             if (entities.Count < 200)
@@ -279,6 +283,7 @@ public class SyncService : ISyncService
     private async Task<int> PushAllPendingAsync(
         CloudApiClient api,
         string baseUrl,
+        SmartBuildingDbContext context,
         IEntitySyncAdapter adapter,
         string entityType,
         CancellationToken cancellationToken)
@@ -287,7 +292,7 @@ public class SyncService : ISyncService
 
         while (true)
         {
-            var pending = await adapter.GetLocalChangesAsync(_context, cancellationToken);
+            var pending = await adapter.GetLocalChangesAsync(context, cancellationToken);
             if (pending.Count == 0)
                 break;
 
@@ -295,6 +300,7 @@ public class SyncService : ISyncService
             var batchPushed = await PushBatchWithSplitAsync(
                 api,
                 baseUrl,
+                context,
                 adapter,
                 entityType,
                 batch,
@@ -321,6 +327,7 @@ public class SyncService : ISyncService
     private async Task<int> PushBatchWithSplitAsync(
         CloudApiClient api,
         string baseUrl,
+        SmartBuildingDbContext context,
         IEntitySyncAdapter adapter,
         string entityType,
         IReadOnlyList<SyncEntityPayload> batch,
@@ -366,7 +373,7 @@ public class SyncService : ISyncService
         if (applied == batch.Count)
         {
             await adapter.MarkAsSyncedAsync(
-                _context, batch.Select(e => e.Id).ToList(), cancellationToken);
+                context, batch.Select(e => e.Id).ToList(), cancellationToken);
             return applied;
         }
 
@@ -388,7 +395,7 @@ public class SyncService : ISyncService
         foreach (var single in batch)
         {
             var one = await PushBatchWithSplitAsync(
-                api, baseUrl, adapter, entityType, [single], cancellationToken);
+                api, baseUrl, context, adapter, entityType, [single], cancellationToken);
             if (one > 0)
                 pushed += one;
             else

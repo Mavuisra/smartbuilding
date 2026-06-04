@@ -87,6 +87,8 @@ public sealed class PropertyStructureService
         string buildingDisplayName,
         CancellationToken cancellationToken = default)
     {
+        using (await DbContextAccessLock.AcquireAsync(cancellationToken))
+        {
         var displayName = string.IsNullOrWhiteSpace(buildingDisplayName)
             ? BuildingInfoDefaults.CompanyName
             : buildingDisplayName.Trim();
@@ -225,6 +227,7 @@ public sealed class PropertyStructureService
 
         await _db.SaveChangesAsync(cancellationToken);
         return string.Empty;
+        }
     }
 
     private async Task SyncPremiseForApartmentAsync(
