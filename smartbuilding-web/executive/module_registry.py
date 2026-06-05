@@ -6,8 +6,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-# Portail web — onglets alignés desktop WPF (+ Documents cloud)
+# Portail web — onglets alignés desktop WPF (+ tableau de bord)
 WEB_PORTAL_MODULES: frozenset[str] = frozenset({
+    "dashboard",
     "rapports",
     "documents",
     "utilisateurs",
@@ -17,6 +18,7 @@ WEB_PORTAL_MODULES: frozenset[str] = frozenset({
 })
 
 WEB_PORTAL_ORDER: tuple[str, ...] = (
+    "dashboard",
     "rapports",
     "documents",
     "utilisateurs",

@@ -11,6 +11,7 @@ from executive.module_registry import (
 )
 
 DESKTOP_TEMPLATES = {
+    "dashboard": "executive/module_dashboard.html",
     "rapports": "executive/module_rapports.html",
     "documents": "executive/module_documents.html",
     "utilisateurs": "executive/module_utilisateurs.html",
@@ -25,7 +26,7 @@ def login_page(request):
 
 
 def dashboard_page(request):
-    return redirect("executive-module", slug=default_web_module_for_role("Administrateur"))
+    return redirect("executive-module", slug="dashboard")
 
 
 def module_page(request, slug):
@@ -36,7 +37,7 @@ def module_page(request, slug):
 
     mod = get_module(slug_norm)
     if mod is None and get_module_handler(slug_norm) is None:
-        return redirect("executive-module", slug="rapports")
+        return redirect("executive-module", slug="dashboard")
 
     meta = module_meta(slug_norm)
     nav = build_navigation("Administrateur")

@@ -46,7 +46,7 @@ def get_module_handler(slug: str):
 
     slug = resolve_slug(slug.replace("_", "-"))
     handlers = {
-        "dashboard": None,
+        "dashboard": dashboard,
         "personnel": personnel,
         "presence": personnel,
         "locations": locations_list,
@@ -492,6 +492,12 @@ def finances():
             },
         ],
     )
+
+
+def dashboard():
+    from api.services.web_desktop_modules import load_dashboard_page
+
+    return load_dashboard_page()
 
 
 def documents():

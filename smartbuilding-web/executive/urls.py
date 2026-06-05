@@ -13,7 +13,6 @@ _LEGACY_REDIRECTS = [
     ("maintenance/", "rapports/"),
     ("technique/", "rapports/"),
     ("locations/", "rapports/"),
-    ("dashboard/", "rapports/"),
     ("activites-logs/", "journal/"),
 ]
 

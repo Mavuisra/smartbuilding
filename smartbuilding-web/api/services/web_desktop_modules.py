@@ -27,7 +27,12 @@ from api.models import (
     Visitor,
 )
 from api.permission_codes import ALL_PERMISSION_CODES, permissions_for_role
-from api.services.dashboard import get_sync_health
+from api.services.dashboard import get_executive_overview, get_sync_health
+from api.services.sync_metrics import (
+    calendar_month_starts,
+    expenses_month_totals,
+    sync_store_count,
+)
 from api.services.database_reset import database_info
 from api.services.sync_metrics import filter_to_synced, sync_store_count
 
@@ -94,6 +99,174 @@ def _initials(name: str) -> str:
     if len(parts) == 1:
         return parts[0][:2].upper()
     return (parts[0][0] + parts[-1][0]).upper()
+
+
+def load_dashboard_page() -> dict:
+    """Tableau de bord web — synthèse explicative avec graphiques (parité desktop PDG)."""
+    overview = get_executive_overview()
+    summary = overview["summary"]
+    sync = overview["syncHealth"]
+    diag = overview.get("diagnostics") or {}
+
+    today = timezone.localdate()
+    month_starts = calendar_month_starts(today, months=6)
+    expenses_chart = [
+        {"label": ms.strftime("%b %Y"), "value": float(expenses_month_totals(ms))}
+        for ms in month_starts
+    ]
+
+    spark_labels = []
+    spark_counts = _last7_sync_counts()
+    for i in range(6, -1, -1):
+        d = today - timedelta(days=i)
+        spark_labels.append(d.strftime("%d/%m"))
+
+    entity_types = [
+        "Users", "Employees", "Premises", "Tenants", "LeaseContracts",
+        "RentPayments", "FinancialTransactions", "Incidents", "Visitors",
+    ]
+    entity_rows = [
+        {
+            "Type entité": et,
+            "Enregistrements sync": sync_store_count(et),
+            "Source": "Magasin sync desktop → cloud Render",
+        }
+        for et in entity_types
+    ]
+
+    validation_rows = [
+        {
+            "Type": v.get("type", "—"),
+            "Référence": v.get("reference", "—"),
+            "Description": v.get("description", "—"),
+            "Demandeur": v.get("requester", "—"),
+            "Date demande": _fmt_datetime(v.get("requestDate")),
+            "Montant": _money(v.get("amount")),
+            "Statut": v.get("status", "—"),
+        }
+        for v in overview.get("pendingValidations") or []
+    ]
+
+    activity_rows = [
+        {
+            "Activité": a.get("text", "—"),
+            "Catégorie": a.get("category", "—"),
+            "Date/heure": _fmt_datetime(a.get("timestamp")),
+        }
+        for a in overview.get("recentActivities") or []
+    ]
+
+    notification_rows = [
+        {
+            "ID": str(n.get("id", "")),
+            "Titre": n.get("title", "—"),
+            "Message": n.get("message", "—"),
+            "Sévérité": n.get("severity", "—"),
+            "Source": n.get("source", "—"),
+            "Date/heure": _fmt_datetime(n.get("timestamp")),
+        }
+        for n in overview.get("notifications") or []
+    ]
+
+    movement_rows = [
+        {
+            "Date/heure": _fmt_datetime(m.get("date")),
+            "Sens": "Entrée" if m.get("type") == "IN" else "Sortie",
+            "Catégorie": m.get("category", "—"),
+            "Description": m.get("description", "—"),
+            "Montant": _money(m.get("amount")),
+            "Référence": m.get("reference", "—"),
+        }
+        for m in summary.get("recentMovements") or []
+    ]
+
+    tenants = list(Tenant.objects.filter(deleted_at__isnull=True).order_by("name")[:100])
+    tenant_rows = [
+        {
+            "ID": str(t.id),
+            "Nom": _full_text(t.name),
+            "Email": _full_text(t.email),
+            "Téléphone": _full_text(t.phone),
+            "Société": _full_text(t.company),
+            "N° dossier": _full_text(t.dossier_number),
+            "Statut location": _full_text(t.rental_status),
+            "Catégorie": _full_text(t.tenant_category),
+            "Créé le": _fmt_datetime(t.created_at),
+            "Modifié le": _fmt_datetime(t.updated_at),
+        }
+        for t in tenants
+    ]
+
+    treasury = float(summary.get("availableBalance") or summary.get("netBalance") or 0)
+    explanations = [
+        {
+            "title": "Trésorerie disponible",
+            "value": _money(treasury),
+            "detail": "Loyers encaissés (cumul) moins dépenses engagées (cumul). "
+            "Sources : RentPayments + FinancialTransactions synchronisés depuis le desktop.",
+            "icon": "piggy-bank",
+        },
+        {
+            "title": "Loyers encaissés",
+            "value": _money(summary.get("rentCollectedTotal")),
+            "detail": f"Ce mois : {_money(summary.get('rentCollected'))} sur "
+            f"{_money(summary.get('rentPlanned'))} prévus. "
+            "Données issues des quittances / RentPayments.",
+            "icon": "cash-coin",
+        },
+        {
+            "title": "Dépenses engagées",
+            "value": _money(summary.get("totalExpenses")),
+            "detail": f"Ce mois : {_money(summary.get('expensesThisMonth'))}. "
+            "Écritures FinancialTransactions (type Dépense), dédupliquées.",
+            "icon": "wallet2",
+        },
+        {
+            "title": "Occupation des locaux",
+            "value": f"{summary.get('occupiedPremises', 0)} / {summary.get('totalPremises', 0)}",
+            "detail": f"Taux {summary.get('occupancyRate', 0)} % — calculé sur les Premises synchronisés.",
+            "icon": "buildings",
+        },
+        {
+            "title": "Contrats & locataires",
+            "value": f"{summary.get('activeLeases', 0)} contrats · {summary.get('totalTenants', 0)} locataires",
+            "detail": "LeaseContracts actifs et fiche Tenants. Voir module Rapports pour le détail.",
+            "icon": "file-earmark-text",
+        },
+        {
+            "title": "Synchronisation cloud",
+            "value": f"{sync.get('successRate', 100)} % succès",
+            "detail": f"{sync.get('recordsSynced', 0)} enregistrements sur {sync.get('totalEvents', 0)} "
+            f"événements (fenêtre {sync.get('windowHours', 24)}h). "
+            f"Dernière sync : {_fmt_datetime(sync.get('lastSyncAt'))}.",
+            "icon": "cloud-arrow-up",
+        },
+    ]
+
+    return {
+        "layout": "desktop",
+        "summary": summary,
+        "syncHealth": sync,
+        "diagnostics": diag,
+        "presence": overview.get("presence") or {},
+        "unreadNotifications": overview.get("unreadNotifications", 0),
+        "revenueChart": summary.get("revenueChart") or [],
+        "expensesChart": expenses_chart,
+        "syncSparkline": spark_counts,
+        "syncSparklineLabels": spark_labels,
+        "occupancyRate": summary.get("occupancyRate", 0),
+        "alerts": summary.get("alerts") or [],
+        "quickStats": summary.get("quickStats") or [],
+        "dataSources": summary.get("dataSources") or {},
+        "explanations": explanations,
+        "validationTableRows": validation_rows,
+        "activityTableRows": activity_rows,
+        "notificationTableRows": notification_rows,
+        "movementTableRows": movement_rows,
+        "tenantTableRows": tenant_rows,
+        "entityCountRows": entity_rows,
+        "recentSyncActivity": summary.get("recentSyncActivity") or [],
+    }
 
 
 def load_rapports(date_from: date | None = None, date_to: date | None = None) -> dict:
