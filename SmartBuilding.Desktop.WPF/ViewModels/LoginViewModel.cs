@@ -147,19 +147,30 @@ public partial class LoginViewModel : BaseViewModel
     {
         try
         {
-            LoginProgressText = "Publication de votre compte vers le cloud…";
+            if (CloudIdentityStore.IsAlreadyLinkedForUser(username))
+            {
+                var linked = CloudIdentityStore.TryGetForUser(username, out var state) ? state : null;
+                _session.SetCloudIdentityStatus(
+                    true,
+                    linked?.Message ?? "Compte cloud déjà configuré — synchronisation en arrière-plan.");
+                return;
+            }
+
+            LoginProgressText = "Connexion au cloud (première fois)…";
             var identity = await _cloudIdentity.EnsureCloudLoginAsync(username, password);
             _session.SetCloudIdentityStatus(identity.Success, identity.Message);
 
             if (!identity.Success)
                 return;
 
-            LoginProgressText = "Synchronisation des données vers le cloud…";
+            CloudIdentityStore.MarkLinked(username, identity.Message);
+
+            LoginProgressText = "Synchronisation initiale des données…";
             await _syncService.SyncAsync(manual: false);
 
             if (await _syncService.IsCloudStoreEmptyAsync())
             {
-                LoginProgressText = "Publication complète des données locales vers le cloud…";
+                LoginProgressText = "Publication complète des données locales…";
                 await _syncService.MarkAllLocalDataForPushAsync();
                 await _syncService.SyncAsync(manual: false);
             }
