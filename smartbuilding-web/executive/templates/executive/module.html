@@ -55,7 +55,7 @@
             <h1 class="h3 fw-bold mb-1">{{ module.title }}</h1>
             <div class="opacity-75">{{ module.subtitle }}</div>
           </div>
-          <span class="sb-pill">Données synchronisées</span>
+          <span class="sb-pill">Actualisation auto (20 s)</span>
         </div>
       </div>
 
@@ -139,7 +139,7 @@ function renderTable(rows) {
         return `<td>${formatValue(row[col])}</td>`;
       }).join('')}
     </tr>
-  `).join('') || `<tr><td colspan="99" class="text-muted text-center py-4">Aucune donnée synchronisée pour ce module.</td></tr>`;
+  `).join('') || `<tr><td colspan="99" class="text-muted text-center py-4">Aucune donnée pour l'instant — en attente du bureau local (actualisation automatique).</td></tr>`;
   document.getElementById('row-count').textContent = `${visibleRows.length} ligne(s) affichée(s)`;
 }
 
@@ -179,5 +179,6 @@ async function loadModule() {
 document.getElementById('refresh-btn').onclick = loadModule;
 document.getElementById('module-search').addEventListener('input', filterRows);
 loadModule();
+setInterval(loadModule, 20000);
 </script>
 {% endblock %}

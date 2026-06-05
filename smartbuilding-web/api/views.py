@@ -69,6 +69,13 @@ def _pick_sync_value(data: dict[str, Any], *keys: str, default: Any = "—") -> 
     return default
 
 
+def _pick_sync_id(data: dict[str, Any]) -> str:
+    for key in ("Id", "id"):
+        if key in data and data[key]:
+            return str(data[key])
+    return ""
+
+
 def _rows_from_sync_store(
     entity_types: list[str],
     mapper,
@@ -367,6 +374,9 @@ class ExecutiveTenantsView(APIView):
 
     def get(self, request):
         from api.models import Tenant
+        from api.services.sync_metrics import ensure_dashboard_orm_materialized
+
+        ensure_dashboard_orm_materialized()
 
         rows = Tenant.objects.filter(deleted_at__isnull=True).order_by("name")[:500]
         data = [
@@ -381,6 +391,19 @@ class ExecutiveTenantsView(APIView):
             }
             for t in rows
         ]
+        if not data:
+            data = _rows_from_sync_store(
+                ["Tenants"],
+                lambda p: {
+                    "id": str(pick_sync_id(p)),
+                    "name": _pick_sync_value(p, "Name", "name", "FullName", "fullName"),
+                    "email": _pick_sync_value(p, "Email", "email"),
+                    "phone": _pick_sync_value(p, "Phone", "phone"),
+                    "company": _pick_sync_value(p, "Company", "company"),
+                    "status": _pick_sync_value(p, "RentalStatus", "rentalStatus", "Status", "status"),
+                    "updatedAt": _pick_sync_value(p, "UpdatedAt", "updatedAt"),
+                },
+            )
         return api_ok(data)
 
 
@@ -437,6 +460,9 @@ class ExecutiveModuleDataView(APIView):
         slug = resolve_slug(slug)
         if not can_access_module(request.user.role, slug):
             return api_fail("Accès refusé à ce module.", status=403)
+        from api.services.sync_metrics import ensure_dashboard_orm_materialized
+
+        ensure_dashboard_orm_materialized()
         handler = get_module_handler(slug)
         if handler is None:
             return api_fail(f"Module inconnu : {slug}", status=404)

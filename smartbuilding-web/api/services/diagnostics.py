@@ -87,20 +87,20 @@ def get_data_pipeline_diagnostics() -> dict:
     elif business_in_store > 0:
         status = "sync_store_only"
         hint_fr = (
-            "Données Desktop dans le magasin sync — matérialisation ORM en cours ou incomplète. "
-            "Le tableau de bord lit le magasin sync ; si les chiffres restent à 0, relancez la sync Desktop."
+            "Données reçues depuis le bureau local — affichage en cours. "
+            "Cette page se met à jour automatiquement."
         )
     elif has_store:
         status = "sync_partial"
         hint_fr = (
-            "Synchronisation reçue (ex. utilisateurs) mais pas encore de Locations/Finances. "
-            "Depuis le Desktop : Administration → Synchronisation → Synchroniser maintenant."
+            "Premières données reçues depuis le bureau local. "
+            "Les modules Locations et Finances apparaîtront dès leur envoi — actualisation automatique."
         )
     else:
         status = "empty"
         hint_fr = (
-            "Aucune donnée sur ce serveur. Depuis le Desktop : Administration → Synchronisation "
-            "(Api:BaseUrl = https://smartbuilding-0kbk.onrender.com/), puis Synchroniser maintenant."
+            "En attente des données du bureau local (application desktop). "
+            "Dès qu'un poste est connecté à Internet, les chiffres s'affichent ici sans action de votre part."
         )
 
     return {

@@ -33,7 +33,7 @@
       <div class="d-flex align-items-center gap-2">
         <input class="sb-topbar-search" placeholder="Rechercher (contrat, locataire, paiement...)" />
         <button class="btn btn-sm btn-outline-dark" id="notif-btn">Notifications <span class="badge text-bg-danger" id="notif-count">0</span></button>
-        <button class="btn btn-sm btn-primary" id="refresh-btn">Synchronisation</button>
+        <button class="btn btn-sm btn-primary" id="refresh-btn">Actualiser</button>
         <button class="btn btn-sm btn-outline-secondary" id="logout-btn">Déconnexion</button>
       </div>
     </div>
@@ -216,16 +216,13 @@ function renderDiagnostics(diag) {
     banner.classList.add('d-none');
     return;
   }
-  const store = diag.syncStoreByType || {};
-  const storeDetail = Object.keys(store).length
-    ? ' Magasin sync : ' + Object.entries(store).map(([k, v]) => k + '=' + v).join(', ') + '.'
+  const syncEvt = diag.lastSyncEvent && diag.lastSyncEvent.direction === 'push'
+    ? ` Dernier envoi : ${diag.lastSyncEvent.entityType} (${diag.lastSyncEvent.recordsCount} enr.) — ${fmtDate(diag.lastSyncEvent.createdAt)}.`
     : '';
-  const syncEvt = diag.lastSyncEvent
-    ? ` Dernière sync API : ${diag.lastSyncEvent.entityType} (${diag.lastSyncEvent.recordsCount} enr.) le ${fmtDate(diag.lastSyncEvent.createdAt)}.`
-    : ' Aucune synchronisation reçue sur ce serveur.';
-  banner.className = diag.status === 'empty' ? 'alert alert-warning mb-3' : 'alert alert-info mb-3';
+  banner.className = diag.status === 'empty' ? 'alert alert-info mb-3' : 'alert alert-info mb-3';
   const mismatchLine = mismatches ? `<br><small>${mismatches}</small>` : '';
-  banner.innerHTML = `<strong>Données vides ou incomplètes.</strong> ${diag.hint}${storeDetail}${syncEvt}${mismatchLine}`;
+  const autoNote = ' <span class="opacity-75">Actualisation automatique toutes les 20 s.</span>';
+  banner.innerHTML = `<strong>${diag.status === 'empty' ? 'En attente des données du bureau local' : 'Mise à jour en cours'}.</strong> ${diag.hint}${syncEvt}${autoNote}${mismatchLine}`;
   banner.classList.remove('d-none');
 }
 
@@ -323,7 +320,7 @@ document.getElementById('notif-btn').addEventListener('click', async () => {
   const u = Sbms.getUser();
   document.getElementById('user-label').textContent = u.fullName || u.username || '';
   await loadDashboard();
-  setInterval(loadDashboard, 60000);
+  setInterval(loadDashboard, 20000);
 })();
 </script>
 {% endblock %}

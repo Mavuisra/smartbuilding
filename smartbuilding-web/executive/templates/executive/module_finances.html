@@ -308,7 +308,7 @@ async function loadModule() {
         : 'Aucune dépense en attente.',
     });
     document.getElementById('ledger-badge').textContent = `${ledgerRows.length} ligne(s)`;
-    renderTable('ledger-head', 'ledger-body', ledgerRows, { emptyMessage: 'Aucun mouvement synchronisé.' });
+    renderTable('ledger-head', 'ledger-body', ledgerRows, { emptyMessage: 'Aucun mouvement pour l\'instant — en attente du bureau local (actualisation auto).' });
   } catch (e) {
     err.textContent = e.status === 403
       ? 'Accès refusé : votre rôle ne permet pas d\'ouvrir ce module.'
@@ -320,5 +320,6 @@ async function loadModule() {
 document.getElementById('refresh-btn').onclick = loadModule;
 document.getElementById('ledger-search').addEventListener('input', filterLedger);
 loadModule();
+setInterval(loadModule, 20000);
 </script>
 {% endblock %}

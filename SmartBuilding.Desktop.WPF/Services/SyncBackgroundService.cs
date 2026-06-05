@@ -104,6 +104,12 @@ public class SyncBackgroundService : BackgroundService
             var syncService = scope.ServiceProvider.GetRequiredService<ISyncService>();
             var result = await syncService.SyncAsync(manual: false, cancellationToken);
 
+            if (await syncService.IsCloudStoreEmptyAsync(cancellationToken))
+            {
+                await syncService.MarkAllLocalDataForPushAsync(cancellationToken);
+                result = await syncService.SyncAsync(manual: false, cancellationToken);
+            }
+
             if (result.Success || string.IsNullOrEmpty(result.Error))
                 _consecutiveFailures = 0;
             else

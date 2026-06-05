@@ -47,6 +47,58 @@ public class SyncService : ISyncService
             _configuration["Api:BaseUrl"] ?? "https://smartbuilding-0kbk.onrender.com",
             cancellationToken);
 
+    public async Task<bool> IsCloudStoreEmptyAsync(CancellationToken cancellationToken = default)
+    {
+        if (!await IsOnlineAsync(cancellationToken))
+            return false;
+
+        var baseUrl = GetApiBaseUrl();
+        var token = SyncCloudTokenStore.Load();
+        if (string.IsNullOrWhiteSpace(token))
+            token = await SyncCloudTokenStore.AcquireAsync(_configuration, cancellationToken: cancellationToken);
+        if (string.IsNullOrWhiteSpace(token))
+            return false;
+
+        using var api = new CloudApiClient(baseUrl, token);
+        var (statusCode, body) = await GetRawWithAuthRetryAsync(api, baseUrl, "api/sync/status/", cancellationToken);
+        if (statusCode is < 200 or >= 300 || string.IsNullOrWhiteSpace(body))
+            return false;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            if (!doc.RootElement.TryGetProperty("data", out var data))
+                return false;
+            if (data.TryGetProperty("syncStoreTotal", out var totalEl) && totalEl.TryGetInt32(out var total))
+                return total <= 0;
+            if (data.TryGetProperty("hasBusinessData", out var hasBiz) && hasBiz.ValueKind == JsonValueKind.False)
+                return true;
+            if (data.TryGetProperty("pipelineStatus", out var statusEl)
+                && statusEl.GetString() is "empty" or "sync_partial")
+                return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Lecture sync/status impossible — republish local ignoré.");
+        }
+
+        return false;
+    }
+
+    public async Task MarkAllLocalDataForPushAsync(CancellationToken cancellationToken = default)
+    {
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        foreach (var entityType in SyncEntityRegistry.SyncableTypes)
+        {
+            var adapter = SyncEntityRegistry.TryGet(entityType);
+            if (adapter is null)
+                continue;
+            await adapter.MarkAllUnsyncedAsync(context, cancellationToken);
+        }
+
+        await context.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task EnsureMetadataLoadedAsync(CancellationToken cancellationToken = default)
     {
         if (_lastSyncAt.HasValue)
@@ -450,6 +502,26 @@ public class SyncService : ISyncService
         api.SetBearerToken(token);
         var retry = await api.GetAsync(path, cancellationToken);
         return (retry.StatusCode, Deserialize<T>(retry.Body));
+    }
+
+    private async Task<(int StatusCode, string Body)> GetRawWithAuthRetryAsync(
+        CloudApiClient api,
+        string baseUrl,
+        string path,
+        CancellationToken cancellationToken)
+    {
+        var first = await api.GetAsync(path, cancellationToken);
+        if (first.StatusCode is not 401 and not 403)
+            return (first.StatusCode, first.Body);
+
+        SyncCloudTokenStore.Clear();
+        var token = await SyncCloudTokenStore.AcquireAsync(_configuration, cancellationToken: cancellationToken);
+        if (token is null)
+            return (first.StatusCode, first.Body);
+
+        api.SetBearerToken(token);
+        var retry = await api.GetAsync(path, cancellationToken);
+        return (retry.StatusCode, retry.Body);
     }
 
     private static T? Deserialize<T>(string json)

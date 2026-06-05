@@ -156,6 +156,13 @@ public partial class LoginViewModel : BaseViewModel
 
             LoginProgressText = "Synchronisation des données vers le cloud…";
             await _syncService.SyncAsync(manual: false);
+
+            if (await _syncService.IsCloudStoreEmptyAsync())
+            {
+                LoginProgressText = "Publication complète des données locales vers le cloud…";
+                await _syncService.MarkAllLocalDataForPushAsync();
+                await _syncService.SyncAsync(manual: false);
+            }
         }
         catch (Exception ex)
         {
