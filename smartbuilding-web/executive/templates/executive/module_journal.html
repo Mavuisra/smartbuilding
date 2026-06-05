@@ -1,0 +1,136 @@
+{% extends "executive/base.html" %}
+{% block title %}Journal d'activité — SBMS{% endblock %}
+{% block extra_head %}{% include "executive/partials/desktop_module_styles.html" %}{% endblock %}
+{% block body %}
+<div class="app-shell dm-page">
+  {% include "executive/partials/sidebar.html" %}
+  <main class="app-main">
+    <div class="dm-header">
+      <div>
+        <h1 class="dm-title">Journal d'activité</h1>
+        <p class="dm-subtitle" id="date-range">Logs système et synchronisation</p>
+      </div>
+      <div class="d-flex gap-2 align-items-center flex-wrap">
+        <select id="filter-type" class="form-select form-select-sm" style="width:auto"></select>
+        <select id="filter-module" class="form-select form-select-sm" style="width:auto"></select>
+        <select id="filter-status" class="form-select form-select-sm" style="width:auto"></select>
+        <input id="search" class="dm-search form-control form-control-sm" placeholder="Rechercher…" />
+        <button class="btn btn-sm btn-outline-secondary" id="reset-btn">Réinitialiser</button>
+        <button class="btn btn-sm btn-outline-secondary" id="logout-btn">Déconnexion</button>
+      </div>
+    </div>
+    <div class="sb-page-wrap">
+      <div class="dm-kpi-grid" id="kpi-row"></div>
+      <div class="dm-split">
+        <div>
+          <div id="activities-list"></div>
+          <div class="d-flex justify-content-between mt-2">
+            <small class="text-muted" id="page-info"></small>
+            <div class="btn-group btn-group-sm">
+              <button class="btn btn-outline-secondary" id="prev-page">‹</button>
+              <button class="btn btn-outline-secondary" id="next-page">›</button>
+            </div>
+          </div>
+        </div>
+        <div class="dm-detail" id="activity-detail">
+          <p class="text-muted">Sélectionnez une activité.</p>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+{% endblock %}
+{% block scripts %}
+{% include "executive/partials/nav_script.html" %}
+<script>
+if (!Sbms.requireAuth()) throw new Error('auth');
+document.getElementById('logout-btn').onclick = Sbms.logout;
+const apiFetch = Sbms.apiFetch;
+let data = null, page = 1, pageSize = 10, selectedId = null;
+
+function filtered() {
+  const q = (document.getElementById('search').value||'').toLowerCase().trim();
+  const t = document.getElementById('filter-type').value;
+  const m = document.getElementById('filter-module').value;
+  const s = document.getElementById('filter-status').value;
+  return (data?.activities||[]).filter(a => {
+    if (t && t !== 'Tous les types' && a.activityType !== t) return false;
+    if (m && m !== 'Tous les modules' && a.module !== m) return false;
+    if (s && s !== 'Tous les statuts' && a.statusLabel !== s) return false;
+    if (q && !JSON.stringify(a).toLowerCase().includes(q)) return false;
+    return true;
+  });
+}
+
+function renderKpis() {
+  const k = [
+    ['Aujourd\'hui', data.activitiesToday, data.activitiesTodayTrend],
+    ['Connexions', data.loginsCount, data.loginsTrend],
+    ['Modifications', data.modificationsCount, data.modificationsTrend],
+    ['Alertes sécurité', data.securityAlertsCount, data.securityAlertsTrend],
+    ['Erreurs', data.systemErrorsCount, data.systemErrorsTrend],
+    ['Synchronisations', data.syncCount, data.syncTrend],
+  ];
+  document.getElementById('kpi-row').innerHTML = k.map(([l,v,t]) =>
+    `<div class="dm-kpi"><small>${l}</small><strong>${v}</strong><div class="trend">${t}</div></div>`).join('');
+}
+
+function renderList() {
+  const items = filtered();
+  const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
+  const slice = items.slice((page-1)*pageSize, page*pageSize);
+  document.getElementById('activities-list').innerHTML = slice.map(a => `
+    <div class="dm-list-item${selectedId===a.id?' active':''}" data-id="${a.id}">
+      <div class="d-flex gap-2">
+        <span class="dm-avatar">${a.userInitials}</span>
+        <div class="flex-grow-1">
+          <div class="fw-bold">${a.actionTitle} <span class="dm-badge ${a.statusLabel==='Succès'?'ok':'err'}">${a.statusLabel}</span></div>
+          <small class="text-muted">${a.dateDisplay} ${a.timeDisplay} · ${a.userName} · ${a.module}</small>
+        </div>
+      </div>
+    </div>`).join('') || '<p class="text-muted">Aucune activité.</p>';
+  document.getElementById('page-info').textContent = `Page ${page}/${totalPages}`;
+  document.querySelectorAll('.dm-list-item').forEach(el => el.onclick = () => showDetail(el.dataset.id));
+}
+
+function showDetail(id) {
+  selectedId = id;
+  renderList();
+  const a = data.activities.find(x => x.id === id);
+  if (!a) return;
+  document.getElementById('activity-detail').innerHTML = `
+    <h3 class="h5 fw-bold">${a.actionTitle}</h3>
+    <p class="small text-muted">${a.dateDisplay} ${a.timeDisplay} · ${a.activityCode}</p>
+    <div class="small mb-2"><strong>Utilisateur :</strong> ${a.userName} (${a.userRole})</div>
+    <div class="small mb-2"><strong>Module :</strong> ${a.module}</div>
+    <div class="small mb-2"><strong>Type :</strong> ${a.activityType}</div>
+    <div class="small mb-2"><strong>Statut :</strong> ${a.statusLabel}</div>
+    <div class="small mb-2"><strong>Détails :</strong> ${a.details || a.actionDescription}</div>
+    <div class="small mb-2"><strong>Appareil :</strong> ${a.deviceInfo}</div>`;
+}
+
+async function load() {
+  data = await apiFetch('/api/executive/modules/journal/');
+  document.getElementById('date-range').textContent =
+    `${new Date(data.dateRangeStart).toLocaleDateString('fr-FR')} — ${new Date(data.dateRangeEnd).toLocaleDateString('fr-FR')}`;
+  ['filter-type','filter-module','filter-status'].forEach((id, i) => {
+    const key = ['typeFilters','moduleFilters','statusFilters'][i];
+    document.getElementById(id).innerHTML = (data[key]||[]).map(v => `<option>${v}</option>`).join('');
+  });
+  renderKpis(); renderList();
+}
+
+document.getElementById('search').oninput = () => { page=1; renderList(); };
+document.getElementById('filter-type').onchange = () => { page=1; renderList(); };
+document.getElementById('filter-module').onchange = () => { page=1; renderList(); };
+document.getElementById('filter-status').onchange = () => { page=1; renderList(); };
+document.getElementById('reset-btn').onclick = () => {
+  document.getElementById('search').value='';
+  ['filter-type','filter-module','filter-status'].forEach(el => el.selectedIndex=0);
+  page=1; renderList();
+};
+document.getElementById('prev-page').onclick = () => { if(page>1){page--;renderList();} };
+document.getElementById('next-page').onclick = () => { page++; renderList(); };
+load();
+</script>
+{% endblock %}

@@ -1,7 +1,22 @@
 from django.shortcuts import redirect, render
 
 from api.module_handlers import get_module_handler
-from executive.module_registry import build_navigation, get_module, module_meta, resolve_slug
+from executive.module_registry import (
+    build_navigation,
+    default_web_module_for_role,
+    get_module,
+    is_web_portal_module,
+    module_meta,
+    resolve_slug,
+)
+
+DESKTOP_TEMPLATES = {
+    "rapports": "executive/module_rapports.html",
+    "utilisateurs": "executive/module_utilisateurs.html",
+    "parametres": "executive/module_parametres.html",
+    "synchronisation": "executive/module_synchronisation.html",
+    "journal": "executive/module_journal.html",
+}
 
 
 def login_page(request):
@@ -9,32 +24,30 @@ def login_page(request):
 
 
 def dashboard_page(request):
-    return render(request, "executive/dashboard.html")
+    return redirect("executive-module", slug=default_web_module_for_role("Administrateur"))
 
 
 def module_page(request, slug):
     slug_norm = resolve_slug(slug)
-    mod = get_module(slug)
+
+    if not is_web_portal_module(slug_norm):
+        return redirect("executive-module", slug=default_web_module_for_role("Administrateur"))
+
+    mod = get_module(slug_norm)
     if mod is None and get_module_handler(slug_norm) is None:
-        return redirect("executive-dashboard")
+        return redirect("executive-module", slug="rapports")
 
-    meta = module_meta(slug)
-    # Navigation par défaut (admin) — le JS filtre selon permissions utilisateur
+    meta = module_meta(slug_norm)
     nav = build_navigation("Administrateur")
+    template = DESKTOP_TEMPLATES.get(slug_norm, "executive/module.html")
 
-    if slug_norm in ("finances", "finance"):
-        template = "executive/module_finances.html"
-    elif slug_norm in ("parametres", "settings"):
-        template = "executive/module_settings.html"
-    else:
-        template = "executive/module.html"
     return render(
         request,
         template,
         {
-            "module_slug": slug,
+            "module_slug": slug_norm,
             "module": meta,
             "navigation": nav,
-            "location_children": [c for c in (mod.children if mod else [])],
+            "location_children": [],
         },
     )

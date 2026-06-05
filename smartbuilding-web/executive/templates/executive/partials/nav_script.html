@@ -20,7 +20,7 @@
       const isParentActive = item.slug === activeSlug
         || (item.children || []).some(c => c.slug === activeSlug);
       const parentCls = isParentActive ? 'sb-nav-link active' : 'sb-nav-link';
-      const href = item.slug === 'dashboard' ? '/' : `/${item.slug}/`;
+      const href = `/${item.slug}/`;
       html += `<a href="${href}" class="${parentCls}">${item.label}</a>`;
       if (item.children && item.children.length) {
         html += '<div class="sb-nav-children">';

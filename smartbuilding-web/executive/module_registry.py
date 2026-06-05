@@ -6,6 +6,23 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+# Portail web restreint — uniquement ces 5 onglets (alignés desktop WPF)
+WEB_PORTAL_MODULES: frozenset[str] = frozenset({
+    "rapports",
+    "utilisateurs",
+    "parametres",
+    "synchronisation",
+    "journal",
+})
+
+WEB_PORTAL_ORDER: tuple[str, ...] = (
+    "rapports",
+    "utilisateurs",
+    "parametres",
+    "synchronisation",
+    "journal",
+)
+
 
 @dataclass(frozen=True)
 class ModuleChild:
@@ -174,9 +191,8 @@ ALL_MODULES: tuple[WebModule, ...] = (
         "Rapports",
         "Indicateurs, exports et synthèses",
         "FileChart",
-        "supervision",
+        "admin",
         "reports.export",
-        desktop_only=True,
     ),
     WebModule(
         "audit-securite",
@@ -245,6 +261,17 @@ def can_access_module(role: str, slug: str) -> bool:
     return role_has_permission(role, code)
 
 
+def is_web_portal_module(slug: str) -> bool:
+    return resolve_slug(slug) in WEB_PORTAL_MODULES
+
+
+def default_web_module_for_role(role: str) -> str:
+    for slug in ("rapports", "utilisateurs", "parametres", "synchronisation", "journal"):
+        if can_access_module(role, slug):
+            return slug
+    return "rapports"
+
+
 _CHILD_LABELS = {c.slug: c.label for m in ALL_MODULES for c in m.children}
 
 
@@ -295,42 +322,18 @@ def module_meta(slug: str) -> dict:
 
 
 def build_navigation(role: str) -> list[dict]:
-    from api.permission_codes import role_has_permission
+    nav: list[dict] = [{"type": "header", "label": "ADMINISTRATION"}]
 
-    section_labels = {
-        "main": None,
-        "gestion": "GESTION",
-        "supervision": "SUPERVISION",
-        "admin": "ADMINISTRATION",
-    }
-    nav: list[dict] = []
-    last_section: str | None = None
-
-    for mod in ALL_MODULES:
-        if not can_access_module(role, mod.id):
+    for mod_id in WEB_PORTAL_ORDER:
+        mod = _BY_ID.get(mod_id)
+        if mod is None or not can_access_module(role, mod_id):
             continue
-        if mod.section != last_section:
-            label = section_labels.get(mod.section)
-            if label:
-                nav.append({"type": "header", "label": label})
-            last_section = mod.section
-
-        children: list[dict] = []
-        for c in mod.children:
-            if c.slug == "incidents":
-                if role_has_permission(role, "incidents.manage") or role_has_permission(
-                    role, "technical.manage"
-                ):
-                    children.append({"slug": c.slug, "label": c.label})
-            elif can_access_module(role, c.slug):
-                children.append({"slug": c.slug, "label": c.label})
-
         nav.append(
             {
                 "type": "module",
                 "slug": mod.id,
                 "label": mod.title,
-                "children": children,
+                "children": [],
             }
         )
     return nav

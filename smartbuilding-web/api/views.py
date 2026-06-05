@@ -455,9 +455,13 @@ class ExecutiveModuleDataView(APIView):
     permission_classes = [IsExecutive]
 
     def get(self, request, slug):
-        from executive.module_registry import can_access_module, resolve_slug
+        from datetime import date as date_cls
+
+        from executive.module_registry import can_access_module, is_web_portal_module, resolve_slug
 
         slug = resolve_slug(slug)
+        if not is_web_portal_module(slug):
+            return api_fail("Module non disponible sur le portail web.", status=403)
         if not can_access_module(request.user.role, slug):
             return api_fail("Accès refusé à ce module.", status=403)
         from api.services.sync_metrics import ensure_dashboard_orm_materialized
@@ -466,6 +470,19 @@ class ExecutiveModuleDataView(APIView):
         handler = get_module_handler(slug)
         if handler is None:
             return api_fail(f"Module inconnu : {slug}", status=404)
+
+        if slug == "rapports":
+            df = request.query_params.get("dateFrom")
+            dt = request.query_params.get("dateTo")
+            date_from = date_cls.fromisoformat(df) if df else None
+            date_to = date_cls.fromisoformat(dt) if dt else None
+            return api_ok(handler(date_from=date_from, date_to=date_to))
+
+        if slug == "utilisateurs":
+            from api.services.web_desktop_modules import load_users
+
+            return api_ok(load_users(current_username=getattr(request.user, "username", None)))
+
         return api_ok(handler())
 
 
@@ -478,6 +495,105 @@ class ExecutiveNavigationView(APIView):
         from executive.module_registry import build_navigation
 
         return api_ok(build_navigation(request.user.role))
+
+
+class ExecutiveUserDetailView(APIView):
+    """CRUD utilisateurs — parité desktop Utilisateurs."""
+
+    permission_classes = [IsExecutive]
+
+    def get(self, request, user_id):
+        from api.permission_codes import role_has_permission
+        from api.services.web_desktop_modules import load_user_detail
+
+        if not role_has_permission(request.user.role, "users.manage"):
+            return api_fail("Accès refusé.", status=403)
+        detail = load_user_detail(str(user_id))
+        if detail is None:
+            return api_fail("Utilisateur introuvable.", status=404)
+        return api_ok(detail)
+
+    def post(self, request):
+        from api.permission_codes import role_has_permission
+
+        if not role_has_permission(request.user.role, "users.manage"):
+            return api_fail("Accès refusé.", status=403)
+
+        username = (request.data.get("username") or "").strip()
+        full_name = (request.data.get("fullName") or "").strip()
+        email = (request.data.get("email") or "").strip()
+        password = request.data.get("password") or ""
+        role = request.data.get("role") or User.Role.GESTIONNAIRE
+
+        if not username:
+            return api_fail("L'identifiant est obligatoire.", status=400)
+        if len(password) < 6:
+            return api_fail("Le mot de passe doit contenir au moins 6 caractères.", status=400)
+        if User.objects.filter(username__iexact=username, deleted_at__isnull=True).exists():
+            return api_fail("Cet identifiant existe déjà.", status=400)
+
+        user = User(username=username, full_name=full_name or username, email=email, role=role)
+        user.set_password(password)
+        user.is_staff = role in (User.Role.ADMIN, User.Role.PDG)
+        user.save()
+        return api_ok({"id": str(user.id)})
+
+    def patch(self, request, user_id):
+        from api.permission_codes import role_has_permission
+
+        if not role_has_permission(request.user.role, "users.manage"):
+            return api_fail("Accès refusé.", status=403)
+
+        try:
+            user = User.objects.get(id=user_id, deleted_at__isnull=True)
+        except User.DoesNotExist:
+            return api_fail("Utilisateur introuvable.", status=404)
+
+        action = request.data.get("action")
+        if action == "toggle_active":
+            new_active = bool(request.data.get("isActive", not user.is_active))
+            if not new_active and user.role == User.Role.ADMIN:
+                others = User.objects.filter(
+                    is_active=True, role=User.Role.ADMIN, deleted_at__isnull=True
+                ).exclude(id=user.id).count()
+                if others == 0:
+                    return api_fail("Impossible de suspendre le dernier administrateur actif.", status=400)
+            user.is_active = new_active
+            user.save()
+            return api_ok({"isActive": user.is_active})
+
+        if action == "reset_password":
+            password = request.data.get("password") or ""
+            if len(password) < 6:
+                return api_fail("Le mot de passe doit contenir au moins 6 caractères.", status=400)
+            user.set_password(password)
+            user.save()
+            return api_ok({"reset": True})
+
+        full_name = request.data.get("fullName")
+        email = request.data.get("email")
+        role = request.data.get("role")
+        password = request.data.get("password")
+
+        if full_name is not None:
+            user.full_name = full_name.strip() or user.username
+        if email is not None:
+            user.email = email.strip()
+        if role is not None:
+            if user.role == User.Role.ADMIN and role != User.Role.ADMIN:
+                others = User.objects.filter(
+                    is_active=True, role=User.Role.ADMIN, deleted_at__isnull=True
+                ).exclude(id=user.id).count()
+                if others == 0:
+                    return api_fail("Impossible de retirer le rôle du dernier administrateur actif.", status=400)
+            user.role = role
+            user.is_staff = role in (User.Role.ADMIN, User.Role.PDG)
+        if password:
+            if len(password) < 6:
+                return api_fail("Le mot de passe doit contenir au moins 6 caractères.", status=400)
+            user.set_password(password)
+        user.save()
+        return api_ok({"id": str(user.id)})
 
 
 class ExpenseValidationActionView(APIView):
