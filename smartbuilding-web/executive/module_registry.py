@@ -6,9 +6,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-# Portail web restreint — uniquement ces 5 onglets (alignés desktop WPF)
+# Portail web — onglets alignés desktop WPF (+ Documents cloud)
 WEB_PORTAL_MODULES: frozenset[str] = frozenset({
     "rapports",
+    "documents",
     "utilisateurs",
     "parametres",
     "synchronisation",
@@ -17,6 +18,7 @@ WEB_PORTAL_MODULES: frozenset[str] = frozenset({
 
 WEB_PORTAL_ORDER: tuple[str, ...] = (
     "rapports",
+    "documents",
     "utilisateurs",
     "parametres",
     "synchronisation",
@@ -132,7 +134,7 @@ ALL_MODULES: tuple[WebModule, ...] = (
         "Documents",
         "Fichiers et pièces jointes liés",
         "FileDocumentOutline",
-        "gestion",
+        "admin",
         "dashboard.view",
     ),
     WebModule(
@@ -266,7 +268,7 @@ def is_web_portal_module(slug: str) -> bool:
 
 
 def default_web_module_for_role(role: str) -> str:
-    for slug in ("rapports", "utilisateurs", "parametres", "synchronisation", "journal"):
+    for slug in WEB_PORTAL_ORDER:
         if can_access_module(role, slug):
             return slug
     return "rapports"

@@ -134,6 +134,28 @@ Sbms.apiFetch = async (path, options = {}) => {
   return json;
 };
 
+Sbms.downloadFile = async (url, fileName) => {
+  const token = Sbms.getToken();
+  const headers = {};
+  if (token) headers.Authorization = 'Bearer ' + token;
+  const res = await fetch(url, { headers, credentials: 'same-origin' });
+  if (res.status === 401 || res.status === 403) {
+    localStorage.removeItem('sbms_token');
+    localStorage.removeItem('sbms_user');
+    window.location.href = '/login/?next=' + encodeURIComponent(window.location.pathname);
+    throw new Error('Session expirée');
+  }
+  if (!res.ok) throw new Error(`Téléchargement impossible (${res.status})`);
+  const blob = await res.blob();
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = fileName || 'document.pdf';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(link.href);
+};
+
 Sbms.logout = async () => {
   try {
     await fetch('/api/auth/logout/', {

@@ -20,6 +20,7 @@ from api.models import (
     Premise,
     RentPayment,
     ServerSyncEvent,
+    SyncedDocument,
     SyncedEntityStore,
     Tenant,
     User,
@@ -562,4 +563,148 @@ def load_settings_page() -> dict:
         ],
         "canResetDatabase": True,
         "resetConfirmPhrase": "REINITIALISER SBMS",
+    }
+
+
+_DOCUMENT_CATEGORIES: tuple[tuple[str, str, str], ...] = (
+    ("all", "Tous les documents", "#2D6A4F"),
+    ("contrats", "Contrats", "#7C3AED"),
+    ("factures", "Factures", "#2563EB"),
+    ("personnel", "Personnel", "#0EA5E9"),
+    ("technique", "Technique", "#EA580C"),
+    ("securite", "Sécurité", "#DC2626"),
+    ("fournisseurs", "Fournisseurs", "#D97706"),
+    ("emails", "Emails", "#64748B"),
+    ("rapports", "Rapports", "#6D28D9"),
+    ("inventaire", "Inventaire", "#166534"),
+    ("archives", "Archives", "#94A3B8"),
+)
+
+_CATEGORY_LABELS = {cid: label for cid, label, _ in _DOCUMENT_CATEGORIES if cid != "all"}
+_CATEGORY_LABELS["corbeille"] = "Corbeille"
+
+_DEFAULT_QUOTA_BYTES = 20 * 1024 * 1024 * 1024
+
+
+def _fmt_size(n: int) -> str:
+    if n < 1024:
+        return f"{n} o"
+    if n < 1024 * 1024:
+        return f"{n / 1024:.1f} Ko"
+    return f"{n / (1024 * 1024):.1f} Mo"
+
+
+def _file_type_label(mime: str, file_name: str) -> str:
+    if mime == "application/pdf" or file_name.lower().endswith(".pdf"):
+        return "PDF"
+    if "word" in mime or file_name.lower().endswith((".doc", ".docx")):
+        return "Word"
+    if "excel" in mime or "spreadsheet" in mime or file_name.lower().endswith((".xls", ".xlsx")):
+        return "Excel"
+    if file_name.lower().endswith(".csv"):
+        return "CSV"
+    return "Fichier"
+
+
+def load_documents_page() -> dict:
+    today = timezone.localdate()
+    week_start = today - timedelta(days=7)
+    month_start = today.replace(day=1)
+    prev_month_start = (month_start - timedelta(days=1)).replace(day=1)
+
+    docs = list(SyncedDocument.objects.order_by("-updated_at")[:2000])
+    total_bytes = sum(d.file_size for d in docs)
+
+    recent = sum(1 for d in docs if d.updated_at.date() >= week_start)
+    recent_prev = sum(
+        1
+        for d in docs
+        if week_start - timedelta(days=7) <= d.updated_at.date() < week_start
+    )
+    contracts = sum(
+        1 for d in docs if d.category in ("contrats", "fournisseurs")
+    )
+    contracts_prev = sum(
+        1
+        for d in docs
+        if d.category in ("contrats", "fournisseurs")
+        and d.updated_at.date() < month_start
+    )
+    this_month = sum(1 for d in docs if d.updated_at.date() >= month_start)
+    prev_month = sum(
+        1
+        for d in docs
+        if prev_month_start <= d.updated_at.date() < month_start
+    )
+    shared = sum(1 for d in docs if d.added_by)
+
+    storage_percent = min(
+        100.0,
+        round(total_bytes * 100.0 / _DEFAULT_QUOTA_BYTES, 1) if _DEFAULT_QUOTA_BYTES else 0,
+    )
+
+    def count_for_category(cat_id: str) -> int:
+        if cat_id == "all":
+            return len(docs)
+        return sum(1 for d in docs if d.category == cat_id)
+
+    categories = [
+        {
+            "categoryId": cid,
+            "label": label,
+            "iconColor": color,
+            "count": count_for_category(cid),
+            "isSelected": cid == "all",
+        }
+        for cid, label, color in _DOCUMENT_CATEGORIES
+    ]
+
+    items = [
+        {
+            "id": str(d.id),
+            "fileName": d.file_name,
+            "fileType": _file_type_label(d.mime_type, d.file_name),
+            "categoryId": d.category,
+            "categoryLabel": _CATEGORY_LABELS.get(d.category, "Document"),
+            "entityType": d.entity_type,
+            "sizeDisplay": _fmt_size(d.file_size),
+            "sizeBytes": d.file_size,
+            "dateDisplay": _fmt_date(d.updated_at),
+            "addedAtDisplay": d.created_at.strftime("%d/%m/%Y %H:%M") if d.created_at else "—",
+            "modifiedAtDisplay": d.updated_at.strftime("%d/%m/%Y %H:%M") if d.updated_at else "—",
+            "addedBy": d.added_by or "Desktop SBMS",
+            "downloadUrl": f"/api/documents/{d.id}/",
+            "mimeType": d.mime_type,
+            "status": "Synchronisé",
+        }
+        for d in docs
+    ]
+
+    entity_types = sorted({d.entity_type for d in docs if d.entity_type})
+
+    return {
+        "layout": "desktop",
+        "selectedCategoryId": "all",
+        "categories": categories,
+        "documents": items,
+        "entityTypeFilters": ["Tous types", *entity_types],
+        "totalCount": len(docs),
+        "recentCount": recent,
+        "activeContractsCount": contracts,
+        "sharedCount": shared,
+        "criticalCount": 0,
+        "storagePercent": storage_percent,
+        "storageDisplay": _fmt_size(total_bytes),
+        "totalTrend": _trend(this_month, prev_month),
+        "recentTrend": _trend(recent, recent_prev),
+        "contractsTrend": _trend(contracts, contracts_prev),
+        "sharedTrend": f"{shared} partagés" if shared else "—",
+        "storageTrend": f"{storage_percent} % quota",
+        "criticalTrend": "—",
+        "emptyMessage": (
+            "Aucun document cloud pour le moment. "
+            "Générez des PDF depuis le desktop SBMS puis lancez une synchronisation."
+            if not docs
+            else ""
+        ),
     }

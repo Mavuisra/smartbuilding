@@ -495,35 +495,9 @@ def finances():
 
 
 def documents():
-    from api.models import SyncedDocument
+    from api.services.web_desktop_modules import load_documents_page
 
-    rows = [
-        {
-            "Fichier": d.file_name,
-            "Catégorie": d.category,
-            "Type entité": d.entity_type,
-            "Taille": f"{d.file_size / 1024:.1f} Ko",
-            "Ajouté par": d.added_by or "—",
-            "Téléchargement": f"/api/documents/{d.id}/",
-            "Dernière maj": _iso(d.updated_at),
-        }
-        for d in SyncedDocument.objects.order_by("-updated_at")[:500]
-    ]
-    if not rows:
-        rows = [
-            {
-                "Type": "Contrat location",
-                "Référence": c.contract_number or str(c.id)[:8],
-                "Statut": c.status or "—",
-                "Dernière maj": _iso(c.updated_at),
-            }
-            for c in LeaseContract.objects.filter(deleted_at__isnull=True).order_by("-updated_at")[:200]
-        ]
-    return _module_payload(
-        "Documents",
-        rows,
-        [{"label": "Documents cloud", "value": SyncedDocument.objects.count()}],
-    )
+    return load_documents_page()
 
 
 def technique():

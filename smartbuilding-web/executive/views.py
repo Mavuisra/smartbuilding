@@ -12,6 +12,7 @@ from executive.module_registry import (
 
 DESKTOP_TEMPLATES = {
     "rapports": "executive/module_rapports.html",
+    "documents": "executive/module_documents.html",
     "utilisateurs": "executive/module_utilisateurs.html",
     "parametres": "executive/module_parametres.html",
     "synchronisation": "executive/module_synchronisation.html",
