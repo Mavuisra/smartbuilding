@@ -64,6 +64,11 @@ public partial class SynchronizationViewModel : BaseViewModel, IDisposable
     [ObservableProperty] private bool _isCloudIdentityLinked;
     [ObservableProperty] private string _cloudIdentityMessage = "—";
     [ObservableProperty] private string _connectedUsername = "—";
+    [ObservableProperty] private string _pingDisplay = "—";
+    [ObservableProperty] private string _internetStatusText = "—";
+    [ObservableProperty] private string _cloudStatusText = "—";
+    [ObservableProperty] private string _localMysqlStatusText = "OK";
+    [ObservableProperty] private string _dataStateLabel = "—";
 
     [ObservableProperty] private double _globalProgress;
     [ObservableProperty] private string _durationLabel = "—";
@@ -239,6 +244,13 @@ public partial class SynchronizationViewModel : BaseViewModel, IDisposable
         PendingCount = data.PendingCount;
         IsSynchronized = data.PendingCount == 0 && data.IsCloudReachable;
         IsInternetConnected = data.IsOnline;
+        PingDisplay = data.PingMs > 0 ? $"{data.PingMs} ms" : "—";
+        InternetStatusText = data.IsOnline ? "Connecté" : "Hors ligne";
+        CloudStatusText = data.IsCloudReachable ? $"Connecté · {PingDisplay}" : "Injoignable";
+        LocalMysqlStatusText = "OK";
+        DataStateLabel = data.PendingCount > 0
+            ? $"{data.PendingCount} élément(s) en file"
+            : data.IsCloudReachable ? "Tout est à jour" : "Cloud injoignable";
         AutoSyncEnabled = data.AutoSyncEnabled;
         AutoSyncStatusLabel = data.AutoSyncStatusLabel;
         SyncedCountDisplay = data.SyncedCount.ToString("N0", CultureInfo.CurrentCulture);

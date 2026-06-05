@@ -15,113 +15,182 @@
             <conv:InverseBoolConverter x:Key="InverseBoolConverter"/>
             <conv:HexToBrushConverter x:Key="HexToBrushConverter"/>
             <conv:StringToPackIconKindConverter x:Key="StringToPackIconKindConverter"/>
+            <conv:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
         </ResourceDictionary>
     </UserControl.Resources>
 
     <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
-
-        <!-- En-tête page -->
-        <Border Grid.Row="0" Background="White" Padding="24,16" BorderBrush="#E0E8E6" BorderThickness="0,0,0,1">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-
-                <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                    <TextBlock Text="Synchronisation" FontSize="26" FontWeight="Bold" Foreground="#1B3D3B"/>
-                    <TextBlock Text="Envoi automatique vers le cloud dès qu'Internet est disponible — aucun clic requis"
-                               Foreground="{StaticResource SbmsTextMutedBrush}" FontSize="13" Margin="0,2,0,0" TextWrapping="Wrap"/>
-                </StackPanel>
-
-                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0">
-                    <Border Style="{StaticResource SyncHeaderBadge}" MinWidth="220">
-                        <StackPanel Orientation="Horizontal">
-                            <Border Width="36" Height="36" CornerRadius="18" Background="#DBEAFE" Margin="0,0,10,0">
-                                <materialDesign:PackIcon Kind="Sync" Foreground="#2563EB"
-                                                         Width="22" Height="22" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            </Border>
-                            <StackPanel VerticalAlignment="Center">
-                                <TextBlock Text="Sync automatique" FontWeight="SemiBold" FontSize="13"/>
-                                <TextBlock Text="{Binding AutoSyncStatusLabel}" FontSize="11"
-                                           Foreground="{StaticResource SbmsTextMutedBrush}" TextWrapping="Wrap" MaxWidth="200"/>
-                            </StackPanel>
-                        </StackPanel>
-                    </Border>
-                    <Border Style="{StaticResource SyncHeaderBadge}" MinWidth="200">
-                        <StackPanel Orientation="Horizontal">
-                            <Border Width="36" Height="36" CornerRadius="18" Background="#D1FAE5" Margin="0,0,10,0">
-                                <materialDesign:PackIcon Kind="CheckCircle" Foreground="#2D6A4F"
-                                                         Width="22" Height="22" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            </Border>
-                            <StackPanel VerticalAlignment="Center">
-                                <TextBlock Text="État des données" FontWeight="SemiBold" FontSize="13"/>
-                                <TextBlock Text="Toutes les données sont à jour" FontSize="11"
-                                           Foreground="{StaticResource SbmsTextMutedBrush}"
-                                           Visibility="{Binding IsSynchronized, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                                <TextBlock Text="Des éléments sont en attente" FontSize="11" Foreground="#D97706"
-                                           Visibility="{Binding IsSynchronized, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}"/>
-                            </StackPanel>
-                        </StackPanel>
-                    </Border>
-                    <Border Style="{StaticResource SyncHeaderBadge}" MinWidth="240">
-                        <StackPanel Orientation="Horizontal">
-                            <Border Width="36" Height="36" CornerRadius="18" Background="#F1F5F9" Margin="0,0,10,0">
-                                <materialDesign:PackIcon Kind="CalendarClock" Foreground="#64748B"
-                                                         Width="22" Height="22" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            </Border>
-                            <StackPanel VerticalAlignment="Center">
-                                <TextBlock Text="Dernière synchronisation" FontWeight="SemiBold" FontSize="13"/>
-                                <TextBlock Text="{Binding LastSyncBadgeText}" FontSize="11"
-                                           Foreground="{StaticResource SbmsTextMutedBrush}" TextWrapping="Wrap"/>
-                            </StackPanel>
-                        </StackPanel>
-                    </Border>
-                </StackPanel>
-
-                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button Command="{Binding SyncNowCommand}" Style="{StaticResource SyncPrimaryButton}" Margin="0,0,8,0"
-                            IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}"
-                            ToolTip="Forcer une synchronisation immédiate (en plus de l'envoi automatique)">
-                        <StackPanel Orientation="Horizontal">
-                            <materialDesign:PackIcon Kind="Sync" Width="18" Height="18" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                            <TextBlock Text="Forcer maintenant" VerticalAlignment="Center"/>
-                        </StackPanel>
-                    </Button>
-                    <Button Style="{StaticResource MaterialDesignIconButton}" Width="40" Height="40" Margin="0,0,4,0">
-                        <materialDesign:PackIcon Kind="CogOutline"/>
-                    </Button>
-                    <Button Style="{StaticResource MaterialDesignIconButton}" Width="40" Height="40">
-                        <materialDesign:PackIcon Kind="BellOutline"/>
-                    </Button>
-                    <Border Background="#E63946" CornerRadius="9" MinWidth="18" Height="18"
-                            Margin="-14,-8,12,0" VerticalAlignment="Top">
-                        <TextBlock Text="{Binding NotificationCount}" Foreground="White" FontSize="10"
-                                   FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                    </Border>
-                    <Border Width="40" Height="40" CornerRadius="20" Background="{StaticResource SbmsAccentGreenBrush}" Margin="0,0,10,0">
-                        <TextBlock Text="{Binding UserInitials}" Foreground="White" FontWeight="Bold"
-                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                    </Border>
-                    <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="{Binding UserName}" FontWeight="SemiBold" FontSize="13"/>
-                        <TextBlock Text="{Binding UserRole}" FontSize="11" Foreground="{StaticResource SbmsTextMutedBrush}"/>
-                    </StackPanel>
-                </StackPanel>
-            </Grid>
-        </Border>
-
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="12,10">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="10,12,10,16">
             <StackPanel>
-                <!-- 6 KPI -->
-                <UniformGrid Columns="6" Margin="0,0,0,4">
+                <!-- Bandeau hero -->
+                <Border Style="{StaticResource SyncHeroBanner}" Margin="6,0,6,14">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <Grid Grid.Row="0" Margin="0,0,0,18">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                    <Border Width="44" Height="44" CornerRadius="22" Background="#44FFFFFF" Margin="0,0,14,0">
+                                        <materialDesign:PackIcon Kind="CloudSync" Foreground="White" Width="26" Height="26"
+                                                                 HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="Synchronisation cloud" FontSize="28" FontWeight="Bold" Foreground="White"/>
+                                        <TextBlock Text="Vos données locales sont envoyées automatiquement au portail web"
+                                                   Foreground="#D8F3DC" FontSize="14" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </StackPanel>
+                            <Button Grid.Column="1" Command="{Binding SyncNowCommand}" Style="{StaticResource SyncHeroButton}"
+                                    VerticalAlignment="Center" Margin="12,0,0,0"
+                                    IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}"
+                                    ToolTip="Forcer un envoi immédiat">
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Kind="Sync" Width="20" Height="20" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                    <TextBlock Text="Forcer maintenant" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+
+                        <UniformGrid Grid.Row="1" Columns="4" Margin="0,0,0,16">
+                            <Border Style="{StaticResource SyncConnPill}">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                        <Ellipse Width="8" Height="8" Fill="#4ADE80" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                        <TextBlock Text="Internet" FontSize="11" Foreground="#D8F3DC" FontWeight="SemiBold"/>
+                                    </StackPanel>
+                                    <TextBlock Text="{Binding InternetStatusText}" FontSize="15" FontWeight="Bold" Foreground="White"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Style="{StaticResource SyncConnPill}">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                        <Ellipse Width="8" Height="8" Margin="0,0,8,0" VerticalAlignment="Center">
+                                            <Ellipse.Style>
+                                                <Style TargetType="Ellipse">
+                                                    <Setter Property="Fill" Value="#4ADE80"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding CloudDbOnline}" Value="False">
+                                                            <Setter Property="Fill" Value="#F87171"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Ellipse.Style>
+                                        </Ellipse>
+                                        <TextBlock Text="Serveur cloud" FontSize="11" Foreground="#D8F3DC" FontWeight="SemiBold"/>
+                                    </StackPanel>
+                                    <TextBlock Text="{Binding CloudStatusText}" FontSize="15" FontWeight="Bold" Foreground="White" TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Style="{StaticResource SyncConnPill}">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                        <Ellipse Width="8" Height="8" Fill="#4ADE80" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                        <TextBlock Text="Base locale MySQL" FontSize="11" Foreground="#D8F3DC" FontWeight="SemiBold"/>
+                                    </StackPanel>
+                                    <TextBlock Text="{Binding LocalMysqlStatusText}" FontSize="15" FontWeight="Bold" Foreground="White"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Style="{StaticResource SyncConnPill}" Margin="0">
+                                <StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                        <materialDesign:PackIcon Kind="Sync" Foreground="#D8F3DC" Width="14" Height="14" Margin="0,0,6,0"/>
+                                        <TextBlock Text="Sync automatique" FontSize="11" Foreground="#D8F3DC" FontWeight="SemiBold"/>
+                                    </StackPanel>
+                                    <TextBlock Text="{Binding AutoSyncStatusLabel}" FontSize="13" FontWeight="SemiBold" Foreground="White" TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </Border>
+                        </UniformGrid>
+
+                        <Grid Grid.Row="2" Margin="0,0,0,10">
+                            <ProgressBar Style="{StaticResource SyncHeroProgressBar}" Value="{Binding GlobalProgress}" Maximum="100"/>
+                            <TextBlock Text="{Binding GlobalProgress, StringFormat={}{0:F0}%}" HorizontalAlignment="Right"
+                                       VerticalAlignment="Center" Margin="0,0,8,0" FontSize="11" FontWeight="Bold" Foreground="White"/>
+                        </Grid>
+
+                        <DockPanel Grid.Row="3" LastChildFill="False">
+                            <TextBlock Text="{Binding SyncStatusText}" Foreground="#E8F5EE" FontSize="13" FontWeight="SemiBold"
+                                       TextWrapping="Wrap" DockPanel.Dock="Left"/>
+                            <Border DockPanel.Dock="Right" Background="#44FFFFFF" CornerRadius="10" Padding="12,6" Margin="12,0,0,0"
+                                    Visibility="{Binding IsAutoSyncRunning, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <StackPanel Orientation="Horizontal">
+                                    <ProgressBar IsIndeterminate="True" Width="60" Height="4" Foreground="White" Background="#55FFFFFF" Margin="0,0,8,0"/>
+                                    <TextBlock Text="Envoi en cours…" Foreground="White" FontSize="11" FontWeight="SemiBold"/>
+                                </StackPanel>
+                            </Border>
+                            <TextBlock DockPanel.Dock="Right" Text="{Binding LastSyncBadgeText, StringFormat=Dernière sync : {0}}"
+                                       Foreground="#B7E4C7" FontSize="12" VerticalAlignment="Center"/>
+                        </DockPanel>
+                    </Grid>
+                </Border>
+
+                <!-- Bandeau état données -->
+                <Border CornerRadius="12" Padding="16,12" Margin="6,0,6,10">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Background" Value="#FEF3C7"/>
+                            <Setter Property="BorderBrush" Value="#FCD34D"/>
+                            <Setter Property="BorderThickness" Value="1"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsSynchronized}" Value="True">
+                                    <Setter Property="Background" Value="#DCFCE7"/>
+                                    <Setter Property="BorderBrush" Value="#86EFAC"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <materialDesign:PackIcon Grid.Column="0" Width="28" Height="28" VerticalAlignment="Center" Margin="0,0,14,0">
+                            <materialDesign:PackIcon.Style>
+                                <Style TargetType="materialDesign:PackIcon">
+                                    <Setter Property="Kind" Value="ClockOutline"/>
+                                    <Setter Property="Foreground" Value="#D97706"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsSynchronized}" Value="True">
+                                            <Setter Property="Kind" Value="CheckCircle"/>
+                                            <Setter Property="Foreground" Value="#16A34A"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </materialDesign:PackIcon.Style>
+                        </materialDesign:PackIcon>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding DataStateLabel}" FontSize="16" FontWeight="Bold" Foreground="#1B3D3B"/>
+                            <TextBlock Text="{Binding CloudIdentityMessage}" FontSize="12" Foreground="#4B5563" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                        </StackPanel>
+                        <TextBlock Grid.Column="2" Text="{Binding PendingCountDisplay, StringFormat={}{0} en attente}"
+                                   FontWeight="SemiBold" FontSize="14" Foreground="#D97706" VerticalAlignment="Center"
+                                   Visibility="{Binding IsSynchronized, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}"/>
+                    </Grid>
+                </Border>
+
+                <!-- 6 KPI — grille 3×2 -->
+                <Grid Margin="0,0,0,4">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
                     <!-- Données synchronisées -->
-                    <Border Style="{StaticResource SyncKpiCard}">
+                    <Border Grid.Row="0" Grid.Column="0" Style="{StaticResource SyncKpiCard}">
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
@@ -143,7 +212,7 @@
                         </Grid>
                     </Border>
                     <!-- Éléments en attente -->
-                    <Border Style="{StaticResource SyncKpiCard}">
+                    <Border Grid.Row="0" Grid.Column="1" Style="{StaticResource SyncKpiCard}">
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
@@ -165,7 +234,7 @@
                         </Grid>
                     </Border>
                     <!-- Conflits -->
-                    <Border Style="{StaticResource SyncKpiCard}">
+                    <Border Grid.Row="0" Grid.Column="2" Style="{StaticResource SyncKpiCard}">
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
@@ -187,7 +256,7 @@
                         </Grid>
                     </Border>
                     <!-- Taille données -->
-                    <Border Style="{StaticResource SyncKpiCard}">
+                    <Border Grid.Row="1" Grid.Column="0" Style="{StaticResource SyncKpiCard}">
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
@@ -209,7 +278,7 @@
                         </Grid>
                     </Border>
                     <!-- Stockage cloud -->
-                    <Border Style="{StaticResource SyncKpiCard}">
+                    <Border Grid.Row="1" Grid.Column="1" Style="{StaticResource SyncKpiCard}">
                         <StackPanel>
                             <StackPanel Orientation="Horizontal">
                                 <Border Width="32" Height="32" CornerRadius="8" Background="#DBEAFE" Margin="0,0,8,0">
@@ -224,7 +293,7 @@
                         </StackPanel>
                     </Border>
                     <!-- Vitesse moyenne -->
-                    <Border Style="{StaticResource SyncKpiCard}">
+                    <Border Grid.Row="1" Grid.Column="2" Style="{StaticResource SyncKpiCard}">
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
@@ -245,7 +314,7 @@
                             <lvc:CartesianChart Grid.Row="2" Series="{Binding SpeedSparkline}" Height="36" Margin="0,4,0,0"/>
                         </Grid>
                     </Border>
-                </UniformGrid>
+                </Grid>
 
                 <!-- Ligne milieu : sources | progression | alertes -->
                 <Grid Margin="0,4,0,0">

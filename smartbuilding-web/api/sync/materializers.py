@@ -234,15 +234,21 @@ def materialize_rent_payment(data: dict):
     obj.paid_date = parse_date(pick(data, "PaidDate", "paidDate"))
     obj.is_late = parse_bool(pick(data, "IsLate", "isLate"), False)
     obj.payment_status = pick(data, "PaymentStatus", "paymentStatus") or ""
+
+    obj.lease_contract_id = None
+    obj.lease_contract_id_sync = None
     lid = pick(data, "LeaseContractId", "leaseContractId")
     if lid:
         ensure_entity_materialized("LeaseContracts", lid)
         obj.lease_contract_id_sync = lid
         if LeaseContract.objects.filter(id=lid).exists():
             obj.lease_contract_id = lid
-        else:
-            obj.lease_contract_id = None
-    obj.save()
+
+    try:
+        obj.save()
+    except Exception:
+        obj.lease_contract_id = None
+        obj.save()
 
 
 def _parse_tx_type(value) -> int:

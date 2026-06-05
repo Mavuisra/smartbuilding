@@ -167,6 +167,8 @@ public class SyncService : ISyncService
             var deviceLabel = DesktopSyncDevice.GetDeviceLabel();
             log.Direction = manual ? $"Manual ({deviceLabel})" : $"Auto ({deviceLabel})";
 
+            await SyncDependencyPusher.PrepareRentPaymentChainAsync(context, cancellationToken);
+
             // Phase 1 — Push : envoyer toutes les modifications locales (offline first).
             foreach (var entityType in SyncEntityRegistry.SyncableTypes)
             {
@@ -177,6 +179,29 @@ public class SyncService : ISyncService
                     failures.Add($"{entityType}: adaptateur desktop manquant");
                     _logger.LogWarning("Adaptateur sync manquant pour {EntityType}", entityType);
                     continue;
+                }
+
+                if (entityType == "RentPayments")
+                {
+                    await SyncDependencyPusher.PrepareRentPaymentChainAsync(context, cancellationToken);
+                    foreach (var depType in SyncDependencyPusher.RentPaymentChain)
+                    {
+                        var depAdapter = SyncEntityRegistry.TryGet(depType);
+                        if (depAdapter is null)
+                            continue;
+
+                        var depPushed = await PushAllPendingAsync(
+                            api, baseUrl, context, depAdapter, depType, cancellationToken);
+                        if (depPushed < 0)
+                        {
+                            hadFailure = true;
+                            failures.Add(LastPushError ?? $"{depType}: échec envoi des dépendances loyer");
+                        }
+                        else
+                        {
+                            pushed += depPushed;
+                        }
+                    }
                 }
 
                 var typePushed = await PushAllPendingAsync(
@@ -400,7 +425,7 @@ public class SyncService : ISyncService
         };
 
         var pushResult = await PostWithAuthRetryAsync(
-            api, baseUrl, "api/sync/push", pushRequest, cancellationToken);
+            api, baseUrl, "api/sync/push/", pushRequest, cancellationToken);
 
         if (!pushResult.IsSuccess)
         {

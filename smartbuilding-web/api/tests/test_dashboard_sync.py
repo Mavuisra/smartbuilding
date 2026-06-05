@@ -112,6 +112,28 @@ class DashboardSyncAlignmentTests(TestCase):
         self.assertEqual(row.year, 2026)
         self.assertEqual(row.month, 6)
 
+    def test_apply_push_rent_payment_missing_lease_no_fk_error(self):
+        """Bail absent en ORM → paiement accepté sans FK (plus de HTTP 500)."""
+        pay_id = uuid.uuid4()
+        missing_lease = uuid.uuid4()
+        applied = apply_push(
+            "RentPayments",
+            [
+                {
+                    "id": str(pay_id),
+                    "updatedAt": timezone.now().isoformat(),
+                    "jsonData": (
+                        f'{{"Year": 2026, "Month": 6, "AmountDue": 500, '
+                        f'"AmountPaid": 500, "LeaseContractId": "{missing_lease}"}}'
+                    ),
+                }
+            ],
+        )
+        self.assertEqual(applied, 1)
+        row = RentPayment.objects.get(id=pay_id)
+        self.assertIsNone(row.lease_contract_id)
+        self.assertEqual(str(row.lease_contract_id_sync), str(missing_lease))
+
     def test_calendar_month_starts_six_months(self):
         starts = calendar_month_starts(date(2026, 5, 15), months=6)
         self.assertEqual(len(starts), 6)
