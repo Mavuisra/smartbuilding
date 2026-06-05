@@ -1,0 +1,99 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="/Themes/FinancesStyles.xaml"/>
+    </ResourceDictionary.MergedDictionaries>
+
+    <Style x:Key="RapportsCellText" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Foreground" Value="#1E293B"/>
+        <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="LineHeight" Value="18"/>
+        <Setter Property="Margin" Value="2,4"/>
+        <Setter Property="ToolTip" Value="{Binding RelativeSource={RelativeSource Self}, Path=Text}"/>
+    </Style>
+
+    <Style x:Key="RapportsDataGridColumnHeader" TargetType="DataGridColumnHeader" BasedOn="{StaticResource LocationsDataGridColumnHeader}">
+        <Setter Property="Background" Value="#F0FDF4"/>
+        <Setter Property="Foreground" Value="#1B3D3B"/>
+        <Setter Property="FontWeight" Value="Bold"/>
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="Padding" Value="14,12"/>
+        <Setter Property="MinHeight" Value="48"/>
+        <Setter Property="BorderBrush" Value="#B8DFC8"/>
+        <Setter Property="BorderThickness" Value="0,0,0,2"/>
+    </Style>
+
+    <Style x:Key="RapportsDataGridCell" TargetType="DataGridCell">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+        <Setter Property="Padding" Value="14,10"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Style.Triggers>
+            <Trigger Property="IsSelected" Value="True">
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="Foreground" Value="#111827"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="RapportsDataGridRow" TargetType="DataGridRow">
+        <Setter Property="MinHeight" Value="52"/>
+        <Setter Property="BorderBrush" Value="#E8F0EC"/>
+        <Setter Property="BorderThickness" Value="0,0,0,1"/>
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="#F0FDF4"/>
+            </Trigger>
+            <Trigger Property="IsSelected" Value="True">
+                <Setter Property="Background" Value="#DCFCE7"/>
+                <Setter Property="Foreground" Value="#14532D"/>
+            </Trigger>
+            <Trigger Property="AlternationIndex" Value="1">
+                <Setter Property="Background" Value="#FAFCFB"/>
+            </Trigger>
+            <MultiTrigger>
+                <MultiTrigger.Conditions>
+                    <Condition Property="IsMouseOver" Value="True"/>
+                    <Condition Property="AlternationIndex" Value="1"/>
+                </MultiTrigger.Conditions>
+                <Setter Property="Background" Value="#ECFDF5"/>
+            </MultiTrigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="RapportsDataGrid" TargetType="DataGrid" BasedOn="{StaticResource FinancesDataGrid}">
+        <Setter Property="RowHeight" Value="52"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="ColumnHeaderHeight" Value="48"/>
+        <Setter Property="MinHeight" Value="360"/>
+        <Setter Property="CanUserResizeColumns" Value="True"/>
+        <Setter Property="CanUserReorderColumns" Value="True"/>
+        <Setter Property="AlternationCount" Value="2"/>
+        <Setter Property="RowBackground" Value="White"/>
+        <Setter Property="AlternatingRowBackground" Value="#FAFCFB"/>
+        <Setter Property="GridLinesVisibility" Value="Horizontal"/>
+        <Setter Property="HorizontalGridLinesBrush" Value="#E2E8F0"/>
+        <Setter Property="ColumnHeaderStyle" Value="{StaticResource RapportsDataGridColumnHeader}"/>
+        <Setter Property="CellStyle" Value="{StaticResource RapportsDataGridCell}"/>
+        <Setter Property="RowStyle" Value="{StaticResource RapportsDataGridRow}"/>
+        <Setter Property="BorderBrush" Value="#D4EDDC"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Auto"/>
+        <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto"/>
+    </Style>
+
+    <Style x:Key="RapportsTableContainer" TargetType="Border">
+        <Setter Property="Background" Value="White"/>
+        <Setter Property="CornerRadius" Value="12"/>
+        <Setter Property="Padding" Value="12,10"/>
+        <Setter Property="Margin" Value="0,0,0,12"/>
+        <Setter Property="BorderBrush" Value="#D4EDDC"/>
+        <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+
+</ResourceDictionary>

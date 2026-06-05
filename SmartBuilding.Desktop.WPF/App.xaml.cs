@@ -112,6 +112,9 @@ public partial class App : System.Windows.Application
                     services.AddTransient<FinancesViewModel>();
                     services.AddTransient<FinancesService>();
                     services.AddTransient<FinancesReportPdfService>();
+                    services.AddTransient<RapportsViewModel>();
+                    services.AddTransient<RapportsService>();
+                    services.AddTransient<RapportsReportPdfService>();
                     services.AddTransient<TechnicalViewModel>();
                     services.AddTransient<TechnicalService>();
                     services.AddTransient<SuppliersViewModel>();

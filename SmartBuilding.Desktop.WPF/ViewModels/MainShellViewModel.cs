@@ -26,6 +26,7 @@ public partial class MainShellViewModel : BaseViewModel
     private readonly LocationsTenantsViewModel _locationsTenantsViewModel;
     private readonly LocationsPatrimoineViewModel _locationsPatrimoineViewModel;
     private readonly FinancesViewModel _financesViewModel;
+    private readonly RapportsViewModel _rapportsViewModel;
     private readonly TechnicalViewModel _technicalViewModel;
     private readonly SuppliersViewModel _suppliersViewModel;
     private readonly InventoryViewModel _inventoryViewModel;
@@ -92,6 +93,7 @@ public partial class MainShellViewModel : BaseViewModel
         LocationsTenantsViewModel locationsTenantsViewModel,
         LocationsPatrimoineViewModel locationsPatrimoineViewModel,
         FinancesViewModel financesViewModel,
+        RapportsViewModel rapportsViewModel,
         TechnicalViewModel technicalViewModel,
         SuppliersViewModel suppliersViewModel,
         InventoryViewModel inventoryViewModel,
@@ -127,6 +129,7 @@ public partial class MainShellViewModel : BaseViewModel
         _locationsTenantsViewModel = locationsTenantsViewModel;
         _locationsPatrimoineViewModel = locationsPatrimoineViewModel;
         _financesViewModel = financesViewModel;
+        _rapportsViewModel = rapportsViewModel;
         _technicalViewModel = technicalViewModel;
         _suppliersViewModel = suppliersViewModel;
         _inventoryViewModel = inventoryViewModel;
@@ -433,6 +436,14 @@ public partial class MainShellViewModel : BaseViewModel
         {
             CurrentViewModel = _financesViewModel;
             await _financesViewModel.LoadCommand.ExecuteAsync(null);
+            await RefreshShellStatusAsync();
+            return;
+        }
+
+        if (moduleId == "rapports")
+        {
+            CurrentViewModel = _rapportsViewModel;
+            await _rapportsViewModel.LoadCommand.ExecuteAsync(null);
             await RefreshShellStatusAsync();
             return;
         }

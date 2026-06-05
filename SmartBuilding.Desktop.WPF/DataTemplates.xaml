@@ -41,6 +41,10 @@
         <views:FinancesView/>
     </DataTemplate>
 
+    <DataTemplate DataType="{x:Type vm:RapportsViewModel}">
+        <views:RapportsView/>
+    </DataTemplate>
+
     <DataTemplate DataType="{x:Type vm:TechnicalViewModel}">
         <views:TechnicalView/>
     </DataTemplate>
