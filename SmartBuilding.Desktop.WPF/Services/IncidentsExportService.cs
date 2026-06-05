@@ -21,11 +21,11 @@ public static class IncidentsExportService
             return false;
 
         var sb = new StringBuilder();
-        sb.AppendLine("ID;Date;Type;Emplacement;Gravité;Responsable;Statut;Coût;Intervention");
+        sb.AppendLine("ID;Date;Type;Matériel;Emplacement;Gravité;Responsable;Statut;Coût;Intervention");
         foreach (var i in items)
         {
             sb.AppendLine(string.Join(';',
-                Csv(i.Code), Csv(i.DateDisplay), Csv(i.TypeLabel), Csv(i.Location), Csv(i.SeverityLabel),
+                Csv(i.Code), Csv(i.DateDisplay), Csv(i.TypeLabel), Csv(i.EquipmentLabel), Csv(i.Location), Csv(i.SeverityLabel),
                 Csv(i.Responsible), Csv(i.StatusLabel), Csv(i.CostDisplay), Csv(i.InterventionSummary)));
         }
 

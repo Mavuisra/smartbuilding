@@ -8,6 +8,7 @@ using LiveChartsCore.SkiaSharpView;
 using LiveChartsCore.SkiaSharpView.Painting;
 using SkiaSharp;
 using SmartBuilding.Application.Interfaces;
+using SmartBuilding.Domain.Entities.Building;
 using SmartBuilding.Domain.Entities.Consumption;
 using SmartBuilding.Domain.Enums;
 using SmartBuilding.Desktop.WPF.Helpers;
@@ -20,6 +21,9 @@ public partial class ConsumptionsViewModel : BaseViewModel
 {
     private readonly ConsumptionsService _consumptionsService;
     private readonly ISyncService _syncService;
+    private readonly SessionService _session;
+    private readonly AppConfigurationService _appConfiguration;
+    private Guid? _editingRecordId;
     private readonly ConsumptionsReportPdfService _consumptionsPdf = new();
     private List<ConsumptionListItem> _allRecords = [];
 
@@ -50,6 +54,7 @@ public partial class ConsumptionsViewModel : BaseViewModel
     [ObservableProperty] private bool _isDetailPanelOpen;
     [ObservableProperty] private int _selectedDetailTab;
     [ObservableProperty] private bool _isAddFormOpen;
+    [ObservableProperty] private bool _isEditMode;
     [ObservableProperty] private bool _isRecordDetailsOpen;
     [ObservableProperty] private ConsumptionListItem? _selectedRecord;
     [ObservableProperty] private string _syncStatusLabel = "Hors ligne";
@@ -69,12 +74,19 @@ public partial class ConsumptionsViewModel : BaseViewModel
     [ObservableProperty] private string _futureEstimateDisplay = "—";
     [ObservableProperty] private string _savingsDisplay = "—";
 
-    [ObservableProperty] private string _formType = "Électricité";
-    [ObservableProperty] private string _formNewType = string.Empty;
+    [ObservableProperty] private string _formRubrique = string.Empty;
     [ObservableProperty] private string _formEquipment = string.Empty;
+    [ObservableProperty] private string _formMotif = string.Empty;
+    [ObservableProperty] private string _formPaidBy = string.Empty;
+    [ObservableProperty] private bool _formRequiresReimbursement;
     [ObservableProperty] private string _formCostText = "0";
     [ObservableProperty] private string _formPeriodType = "Mensuel";
+    [ObservableProperty] private string _formStatus = "Normal";
+    [ObservableProperty] private string _formNotes = string.Empty;
     [ObservableProperty] private string? _formError;
+
+    public string FormDialogTitle => IsEditMode ? "Modifier la consommation" : "Nouvelle consommation";
+    public string FormSaveButtonLabel => IsEditMode ? "Mettre à jour" : "Enregistrer";
 
     [ObservableProperty] private ISeries[] _monthlyTrendSeries = [];
     [ObservableProperty] private ISeries[] _energyPieSeries = [];
@@ -97,6 +109,7 @@ public partial class ConsumptionsViewModel : BaseViewModel
         "Éclairage", "Groupe électrogène", "Réseau technique", "Énergie"
     ];
     public ObservableCollection<string> PeriodTypes { get; } = ["Journalier", "Hebdomadaire", "Mensuel", "Annuel"];
+    public ObservableCollection<string> FormStatusOptions { get; } = ["Normal", "Élevé", "Critique", "Économie"];
 
     public ConsumptionsViewModel(
         ConsumptionsService consumptionsService,
@@ -106,6 +119,8 @@ public partial class ConsumptionsViewModel : BaseViewModel
     {
         _consumptionsService = consumptionsService;
         _syncService = syncService;
+        _session = session;
+        _appConfiguration = appConfiguration;
         appConfiguration.ConfigurationChanged += (_, _) => _ = LoadAsync();
         UserName = session.CurrentUser?.FullName ?? "Admin Principal";
         UserRole = session.CurrentUser?.Role ?? "Administrateur";
@@ -147,6 +162,12 @@ public partial class ConsumptionsViewModel : BaseViewModel
             Insights.Add(new ConsumptionInsightLine { Label = "Estimation mois prochain", Value = data.FutureEstimateDisplay, Accent = "#6D28D9" });
             Insights.Add(new ConsumptionInsightLine { Label = "Économie réalisée", Value = data.SavingsDisplay, Accent = "#166534" });
 
+            foreach (var t in _allRecords.Select(r => r.TypeLabel).Distinct().OrderBy(x => x))
+            {
+                if (!ConsumptionTypes.Any(x => string.Equals(x, t, StringComparison.OrdinalIgnoreCase)))
+                    ConsumptionTypes.Add(t);
+            }
+
             TypeFilters.Clear();
             TypeFilters.Add(AllTypes);
             foreach (var t in _allRecords.Select(r => r.TypeLabel).Distinct().OrderBy(x => x)) TypeFilters.Add(t);
@@ -176,58 +197,137 @@ public partial class ConsumptionsViewModel : BaseViewModel
     [RelayCommand]
     private void OpenAddForm()
     {
-        FormType = "Électricité";
-        FormNewType = string.Empty;
-        FormEquipment = "Compteur principal Tour SBMS";
-        FormCostText = "0";
+        _editingRecordId = null;
+        IsEditMode = false;
+        FormRubrique = string.Empty;
+        FormEquipment = string.Empty;
+        FormMotif = string.Empty;
+        FormPaidBy = _session.CurrentUser?.FullName ?? UserName;
+        FormRequiresReimbursement = false;
+        FormCostText = string.Empty;
         FormPeriodType = "Mensuel";
+        FormStatus = "Normal";
+        FormNotes = string.Empty;
         FormError = null;
         IsAddFormOpen = true;
+        NotifyFormChromeChanged();
     }
 
-    [RelayCommand] private void CloseAddForm() => IsAddFormOpen = false;
+    [RelayCommand]
+    private void OpenEditForm(ConsumptionListItem? item)
+    {
+        var target = item ?? SelectedRecord;
+        if (target is null)
+        {
+            ErrorMessage = "Sélectionnez une consommation à modifier.";
+            return;
+        }
+
+        _editingRecordId = target.Id;
+        IsEditMode = true;
+        FormRubrique = target.TypeLabel;
+        FormEquipment = target.EquipmentSource == target.TypeLabel ? string.Empty : target.EquipmentSource;
+        FormMotif = target.ExpenseMotif is "—" ? string.Empty : target.ExpenseMotif;
+        FormPaidBy = target.PaidBy is "—" ? UserName : target.PaidBy;
+        FormRequiresReimbursement = string.Equals(
+            target.ReimbursementStatus,
+            ConsumptionReimbursementStatus.Pending,
+            StringComparison.OrdinalIgnoreCase);
+        FormCostText = target.Cost.ToString("0.##", CultureInfo.InvariantCulture);
+        FormPeriodType = target.PeriodType;
+        FormStatus = target.StatusLabel;
+        FormNotes = target.Notes is "—" ? string.Empty : target.Notes;
+        FormError = null;
+        SelectedRecord = target;
+        IsRecordDetailsOpen = false;
+        IsAddFormOpen = true;
+        ErrorMessage = null;
+        NotifyFormChromeChanged();
+    }
+
+    [RelayCommand]
+    private void CloseAddForm()
+    {
+        IsAddFormOpen = false;
+        IsEditMode = false;
+        _editingRecordId = null;
+        NotifyFormChromeChanged();
+    }
+
+    private void NotifyFormChromeChanged()
+    {
+        OnPropertyChanged(nameof(FormDialogTitle));
+        OnPropertyChanged(nameof(FormSaveButtonLabel));
+    }
 
     [RelayCommand]
     private async Task SaveRecordAsync()
     {
         FormError = null;
-        var normalizedNewType = FormNewType?.Trim() ?? string.Empty;
-        if (!string.IsNullOrWhiteSpace(normalizedNewType))
-        {
-            if (!ConsumptionTypes.Any(t => string.Equals(t, normalizedNewType, StringComparison.OrdinalIgnoreCase)))
-                ConsumptionTypes.Add(normalizedNewType);
-            FormType = ConsumptionTypes.First(t => string.Equals(t, normalizedNewType, StringComparison.OrdinalIgnoreCase));
-            FormNewType = string.Empty;
-        }
+        var rubrique = FormRubrique?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(rubrique))
+        { FormError = "Indiquez une rubrique."; return; }
+
+        if (!ConsumptionTypes.Any(t => string.Equals(t, rubrique, StringComparison.OrdinalIgnoreCase)))
+            ConsumptionTypes.Add(rubrique);
 
         if (!decimal.TryParse(FormCostText.Replace(',', '.'), NumberStyles.Any, CultureInfo.InvariantCulture, out var cost))
         { FormError = "Montant invalide."; return; }
         if (cost <= 0)
         { FormError = "Le montant doit être supérieur à zéro."; return; }
 
+        var paidBy = FormPaidBy?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(paidBy))
+        { FormError = "Indiquez la personne ayant payé."; return; }
+        if (FormRequiresReimbursement && string.IsNullOrWhiteSpace(FormMotif?.Trim()))
+        { FormError = "Indiquez le motif pour une avance à rembourser."; return; }
+
+        var isKnown = ConsumptionsService.IsKnownType(rubrique);
+        var type = isKnown ? ConsumptionsService.ParseType(rubrique) : ConsumptionType.Energie;
+        var customLabel = isKnown ? null : rubrique;
+
+        var building = _appConfiguration.Current.CompanyName;
+        var payload = new ConsumptionRecord
+        {
+            Type = type,
+            CustomTypeLabel = customLabel,
+            PeriodStart = DateTime.Today.AddDays(-30),
+            PeriodEnd = DateTime.Today,
+            Quantity = cost,
+            Unit = "USD",
+            Cost = cost,
+            Currency = "USD",
+            EquipmentSource = FormEquipment,
+            ExpenseMotif = FormMotif,
+            PaidBy = paidBy,
+            Responsible = paidBy,
+            ReimbursementStatus = FormRequiresReimbursement
+                ? ConsumptionReimbursementStatus.Pending
+                : ConsumptionReimbursementStatus.NotApplicable,
+            Building = building,
+            Status = string.IsNullOrWhiteSpace(FormStatus) ? "Normal" : FormStatus,
+            PeriodType = FormPeriodType,
+            Notes = string.IsNullOrWhiteSpace(FormNotes) ? null : FormNotes.Trim(),
+            VariationPercent = 0
+        };
+
+        var isUpdate = IsEditMode && _editingRecordId is not null;
+
         IsBusy = true;
         try
         {
-            var type = ConsumptionsService.ParseType(FormType);
-            var error = await _consumptionsService.CreateRecordAsync(new ConsumptionRecord
-            {
-                Type = type,
-                PeriodStart = DateTime.Today.AddDays(-30),
-                PeriodEnd = DateTime.Today,
-                Quantity = cost,
-                Unit = "USD",
-                Cost = cost,
-                Currency = "USD",
-                EquipmentSource = FormEquipment,
-                Building = "Tour SBMS",
-                Responsible = "Paul Ngoy",
-                Status = "Normal",
-                PeriodType = FormPeriodType,
-                VariationPercent = 0
-            });
+            string error;
+            if (isUpdate && _editingRecordId is { } editId)
+                error = await _consumptionsService.UpdateRecordAsync(editId, payload);
+            else
+                error = await _consumptionsService.CreateRecordAsync(payload);
+
             if (!string.IsNullOrEmpty(error)) { FormError = error; return; }
             IsAddFormOpen = false;
-            StatusMessage = "Consommation enregistrée.";
+            IsEditMode = false;
+            _editingRecordId = null;
+            NotifyFormChromeChanged();
+            StatusMessage = isUpdate ? "Consommation mise à jour." : "Consommation enregistrée.";
             await LoadAsync();
         }
         finally { IsBusy = false; }
@@ -253,9 +353,6 @@ public partial class ConsumptionsViewModel : BaseViewModel
         StatusMessage = $"Export : {path}";
         ErrorMessage = null;
     }
-
-    [RelayCommand]
-    private void OpenNewRecordForm() => OpenAddForm();
 
     [RelayCommand]
     private void OpenRecordHistory()
@@ -287,6 +384,38 @@ public partial class ConsumptionsViewModel : BaseViewModel
         SelectedRecord = target;
         IsRecordDetailsOpen = true;
         ErrorMessage = null;
+    }
+
+    [RelayCommand]
+    private async Task MarkReimbursedAsync(ConsumptionListItem? item)
+    {
+        var target = item ?? SelectedRecord;
+        if (target is null)
+        {
+            ErrorMessage = "Sélectionnez une consommation.";
+            return;
+        }
+        if (!target.CanMarkReimbursed)
+        {
+            ErrorMessage = "Cette dépense n'est pas en attente de remboursement.";
+            return;
+        }
+
+        IsBusy = true;
+        try
+        {
+            var error = await _consumptionsService.MarkReimbursedAsync(target.Id);
+            if (!string.IsNullOrEmpty(error))
+            {
+                ErrorMessage = error;
+                return;
+            }
+
+            StatusMessage = $"Remboursement enregistré pour {target.PaidBy}.";
+            ErrorMessage = null;
+            await LoadAsync();
+        }
+        finally { IsBusy = false; }
     }
 
     [RelayCommand]

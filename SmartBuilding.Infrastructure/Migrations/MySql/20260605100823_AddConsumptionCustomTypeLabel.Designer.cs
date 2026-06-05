@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SmartBuilding.Infrastructure.Persistence;
 
@@ -11,9 +12,11 @@ using SmartBuilding.Infrastructure.Persistence;
 namespace SmartBuilding.Infrastructure.Migrations.MySql
 {
     [DbContext(typeof(SmartBuildingDbContext))]
-    partial class SmartBuildingDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260605100823_AddConsumptionCustomTypeLabel")]
+    partial class AddConsumptionCustomTypeLabel
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -457,17 +460,6 @@ namespace SmartBuilding.Infrastructure.Migrations.MySql
                     b.Property<string>("CustomTypeLabel")
                         .HasColumnType("longtext");
 
-                    b.Property<string>("ExpenseMotif")
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("PaidBy")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("ReimbursementStatus")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("datetime(6)");
 
@@ -784,9 +776,6 @@ namespace SmartBuilding.Infrastructure.Migrations.MySql
                         .IsRequired()
                         .HasColumnType("longtext");
 
-                    b.Property<Guid?>("EquipmentId")
-                        .HasColumnType("char(36)");
-
                     b.Property<bool>("HasPhoto")
                         .HasColumnType("tinyint(1)");
 
@@ -835,8 +824,6 @@ namespace SmartBuilding.Infrastructure.Migrations.MySql
                         .HasColumnType("datetime(6)");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("EquipmentId");
 
                     b.ToTable("Incidents");
                 });

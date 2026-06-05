@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using SmartBuilding.Application.Interfaces;
+using SmartBuilding.Domain.Entities.Building;
 using SmartBuilding.Desktop.WPF.Services;
 using SmartBuilding.Desktop.WPF.ViewModels;
 using SmartBuilding.Desktop.WPF.Views;
@@ -30,7 +31,7 @@ public partial class App : System.Windows.Application
         {
             MessageBox.Show(
                 DbSaveExceptionTranslator.ToDetailedMessage(args.Exception),
-                "SBMS",
+                BuildingInfoDefaults.CompanyName,
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
             args.Handled = true;
@@ -94,6 +95,8 @@ public partial class App : System.Windows.Application
                 {
                     services.AddInfrastructure(context.Configuration, isDesktop: true);
                     services.AddSingleton<SessionService>();
+                    services.AddSingleton<NetworkConnectivityWatcher>();
+                    services.AddSingleton<AppBrandingState>();
                     services.AddSingleton<AppConfigurationService>();
                     services.AddScoped<InitialSetupService>();
                     services.AddSingleton<ShellNavigationService>();
@@ -191,8 +194,8 @@ public partial class App : System.Windows.Application
                         break;
 
                     System.Windows.MessageBox.Show(
-                        "La configuration initiale (administrateur, bâtiment, base de données) est obligatoire pour utiliser SBMS.",
-                        "SBMS — Configuration requise",
+                        "La configuration initiale (administrateur, bâtiment, base de données) est obligatoire pour utiliser l'application.",
+                        $"{BuildingInfoDefaults.CompanyName} — Configuration requise",
                         MessageBoxButton.OK,
                         MessageBoxImage.Warning);
 
@@ -208,6 +211,16 @@ public partial class App : System.Windows.Application
 
             var mainWindow = _host.Services.GetRequiredService<MainWindow>();
 
+            splash.UpdateProgress(95, "Chargement du profil société...");
+            await PumpUiAsync();
+
+            var appConfig = _host.Services.GetRequiredService<AppConfigurationService>();
+            await appConfig.LoadAndApplyAsync();
+
+            var branding = _host.Services.GetRequiredService<AppBrandingState>();
+            splash.ApplyBranding(branding.CompanyName, branding.AppSubtitle);
+            Resources["Branding"] = branding;
+
             splash.UpdateProgress(100, "Prêt !");
             await PumpUiAsync();
 
@@ -216,9 +229,6 @@ public partial class App : System.Windows.Application
                 await Task.Delay((int)(MinSplashMs - elapsed));
 
             await splash.CloseAnimatedAsync();
-
-            var appConfig = _host.Services.GetRequiredService<AppConfigurationService>();
-            await appConfig.LoadAndApplyAsync();
 
             MainWindow = mainWindow;
             ShutdownMode = ShutdownMode.OnMainWindowClose;
@@ -229,7 +239,7 @@ public partial class App : System.Windows.Application
             splash.Close();
             MessageBox.Show(
                 $"Impossible de démarrer l'application.\n\n{ex.Message}",
-                "SBMS",
+                BuildingInfoDefaults.CompanyName,
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
             Shutdown(1);

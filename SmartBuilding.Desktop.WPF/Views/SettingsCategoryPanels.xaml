@@ -591,7 +591,7 @@
                 <TextBlock Text="Documents" Style="{StaticResource SettingsSectionTitle}"/>
                 <TextBlock Margin="0,0,0,8" FontWeight="SemiBold"
                            Text="{Binding DocumentsCountDisplay, StringFormat=Documents référencés : {0}}"/>
-                <TextBlock Text="Contrats, factures, pièces jointes et fichiers liés aux modules SBMS."
+                <TextBlock Text="Contrats, factures, pièces jointes et fichiers liés aux modules de l'application."
                            TextWrapping="Wrap" Foreground="{StaticResource SbmsTextMutedBrush}" Margin="0,0,0,16"/>
                 <Button Content="Ouvrir le module Documents" Command="{Binding OpenModuleCommand}" CommandParameter="documents"
                         Style="{StaticResource SettingsSaveButton}" HorizontalAlignment="Left"/>
@@ -689,7 +689,7 @@
                     <Grid.ColumnDefinitions><ColumnDefinition Width="140"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                     <Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
                     <TextBlock Grid.Row="0" Text="Application" Foreground="{StaticResource SbmsTextMutedBrush}"/>
-                    <TextBlock Grid.Row="0" Grid.Column="1" Text="SBMS — Smart Building Management System" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding AppDisplayName}" FontWeight="SemiBold" TextWrapping="Wrap"/>
                     <TextBlock Grid.Row="1" Text="Version" Foreground="{StaticResource SbmsTextMutedBrush}"/>
                     <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding AppVersion}" FontWeight="SemiBold"/>
                     <TextBlock Grid.Row="2" Text="Base de données" Foreground="{StaticResource SbmsTextMutedBrush}"/>
@@ -727,7 +727,7 @@
                     </StackPanel>
                 </Border>
 
-                <TextBlock Text="© 2026 SBMS. Tous droits réservés." Foreground="{StaticResource SbmsTextMutedBrush}" FontSize="11" Margin="0,16,0,0"/>
+                <TextBlock Text="{Binding CopyrightText}" Foreground="{StaticResource SbmsTextMutedBrush}" FontSize="11" Margin="0,16,0,0"/>
             </StackPanel>
         </Border>
     </StackPanel>

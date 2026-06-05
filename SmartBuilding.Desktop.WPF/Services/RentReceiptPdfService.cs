@@ -73,7 +73,7 @@ public class RentReceiptPdfService
 
                 page.Content().Column(root =>
                 {
-                    root.Item().Element(c => DrawHeader(c, receiptNo, issuedAt, periodLabel, payment.PaymentStatus));
+                    root.Item().Element(c => DrawHeader(c, landlordName, receiptNo, issuedAt, periodLabel, payment.PaymentStatus));
                     root.Item().PaddingTop(14).Element(c =>
                         DrawParties(c, landlordName, landlordAddress, landlordPhone, landlordEmail, landlordIdNat, tenant));
                     root.Item().PaddingTop(12).Element(c =>
@@ -101,14 +101,14 @@ public class RentReceiptPdfService
         return path;
     }
 
-    private void DrawHeader(IContainer container, string receiptNo, DateTime issuedAt, string period, string status)
+    private void DrawHeader(IContainer container, string companyName, string receiptNo, DateTime issuedAt, string period, string status)
     {
         container.Row(row =>
         {
             row.RelativeItem().Column(col =>
             {
-                col.Item().Text("SBMS").Bold().FontSize(20).FontColor(_navy);
-                col.Item().Text("Smart Building Management System").FontSize(8).FontColor("#64748B");
+                col.Item().Text(companyName).Bold().FontSize(16).FontColor(_navy);
+                col.Item().Text("Gestion immobilière").FontSize(8).FontColor("#64748B");
             });
 
             row.RelativeItem(2).Column(col =>

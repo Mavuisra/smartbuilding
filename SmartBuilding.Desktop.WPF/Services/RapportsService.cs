@@ -1,5 +1,7 @@
 using System.Globalization;
 using Microsoft.EntityFrameworkCore;
+using SmartBuilding.Domain.Entities.Consumption;
+using SmartBuilding.Domain.Entities.Finance;
 using SmartBuilding.Domain.Entities.Location;
 using SmartBuilding.Domain.Entities.Personnel;
 using SmartBuilding.Domain.Enums;
@@ -42,6 +44,7 @@ public class RapportsService
         var depenses = await LoadDepensesAsync(from, to, cancellationToken);
         var consommations = await LoadConsommationsAsync(from, to, cancellationToken);
         var financier = await LoadFinancierAsync(from, to, cancellationToken);
+        var financierLignes = await LoadFinancierLignesAsync(from, to, cancellationToken);
         var contrats = await LoadContratsAsync(from, to, cancellationToken);
         var incidents = await LoadIncidentsAsync(from, to, cancellationToken);
         var visites = await LoadVisitesAsync(from, to, cancellationToken);
@@ -60,7 +63,7 @@ public class RapportsService
 
         var allRent = await _db.RentPayments.ToListAsync(cancellationToken);
         var allConso = await _db.ConsumptionRecords
-            .Where(c => c.PeriodStart >= chartStart)
+            .Where(c => c.PeriodEnd >= chartStart)
             .ToListAsync(cancellationToken);
 
         decimal running = 0;
@@ -85,7 +88,7 @@ public class RapportsService
             running += rev - exp;
             monthlyTreasury.Add(running);
             monthlyConso.Add(allConso
-                .Where(c => c.PeriodStart.Year == m.Year && c.PeriodStart.Month == m.Month)
+                .Where(c => c.PeriodEnd.Year == m.Year && c.PeriodEnd.Month == m.Month)
                 .Sum(c => c.Cost));
         }
 
@@ -96,6 +99,7 @@ public class RapportsService
             Depenses = depenses,
             Consommations = consommations,
             Financier = financier,
+            FinancierLignes = financierLignes,
             Contrats = contrats,
             Incidents = incidents,
             Visites = visites,
@@ -174,29 +178,31 @@ public class RapportsService
     private async Task<IReadOnlyList<RapportLoyerRow>> LoadLoyersAsync(
         DateTime from, DateTime to, CancellationToken ct)
     {
-        var contracts = await _db.LeaseContracts
-            .Include(c => c.Tenant)
-            .Include(c => c.Premise)
-            .Include(c => c.Guarantees)
-            .Include(c => c.RentPayments)
-            .Where(c => c.Status == LeaseStatus.Actif || c.Status == LeaseStatus.EnAttenteValidation)
+        var payments = await _db.RentPayments
+            .Include(p => p.LeaseContract)
+            .ThenInclude(c => c!.Tenant)
+            .Include(p => p.LeaseContract)
+            .ThenInclude(c => c!.Premise)
+            .Include(p => p.LeaseContract)
+            .ThenInclude(c => c!.Guarantees)
+            .Where(p => (p.DueDate >= from && p.DueDate <= to) ||
+                        (p.PaidDate >= from && p.PaidDate <= to))
+            .OrderByDescending(p => p.DueDate)
             .ToListAsync(ct);
 
         var rows = new List<RapportLoyerRow>();
-        foreach (var c in contracts)
+        foreach (var p in payments)
         {
-            var payment = c.RentPayments
-                .Where(p => p.DueDate >= from && p.DueDate <= to)
-                .OrderByDescending(p => p.DueDate)
-                .FirstOrDefault()
-                ?? c.RentPayments.OrderByDescending(p => p.DueDate).FirstOrDefault();
+            var c = p.LeaseContract;
+            if (c is null) continue;
 
-            var statut = MapRentStatus(payment);
+            var statut = MapRentStatus(p);
             var (bg, fg) = StatusBadge(statut);
+            var garantie = c.Deposit > 0 ? c.Deposit : c.Guarantees.Sum(g => g.Amount);
 
             rows.Add(new RapportLoyerRow
             {
-                Id = c.Id,
+                Id = p.Id,
                 PhotoPath = c.Tenant?.ProfilePhotoPath,
                 NomComplet = c.Tenant?.Name ?? "—",
                 Profession = c.Tenant?.Profession ?? c.Tenant?.BusinessActivity ?? "—",
@@ -204,19 +210,29 @@ public class RapportsService
                 Appartement = c.Premise?.Name ?? c.Premise?.Code ?? "—",
                 Batiment = c.Premise?.Building ?? "—",
                 TypeContrat = c.ContractType,
+                Periode = $"{p.Month:00}/{p.Year}",
                 MontantLoyer = c.MonthlyRent,
                 MontantLoyerDisplay = MoneyFormatter.Format(c.MonthlyRent),
-                Garantie = c.Deposit > 0 ? c.Deposit : c.Guarantees.Sum(g => g.Amount),
-                GarantieDisplay = MoneyFormatter.Format(c.Deposit > 0 ? c.Deposit : c.Guarantees.Sum(g => g.Amount)),
-                DateEcheance = payment?.DueDate.ToString("dd/MM/yyyy", Fr) ?? "—",
-                DernierPaiement = payment?.PaidDate?.ToString("dd/MM/yyyy", Fr) ?? "—",
+                MontantDu = p.AmountDue,
+                MontantPaye = p.AmountPaid,
+                MontantDuDisplay = MoneyFormatter.Format(p.AmountDue),
+                MontantPayeDisplay = MoneyFormatter.Format(p.AmountPaid),
+                PenaliteDisplay = MoneyFormatter.Format(p.PenaltyAmount),
+                Garantie = garantie,
+                GarantieDisplay = MoneyFormatter.Format(garantie),
+                DateEcheance = p.DueDate.ToString("dd/MM/yyyy", Fr),
+                DernierPaiement = p.PaidDate?.ToString("dd/MM/yyyy", Fr) ?? "—",
+                ModePaiement = p.PaymentMethod,
+                Reference = p.TransactionReference ?? "—",
+                NumeroRecu = p.ReceiptNumber ?? "—",
                 StatutPaiement = statut,
                 StatutBadgeBackground = bg,
-                StatutBadgeForeground = fg
+                StatutBadgeForeground = fg,
+                DueDate = p.DueDate
             });
         }
 
-        return rows.OrderBy(r => r.NomComplet).ToList();
+        return rows;
     }
 
     private async Task<IReadOnlyList<RapportDepenseRow>> LoadDepensesAsync(
@@ -239,13 +255,15 @@ public class RapportsService
                 Id = t.Id,
                 Date = t.TransactionDate,
                 DateDisplay = t.TransactionDate.ToString("dd/MM/yyyy", Fr),
+                Reference = t.Reference ?? "—",
                 Categorie = t.Category,
                 Montant = t.Amount,
                 MontantDisplay = MoneyFormatter.Format(t.Amount),
                 Description = t.Description,
                 Responsable = string.IsNullOrWhiteSpace(t.RecordedBy) ? "—" : t.RecordedBy,
                 Service = t.Source,
-                Justificatif = string.IsNullOrWhiteSpace(t.Reference) ? "—" : t.Reference!,
+                ModePaiement = t.PaymentMethod,
+                Justificatif = t.Reference ?? "—",
                 StatutValidation = t.Status,
                 CreePar = t.RecordedBy,
                 ValidePar = t.ApprovedBy ?? "—",
@@ -259,54 +277,294 @@ public class RapportsService
         DateTime from, DateTime to, CancellationToken ct)
     {
         var records = await _db.ConsumptionRecords
-            .Where(c => c.PeriodStart >= from && c.PeriodStart <= to)
-            .OrderByDescending(c => c.PeriodStart)
+            .Where(c => c.PeriodStart <= to && c.PeriodEnd >= from)
+            .OrderByDescending(c => c.PeriodEnd)
+            .ThenByDescending(c => c.PeriodStart)
             .ToListAsync(ct);
 
-        return records.Select(c =>
+        return records.Select(MapConsommationRow).ToList();
+    }
+
+    private RapportConsommationRow MapConsommationRow(ConsumptionRecord c)
+    {
+        var unitCost = c.Quantity > 0 ? c.Cost / c.Quantity : c.Cost;
+        var unite = string.IsNullOrWhiteSpace(c.Unit) ? "—" : c.Unit;
+        return new RapportConsommationRow
         {
-            var unitCost = c.Quantity > 0 ? c.Cost / c.Quantity : c.Cost;
-            return new RapportConsommationRow
+            Id = c.Id,
+            Date = c.PeriodEnd,
+            DateDisplay = c.PeriodEnd.ToString("dd/MM/yyyy", Fr),
+            PeriodeDebut = c.PeriodStart.ToString("dd/MM/yyyy", Fr),
+            PeriodeFin = c.PeriodEnd.ToString("dd/MM/yyyy", Fr),
+            Categorie = ConsumptionsService.DisplayTypeLabel(c),
+            Equipement = string.IsNullOrWhiteSpace(c.EquipmentSource) ? "—" : c.EquipmentSource,
+            Batiment = string.IsNullOrWhiteSpace(c.Building) ? "—" : c.Building,
+            Quantite = c.Quantity,
+            Unite = unite,
+            QuantiteDisplay = c.Quantity > 0 ? $"{c.Quantity:N0} {unite}" : "—",
+            CoutUnitaire = unitCost,
+            CoutUnitaireDisplay = MoneyFormatter.Format(unitCost),
+            CoutTotal = c.Cost,
+            CoutTotalDisplay = MoneyFormatter.Format(c.Cost),
+            Devise = string.IsNullOrWhiteSpace(c.Currency) ? "USD" : c.Currency,
+            Compteur = c.MeterReference ?? "—",
+            TypePeriode = c.PeriodType,
+            Statut = c.Status,
+            VariationDisplay = $"{c.VariationPercent:+0.0;-0.0}%",
+            Anomalie = c.IsAnomaly ? "Oui" : "Non",
+            Responsable = string.IsNullOrWhiteSpace(c.PaidBy) ? (string.IsNullOrWhiteSpace(c.Responsible) ? "—" : c.Responsible) : c.PaidBy,
+            Notes = string.IsNullOrWhiteSpace(c.ExpenseMotif)
+                ? (string.IsNullOrWhiteSpace(c.Notes) ? "—" : c.Notes!)
+                : $"{c.ExpenseMotif}{(string.IsNullOrWhiteSpace(c.Notes) ? "" : $" — {c.Notes}")}"
+        };
+    }
+
+    private async Task<IReadOnlyList<RapportFinancierLigne>> LoadFinancierLignesAsync(
+        DateTime from, DateTime to, CancellationToken ct)
+    {
+        var lignes = new List<RapportFinancierLigne>();
+        var linkedIds = new HashSet<Guid>();
+
+        var transactions = await _db.FinancialTransactions
+            .Where(t => t.TransactionDate >= from && t.TransactionDate <= to && t.DeletedAt == null)
+            .OrderByDescending(t => t.TransactionDate)
+            .ToListAsync(ct);
+
+        foreach (var t in transactions)
+        {
+            if (t.RelatedEntityId is { } relId)
+                linkedIds.Add(relId);
+
+            lignes.Add(new RapportFinancierLigne
+            {
+                Id = t.Id,
+                Date = t.TransactionDate,
+                DateDisplay = t.TransactionDate.ToString("dd/MM/yyyy", Fr),
+                Type = t.Type == TransactionType.Recette ? "Revenu" : "Dépense",
+                Categorie = t.Category,
+                Description = t.Description,
+                Montant = t.Amount,
+                MontantDisplay = MoneyFormatter.Format(t.Amount),
+                Source = t.Source,
+                ModePaiement = t.PaymentMethod,
+                Reference = t.Reference ?? "—",
+                Statut = t.Status,
+                EnregistrePar = t.RecordedBy
+            });
+        }
+
+        var rentPayments = await _db.RentPayments
+            .Include(p => p.LeaseContract)
+            .ThenInclude(c => c!.Tenant)
+            .Where(p => p.PaidDate >= from && p.PaidDate <= to && p.AmountPaid > 0)
+            .ToListAsync(ct);
+
+        foreach (var p in rentPayments.Where(p => !linkedIds.Contains(p.Id)))
+        {
+            var tenant = p.LeaseContract?.Tenant?.Name ?? "Locataire";
+            lignes.Add(new RapportFinancierLigne
+            {
+                Id = p.Id,
+                Date = p.PaidDate!.Value,
+                DateDisplay = p.PaidDate!.Value.ToString("dd/MM/yyyy", Fr),
+                Type = "Revenu",
+                Categorie = FinanceConstants.CategoryRent,
+                Description = $"Loyer {tenant} — {p.Month:00}/{p.Year}",
+                Montant = p.AmountPaid,
+                MontantDisplay = MoneyFormatter.Format(p.AmountPaid),
+                Source = FinanceConstants.SourceLocations,
+                ModePaiement = p.PaymentMethod,
+                Reference = p.TransactionReference ?? p.ReceiptNumber ?? "—",
+                Statut = MapRentStatus(p),
+                EnregistrePar = FinanceConstants.RecordedByLocations
+            });
+        }
+
+        var consoRecords = await _db.ConsumptionRecords
+            .Where(c => c.PeriodStart <= to && c.PeriodEnd >= from)
+            .ToListAsync(ct);
+        foreach (var c in consoRecords.Where(c => !linkedIds.Contains(c.Id)))
+        {
+            lignes.Add(new RapportFinancierLigne
             {
                 Id = c.Id,
-                Date = c.PeriodStart,
-                DateDisplay = c.PeriodStart.ToString("dd/MM/yyyy", Fr),
-                Categorie = MapConsumptionType(c.Type),
-                Quantite = c.Quantity,
-                Unite = string.IsNullOrWhiteSpace(c.Unit) ? "—" : c.Unit,
-                CoutUnitaire = unitCost,
-                CoutUnitaireDisplay = MoneyFormatter.Format(unitCost),
-                CoutTotal = c.Cost,
-                CoutTotalDisplay = MoneyFormatter.Format(c.Cost),
-                Responsable = string.IsNullOrWhiteSpace(c.Responsible) ? "—" : c.Responsible
-            };
-        }).ToList();
+                Date = c.PeriodEnd,
+                DateDisplay = c.PeriodEnd.ToString("dd/MM/yyyy", Fr),
+                Type = "Dépense",
+                Categorie = FinanceConstants.CategoryEnergy,
+                Description = $"Consommation {ConsumptionsService.DisplayTypeLabel(c)} — {c.EquipmentSource}",
+                Montant = c.Cost,
+                MontantDisplay = MoneyFormatter.Format(c.Cost),
+                Source = FinanceConstants.SourceConsumptions,
+                ModePaiement = "—",
+                Reference = c.MeterReference ?? "—",
+                Statut = c.Status,
+                EnregistrePar = FinanceConstants.RecordedByConsumptions
+            });
+        }
+
+        var salaries = await _db.SalaryPayments
+            .Include(p => p.Employee)
+            .Where(p => p.PaymentDate >= from && p.PaymentDate <= to && p.Status == RhConstants.PayrollStatus.Paid)
+            .ToListAsync(ct);
+        foreach (var p in salaries.Where(p => !linkedIds.Contains(p.Id)))
+        {
+            var emp = p.Employee;
+            var net = p.NetAmount > 0 ? p.NetAmount : p.Amount;
+            lignes.Add(new RapportFinancierLigne
+            {
+                Id = p.Id,
+                Date = p.PaymentDate,
+                DateDisplay = p.PaymentDate.ToString("dd/MM/yyyy", Fr),
+                Type = "Dépense",
+                Categorie = FinanceConstants.CategorySalaries,
+                Description = $"Paie {p.Month:00}/{p.Year} — {emp?.FirstName} {emp?.LastName}".Trim(),
+                Montant = net,
+                MontantDisplay = MoneyFormatter.Format(net),
+                Source = FinanceConstants.SourcePersonnel,
+                ModePaiement = "Virement",
+                Reference = "—",
+                Statut = p.Status,
+                EnregistrePar = FinanceConstants.RecordedByPersonnel
+            });
+        }
+
+        var incidents = await _db.Incidents
+            .Where(i => i.ReportedAt >= from && i.ReportedAt <= to && i.Cost > 0)
+            .ToListAsync(ct);
+        foreach (var i in incidents.Where(i => !linkedIds.Contains(i.Id)))
+        {
+            lignes.Add(new RapportFinancierLigne
+            {
+                Id = i.Id,
+                Date = i.ReportedAt,
+                DateDisplay = i.ReportedAt.ToString("dd/MM/yyyy", Fr),
+                Type = "Dépense",
+                Categorie = FinanceConstants.CategoryIncident,
+                Description = $"Incident {i.Code} — {i.Title}",
+                Montant = i.Cost,
+                MontantDisplay = MoneyFormatter.Format(i.Cost),
+                Source = FinanceConstants.SourceIncidents,
+                ModePaiement = "—",
+                Reference = i.Code,
+                Statut = MapIncidentStatus(i.Status),
+                EnregistrePar = FinanceConstants.RecordedByIncidents
+            });
+        }
+
+        var supplierPayments = await _db.SupplierPayments
+            .Include(p => p.Supplier)
+            .Where(p => p.PaymentDate >= from && p.PaymentDate <= to && p.IsPaid)
+            .ToListAsync(ct);
+        foreach (var p in supplierPayments.Where(p => !linkedIds.Contains(p.Id)))
+        {
+            lignes.Add(new RapportFinancierLigne
+            {
+                Id = p.Id,
+                Date = p.PaymentDate,
+                DateDisplay = p.PaymentDate.ToString("dd/MM/yyyy", Fr),
+                Type = "Dépense",
+                Categorie = string.IsNullOrWhiteSpace(p.Category) ? "Facture" : p.Category,
+                Description = $"Facture {p.InvoiceReference} — {p.Supplier?.Name ?? "Fournisseur"}",
+                Montant = p.Amount,
+                MontantDisplay = MoneyFormatter.Format(p.Amount),
+                Source = FinanceConstants.SourceFinances,
+                ModePaiement = "Virement",
+                Reference = p.InvoiceReference ?? "—",
+                Statut = "Payé",
+                EnregistrePar = "SBMS — Fournisseurs"
+            });
+        }
+
+        var guarantees = await _db.LeaseGuarantees
+            .Include(g => g.LeaseContract)
+            .ThenInclude(c => c!.Tenant)
+            .Where(g => g.CreatedAt >= from && g.CreatedAt <= to)
+            .ToListAsync(ct);
+        foreach (var g in guarantees.Where(g => !linkedIds.Contains(g.Id)))
+        {
+            lignes.Add(new RapportFinancierLigne
+            {
+                Id = g.Id,
+                Date = g.CreatedAt,
+                DateDisplay = g.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy", Fr),
+                Type = "Revenu",
+                Categorie = FinanceConstants.CategoryGuarantee,
+                Description = $"Caution — {g.LeaseContract?.Tenant?.Name ?? "Locataire"}",
+                Montant = g.Amount,
+                MontantDisplay = MoneyFormatter.Format(g.Amount),
+                Source = FinanceConstants.SourceLocations,
+                ModePaiement = "—",
+                Reference = "—",
+                Statut = g.Status,
+                EnregistrePar = FinanceConstants.RecordedByLocations
+            });
+        }
+
+        return lignes.OrderByDescending(l => l.Date).ToList();
     }
 
     private async Task<RapportFinancierSummary> LoadFinancierAsync(
         DateTime from, DateTime to, CancellationToken ct)
     {
         var tx = await _db.FinancialTransactions
-            .Where(t => t.TransactionDate >= from && t.TransactionDate <= to)
+            .Where(t => t.TransactionDate >= from && t.TransactionDate <= to && t.DeletedAt == null)
             .ToListAsync(ct);
 
-        var rent = await _db.RentPayments
+        var loyersEncaisses = await _db.RentPayments
             .Where(p => p.PaidDate >= from && p.PaidDate <= to)
             .SumAsync(p => p.AmountPaid, ct);
 
-        var loyersEncaisses = rent;
-        var garanties = tx.Where(t => t.Type == TransactionType.Recette && IsGuaranteeCategory(t.Category)).Sum(t => t.Amount);
-        var services = tx.Where(t => t.Type == TransactionType.Recette && t.Category.Contains("Service", StringComparison.OrdinalIgnoreCase)).Sum(t => t.Amount);
-        var revenusDivers = tx.Where(t => t.Type == TransactionType.Recette && !IsRentCategory(t.Category) && !IsGuaranteeCategory(t.Category) && !t.Category.Contains("Service", StringComparison.OrdinalIgnoreCase)).Sum(t => t.Amount);
+        var garantiesTx = tx.Where(t => t.Type == TransactionType.Recette && IsGuaranteeCategory(t.Category))
+            .Sum(t => t.Amount);
+        var garantiesCautions = await _db.LeaseGuarantees
+            .Where(g => g.CreatedAt >= from && g.CreatedAt <= to)
+            .SumAsync(g => g.Amount, ct);
+        var garanties = garantiesTx + garantiesCautions;
 
-        var salaires = tx.Where(t => t.Type == TransactionType.Depense && (t.Category.Contains("Salaire", StringComparison.OrdinalIgnoreCase) || t.Category.Contains("Paie", StringComparison.OrdinalIgnoreCase))).Sum(t => t.Amount);
-        var consommations = tx.Where(t => t.Type == TransactionType.Depense && t.Category.Contains("Consommation", StringComparison.OrdinalIgnoreCase)).Sum(t => t.Amount);
-        var maintenance = tx.Where(t => t.Type == TransactionType.Depense && (t.Category.Contains("Maintenance", StringComparison.OrdinalIgnoreCase) || t.Category.Contains("Réparation", StringComparison.OrdinalIgnoreCase))).Sum(t => t.Amount);
-        var fournisseurs = tx.Where(t => t.Type == TransactionType.Depense && t.Category.Contains("Fournisseur", StringComparison.OrdinalIgnoreCase)).Sum(t => t.Amount);
-        var chargesDiverses = tx.Where(t => t.Type == TransactionType.Depense).Sum(t => t.Amount) - salaires - consommations - maintenance - fournisseurs;
+        var services = tx.Where(t => t.Type == TransactionType.Recette &&
+                                     t.Category.Contains("Service", StringComparison.OrdinalIgnoreCase))
+            .Sum(t => t.Amount);
+
+        var revenusDivers = tx.Where(t => t.Type == TransactionType.Recette &&
+                                          !IsRentCategory(t.Category) &&
+                                          !IsGuaranteeCategory(t.Category) &&
+                                          !t.Category.Contains("Service", StringComparison.OrdinalIgnoreCase))
+            .Sum(t => t.Amount);
+
+        var salairesTx = tx.Where(t => t.Type == TransactionType.Depense && IsSalaryExpense(t)).Sum(t => t.Amount);
+        var salairesRh = await _db.SalaryPayments
+            .Where(p => p.PaymentDate >= from && p.PaymentDate <= to && p.Status == RhConstants.PayrollStatus.Paid)
+            .SumAsync(p => p.NetAmount > 0 ? p.NetAmount : p.Amount, ct);
+        var salaires = salairesTx > 0 ? salairesTx : salairesRh;
+
+        var consommationsTx = tx.Where(t => t.Type == TransactionType.Depense && IsEnergyExpense(t)).Sum(t => t.Amount);
+        var consommationsRecords = await _db.ConsumptionRecords
+            .Where(c => c.PeriodStart <= to && c.PeriodEnd >= from)
+            .SumAsync(c => c.Cost, ct);
+        var consommations = consommationsRecords > 0 ? consommationsRecords : consommationsTx;
+
+        var maintenanceTx = tx.Where(t => t.Type == TransactionType.Depense && IsMaintenanceExpense(t)).Sum(t => t.Amount);
+        var maintenanceIncidents = await _db.Incidents
+            .Where(i => i.ReportedAt >= from && i.ReportedAt <= to && i.Cost > 0)
+            .SumAsync(i => i.Cost, ct);
+        var maintenance = maintenanceTx > 0 ? maintenanceTx : maintenanceIncidents;
+
+        var fournisseursTx = tx.Where(t => t.Type == TransactionType.Depense && IsSupplierExpense(t)).Sum(t => t.Amount);
+        var fournisseursPay = await _db.SupplierPayments
+            .Where(p => p.PaymentDate >= from && p.PaymentDate <= to && p.IsPaid)
+            .SumAsync(p => p.Amount, ct);
+        var fournisseurs = fournisseursTx > 0 ? fournisseursTx : fournisseursPay;
+
+        var chargesDiverses = tx.Where(t => t.Type == TransactionType.Depense &&
+                                            !IsSalaryExpense(t) &&
+                                            !IsEnergyExpense(t) &&
+                                            !IsMaintenanceExpense(t) &&
+                                            !IsSupplierExpense(t))
+            .Sum(t => t.Amount);
 
         var totalEntrees = loyersEncaisses + garanties + services + revenusDivers;
-        var totalSorties = salaires + consommations + maintenance + fournisseurs + Math.Max(chargesDiverses, 0);
+        var totalSorties = salaires + consommations + maintenance + fournisseurs + chargesDiverses;
         var cashPosition = await _financeLedger.GetCashPositionAsync(ct);
         var solde = cashPosition.AvailableBalance;
         var net = totalEntrees - totalSorties;
@@ -321,7 +579,7 @@ public class RapportsService
             Consommations = consommations,
             Maintenance = maintenance,
             Fournisseurs = fournisseurs,
-            ChargesDiverses = Math.Max(chargesDiverses, 0),
+            ChargesDiverses = chargesDiverses,
             TotalEntrees = totalEntrees,
             TotalSorties = totalSorties,
             SoldeActuel = solde,
@@ -335,7 +593,7 @@ public class RapportsService
             ConsommationsDisplay = MoneyFormatter.Format(consommations),
             MaintenanceDisplay = MoneyFormatter.Format(maintenance),
             FournisseursDisplay = MoneyFormatter.Format(fournisseurs),
-            ChargesDiversesDisplay = MoneyFormatter.Format(Math.Max(chargesDiverses, 0)),
+            ChargesDiversesDisplay = MoneyFormatter.Format(chargesDiverses),
             TotalEntreesDisplay = MoneyFormatter.Format(totalEntrees),
             TotalSortiesDisplay = MoneyFormatter.Format(totalSorties),
             SoldeActuelDisplay = MoneyFormatter.Format(solde),
@@ -507,12 +765,35 @@ public class RapportsService
     };
 
     private static bool IsRentCategory(string category) =>
-        category.Contains("Loyer", StringComparison.OrdinalIgnoreCase) ||
-        category.Contains("Location", StringComparison.OrdinalIgnoreCase);
+        string.Equals(category, FinanceConstants.CategoryRent, StringComparison.OrdinalIgnoreCase) ||
+        category.Contains("Loyer", StringComparison.OrdinalIgnoreCase);
 
     private static bool IsGuaranteeCategory(string category) =>
-        category.Contains("Garantie", StringComparison.OrdinalIgnoreCase) ||
-        category.Contains("Caution", StringComparison.OrdinalIgnoreCase);
+        string.Equals(category, FinanceConstants.CategoryGuarantee, StringComparison.OrdinalIgnoreCase) ||
+        (category.Contains("Caution", StringComparison.OrdinalIgnoreCase) &&
+         !category.Contains("Remboursement", StringComparison.OrdinalIgnoreCase));
+
+    private static bool IsSalaryExpense(FinancialTransaction t) =>
+        t.Type == TransactionType.Depense &&
+        string.Equals(t.Category, FinanceConstants.CategorySalaries, StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsEnergyExpense(FinancialTransaction t) =>
+        t.Type == TransactionType.Depense &&
+        (string.Equals(t.Category, FinanceConstants.CategoryEnergy, StringComparison.OrdinalIgnoreCase) ||
+         string.Equals(t.Source, FinanceConstants.SourceConsumptions, StringComparison.OrdinalIgnoreCase));
+
+    private static bool IsMaintenanceExpense(FinancialTransaction t) =>
+        t.Type == TransactionType.Depense &&
+        (string.Equals(t.Category, FinanceConstants.CategoryMaintenance, StringComparison.OrdinalIgnoreCase) ||
+         string.Equals(t.Category, FinanceConstants.CategoryIncident, StringComparison.OrdinalIgnoreCase) ||
+         string.Equals(t.Source, FinanceConstants.SourceTechnique, StringComparison.OrdinalIgnoreCase) ||
+         string.Equals(t.Source, FinanceConstants.SourceIncidents, StringComparison.OrdinalIgnoreCase) ||
+         t.Category.Contains("Réparation", StringComparison.OrdinalIgnoreCase));
+
+    private static bool IsSupplierExpense(FinancialTransaction t) =>
+        t.Type == TransactionType.Depense &&
+        (t.Category.Contains("Facture", StringComparison.OrdinalIgnoreCase) ||
+         t.Description.Contains("fournisseur", StringComparison.OrdinalIgnoreCase));
 
     private static string FormatSeniority(DateTime hireDate)
     {

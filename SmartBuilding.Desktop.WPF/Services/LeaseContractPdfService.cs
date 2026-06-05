@@ -17,8 +17,9 @@ public class LeaseContractPdfService
         QuestPDF.Settings.License = LicenseType.Community;
     }
 
-    public string Generate(LeaseContract contract, string companyName = "SBMS")
+    public string Generate(LeaseContract contract, string? companyName = null)
     {
+        companyName ??= PdfThemeHelper.ResolveCompanyName();
         var culture = CultureInfo.GetCultureInfo("fr-FR");
         var folder = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -41,8 +42,8 @@ public class LeaseContractPdfService
                     {
                         row.RelativeItem().Column(left =>
                         {
-                            left.Item().Text("SBMS").Bold().FontSize(20).FontColor(_navy);
-                            left.Item().Text(companyName).FontSize(8).FontColor("#64748B");
+                            left.Item().Text(companyName).Bold().FontSize(16).FontColor(_navy);
+                            left.Item().Text("Gestion immobilière").FontSize(8).FontColor("#64748B");
                         });
                         row.RelativeItem(2).AlignCenter().Column(center =>
                         {
@@ -88,7 +89,7 @@ public class LeaseContractPdfService
 
                     root.Item().PaddingTop(14).AlignCenter().Text(t =>
                     {
-                        t.Span("Document généré par SBMS — ").FontSize(7).FontColor("#94A3B8");
+                        t.Span($"Document généré par {companyName} — ").FontSize(7).FontColor("#94A3B8");
                         t.Span(DateTime.Now.ToString("dd/MM/yyyy HH:mm")).FontSize(7).FontColor("#94A3B8");
                     });
                 });

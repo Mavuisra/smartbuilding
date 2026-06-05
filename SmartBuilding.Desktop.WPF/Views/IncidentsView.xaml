@@ -300,6 +300,7 @@
                                         <DataGridTextColumn Header="ID" Binding="{Binding Code}" Width="90"/>
                                         <DataGridTextColumn Header="DATE" Binding="{Binding DateDisplay}" Width="110"/>
                                         <DataGridTextColumn Header="TYPE" Binding="{Binding TypeLabel}" Width="110"/>
+                                        <DataGridTextColumn Header="MATÉRIEL" Binding="{Binding EquipmentLabel}" Width="160"/>
                                         <DataGridTextColumn Header="EMPLACEMENT" Binding="{Binding Location}" Width="*"/>
                                         <DataGridTemplateColumn Header="GRAVITÉ" Width="85">
                                             <DataGridTemplateColumn.CellTemplate>
@@ -496,6 +497,7 @@
                                         <StackPanel Visibility="{Binding DataContext.SelectedDetailTab, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource IntEqualsToVisibilityConverter}, ConverterParameter=0}">
                                             <TextBlock Text="Description" FontSize="10" Foreground="#94A3B8"/>
                                             <TextBlock Text="{Binding Description}" TextWrapping="Wrap" Margin="0,2,0,8"/>
+                                            <TextBlock Text="Matériel" FontSize="10" Foreground="#94A3B8"/><TextBlock Text="{Binding EquipmentLabel}" Margin="0,2,0,6"/>
                                             <TextBlock Text="Emplacement" FontSize="10" Foreground="#94A3B8"/><TextBlock Text="{Binding Location}" Margin="0,2,0,6"/>
                                             <TextBlock Text="Responsable" FontSize="10" Foreground="#94A3B8"/><TextBlock Text="{Binding Responsible}" Margin="0,2,0,6"/>
                                             <TextBlock Text="Niveau risque" FontSize="10" Foreground="#94A3B8"/><TextBlock Text="{Binding RiskLevel}" FontWeight="SemiBold" Margin="0,2,0,6"/>
@@ -547,12 +549,19 @@
                     VerticalAlignment="Center" HorizontalAlignment="Center">
                 <StackPanel>
                     <TextBlock Text="Signaler un incident" FontSize="20" FontWeight="Bold" Foreground="#0F172A" Margin="0,0,0,4"/>
-                    <TextBlock Text="Enregistrement réel — suivi sécurité SBMS" FontSize="12" Foreground="#64748B" Margin="0,0,0,16"/>
+                    <TextBlock FontSize="12" Foreground="#64748B" Margin="0,0,0,16" TextWrapping="Wrap">
+                        <Run Text="Enregistrement réel — suivi sécurité "/>
+                        <Run Text="{Binding BrandCompanyName, Mode=OneWay}"/>
+                    </TextBlock>
+                    <TextBlock Text="Matériel concerné *" FontSize="11" Foreground="#64748B" Margin="0,0,0,4"/>
+                    <ComboBox ItemsSource="{Binding EquipmentOptions}" DisplayMemberPath="Label" SelectedValuePath="Id"
+                              SelectedValue="{Binding FormEquipmentId}" Style="{StaticResource IncidentsFilterCombo}" Margin="0,0,0,10"/>
                     <ComboBox ItemsSource="{Binding IncidentTypes}" SelectedItem="{Binding FormType}" Style="{StaticResource IncidentsFilterCombo}" Margin="0,0,0,10"/>
                     <TextBox materialDesign:HintAssist.Hint="Titre *" Text="{Binding FormTitle, UpdateSourceTrigger=PropertyChanged}"
                              Style="{StaticResource MaterialDesignOutlinedTextBox}" Margin="0,0,0,10"/>
                     <TextBox materialDesign:HintAssist.Hint="Description" Text="{Binding FormDescription, UpdateSourceTrigger=PropertyChanged}"
                              Style="{StaticResource MaterialDesignOutlinedTextBox}" AcceptsReturn="True" Height="72" TextWrapping="Wrap" Margin="0,0,0,10"/>
+                    <TextBlock Text="Emplacement (rempli depuis le matériel)" FontSize="11" Foreground="#64748B" Margin="0,0,0,4"/>
                     <ComboBox ItemsSource="{Binding IncidentLocations}" SelectedItem="{Binding FormLocation}" Style="{StaticResource IncidentsFilterCombo}" Margin="0,0,0,10"/>
                     <ComboBox ItemsSource="{Binding FormSeverityOptions}" SelectedItem="{Binding FormSeverity}" Style="{StaticResource IncidentsFilterCombo}" Margin="0,0,0,10"/>
                     <TextBlock Text="{Binding FormError}" Foreground="#DC2626" FontSize="12"/>
@@ -670,6 +679,7 @@
                             <DataGridTextColumn Header="ID" Binding="{Binding Code}" Width="90"/>
                             <DataGridTextColumn Header="DATE" Binding="{Binding DateDisplay}" Width="115"/>
                             <DataGridTextColumn Header="TYPE" Binding="{Binding TypeLabel}" Width="120"/>
+                            <DataGridTextColumn Header="MATÉRIEL" Binding="{Binding EquipmentLabel}" Width="150"/>
                             <DataGridTextColumn Header="EMPLACEMENT" Binding="{Binding Location}" Width="*"/>
                             <DataGridTextColumn Header="GRAVITÉ" Binding="{Binding SeverityLabel}" Width="85"/>
                             <DataGridTextColumn Header="STATUT" Binding="{Binding StatusLabel}" Width="100"/>

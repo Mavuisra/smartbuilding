@@ -7,6 +7,7 @@ using LiveChartsCore.SkiaSharpView;
 using LiveChartsCore.SkiaSharpView.Painting;
 using SkiaSharp;
 using SmartBuilding.Application.Interfaces;
+using SmartBuilding.Domain.Entities.Building;
 using SmartBuilding.Domain.Entities.Incidents;
 using SmartBuilding.Domain.Enums;
 using SmartBuilding.Desktop.WPF.Helpers;
@@ -52,6 +53,7 @@ public partial class IncidentsViewModel : BaseViewModel
     [ObservableProperty] private bool _isEmbedded;
     [ObservableProperty] private string _securityStatusLabel = "Sécurité normale";
     [ObservableProperty] private string _securityStatusColor = "#166534";
+    [ObservableProperty] private string _brandCompanyName = BuildingInfoDefaults.CompanyName;
 
     [ObservableProperty] private int _totalIncidents;
     [ObservableProperty] private int _openIncidentsCount;
@@ -66,6 +68,7 @@ public partial class IncidentsViewModel : BaseViewModel
     [ObservableProperty] private string _formDescription = string.Empty;
     [ObservableProperty] private string _formType = "Panne électrique";
     [ObservableProperty] private string _formLocation = "Hall principal";
+    [ObservableProperty] private Guid _formEquipmentId;
     [ObservableProperty] private string _formSeverity = "Moyen";
     [ObservableProperty] private string? _formError;
 
@@ -107,7 +110,12 @@ public partial class IncidentsViewModel : BaseViewModel
     {
         _incidentsService = incidentsService;
         _syncService = syncService;
-        appConfiguration.ConfigurationChanged += (_, _) => _ = LoadAsync();
+        BrandCompanyName = appConfiguration.Current.CompanyName;
+        appConfiguration.ConfigurationChanged += (_, _) =>
+        {
+            BrandCompanyName = appConfiguration.Current.CompanyName;
+            _ = LoadAsync();
+        };
         UserName = session.CurrentUser?.FullName ?? "Admin Principal";
         UserRole = session.CurrentUser?.Role ?? "Administrateur";
         UserInitials = GetInitials(UserName);
@@ -185,7 +193,8 @@ public partial class IncidentsViewModel : BaseViewModel
         FormTitle = string.Empty;
         FormDescription = string.Empty;
         FormType = "Panne électrique";
-        FormLocation = "Hall principal";
+        FormEquipmentId = EquipmentOptions.FirstOrDefault()?.Id ?? Guid.Empty;
+        FormLocation = EquipmentOptions.FirstOrDefault()?.Location ?? "Hall principal";
         FormSeverity = "Moyen";
         FormError = null;
         IsAddFormOpen = true;
@@ -198,6 +207,12 @@ public partial class IncidentsViewModel : BaseViewModel
     {
         FormError = null;
         if (string.IsNullOrWhiteSpace(FormTitle)) { FormError = "Le titre est obligatoire."; return; }
+        if (FormEquipmentId == Guid.Empty) { FormError = "Sélectionnez le matériel concerné."; return; }
+
+        var equipment = EquipmentOptions.FirstOrDefault(e => e.Id == FormEquipmentId);
+        var location = string.IsNullOrWhiteSpace(FormLocation)
+            ? equipment?.Location ?? "—"
+            : FormLocation;
 
         IsBusy = true;
         try
@@ -207,9 +222,10 @@ public partial class IncidentsViewModel : BaseViewModel
                 Title = FormTitle,
                 Description = FormDescription,
                 IncidentType = FormType,
-                Location = FormLocation,
+                EquipmentId = FormEquipmentId,
+                Location = location,
                 Building = "Tour SBMS",
-                Responsible = "Paul Ngoy",
+                Responsible = UserName,
                 Severity = IncidentsService.ParseSeverity(FormSeverity),
                 Status = IncidentStatus.Ouvert,
                 ReportedAt = DateTime.Now,
@@ -364,5 +380,16 @@ public partial class IncidentsViewModel : BaseViewModel
     {
         var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         return parts.Length >= 2 ? $"{parts[0][0]}{parts[^1][0]}".ToUpperInvariant() : name.Length >= 2 ? name[..2].ToUpperInvariant() : "AD";
+    }
+
+    partial void OnFormEquipmentIdChanged(Guid value)
+    {
+        var equipment = EquipmentOptions.FirstOrDefault(e => e.Id == value);
+        if (equipment is null || string.IsNullOrWhiteSpace(equipment.Location) || equipment.Location == "—")
+            return;
+
+        FormLocation = equipment.Location;
+        if (!IncidentLocations.Contains(equipment.Location))
+            IncidentLocations.Add(equipment.Location);
     }
 }

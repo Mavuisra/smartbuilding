@@ -1,5 +1,6 @@
 using System.Globalization;
 using Microsoft.EntityFrameworkCore;
+using SmartBuilding.Domain.Entities.Building;
 using SmartBuilding.Domain.Entities.Consumption;
 using SmartBuilding.Domain.Enums;
 using SmartBuilding.Desktop.WPF.Models;
@@ -58,7 +59,7 @@ public class ConsumptionsService
         }
 
         var distribution = monthRecords
-            .GroupBy(r => TypeLabel(r.Type))
+            .GroupBy(DisplayTypeLabel)
             .OrderByDescending(g => g.Sum(x => x.Cost))
             .Select(g => new ConsumptionTypeSlice { Type = g.Key, Cost = g.Sum(x => x.Cost) })
             .ToList();
@@ -129,9 +130,14 @@ public class ConsumptionsService
         if (record.Cost <= 0)
             return "Le montant doit être supérieur à zéro.";
 
-        record.Building = string.IsNullOrWhiteSpace(record.Building) ? "Tour SBMS" : record.Building.Trim();
-        record.EquipmentSource = record.EquipmentSource?.Trim() ?? TypeLabel(record.Type);
-        record.Responsible = string.IsNullOrWhiteSpace(record.Responsible) ? "Paul Ngoy" : record.Responsible.Trim();
+        record.Building = string.IsNullOrWhiteSpace(record.Building) ? DefaultBuildingName() : record.Building.Trim();
+        record.EquipmentSource = record.EquipmentSource?.Trim() ?? DisplayTypeLabel(record);
+        record.PaidBy = record.PaidBy?.Trim() ?? string.Empty;
+        record.Responsible = string.IsNullOrWhiteSpace(record.Responsible) ? record.PaidBy : record.Responsible.Trim();
+        record.ExpenseMotif = string.IsNullOrWhiteSpace(record.ExpenseMotif) ? null : record.ExpenseMotif.Trim();
+        record.ReimbursementStatus = string.IsNullOrWhiteSpace(record.ReimbursementStatus)
+            ? ConsumptionReimbursementStatus.NotApplicable
+            : record.ReimbursementStatus.Trim();
         record.Status = string.IsNullOrWhiteSpace(record.Status) ? "Normal" : record.Status;
         record.Unit = "USD";
         record.Currency = "USD";
@@ -153,7 +159,7 @@ public class ConsumptionsService
                 await _financeLedger.RecordExpenseAsync(
                     record.Cost,
                     FinanceConstants.CategoryEnergy,
-                    $"Consommation {TypeLabel(record.Type)} — {record.EquipmentSource}",
+                    BuildFinanceDescription(record),
                     FinanceConstants.SourceConsumptions,
                     FinanceConstants.RecordedByConsumptions,
                     record.Id,
@@ -171,9 +177,85 @@ public class ConsumptionsService
         return string.Empty;
     }
 
+    public async Task<string> UpdateRecordAsync(
+        Guid recordId,
+        ConsumptionRecord updates,
+        CancellationToken cancellationToken = default)
+    {
+        var record = await _db.ConsumptionRecords.FirstOrDefaultAsync(r => r.Id == recordId, cancellationToken);
+        if (record is null)
+            return "Consommation introuvable.";
+
+        if (updates.Cost <= 0)
+            return "Le montant doit être supérieur à zéro.";
+
+        var oldCost = record.Cost;
+        record.Type = updates.Type;
+        record.CustomTypeLabel = updates.CustomTypeLabel;
+        record.EquipmentSource = updates.EquipmentSource?.Trim() ?? DisplayTypeLabel(record);
+        record.ExpenseMotif = string.IsNullOrWhiteSpace(updates.ExpenseMotif) ? null : updates.ExpenseMotif.Trim();
+        record.PaidBy = updates.PaidBy?.Trim() ?? string.Empty;
+        record.Responsible = string.IsNullOrWhiteSpace(updates.Responsible) ? record.PaidBy : updates.Responsible.Trim();
+        record.ReimbursementStatus = string.IsNullOrWhiteSpace(updates.ReimbursementStatus)
+            ? ConsumptionReimbursementStatus.NotApplicable
+            : updates.ReimbursementStatus.Trim();
+        record.Cost = updates.Cost;
+        record.Quantity = updates.Cost;
+        record.PeriodType = string.IsNullOrWhiteSpace(updates.PeriodType) ? "Mensuel" : updates.PeriodType;
+        record.Status = string.IsNullOrWhiteSpace(updates.Status) ? "Normal" : updates.Status;
+        record.Notes = string.IsNullOrWhiteSpace(updates.Notes) ? null : updates.Notes.Trim();
+        record.Building = string.IsNullOrWhiteSpace(updates.Building) ? DefaultBuildingName() : updates.Building.Trim();
+        record.MarkUpdated();
+
+        if (record.Cost != oldCost)
+        {
+            var cashError = await _financeLedger.ValidateExpenseAsync(record.Cost - oldCost, cancellationToken);
+            if (cashError is not null && record.Cost > oldCost)
+                return cashError;
+
+            var tx = await _db.FinancialTransactions.FirstOrDefaultAsync(
+                t => t.RelatedEntityId == recordId
+                     && t.Category == FinanceConstants.CategoryEnergy
+                     && t.Type == TransactionType.Depense,
+                cancellationToken);
+            if (tx is not null)
+            {
+                tx.Amount = record.Cost;
+                tx.Description = BuildFinanceDescription(record);
+            }
+        }
+
+        await _db.SaveChangesAsync(cancellationToken);
+        return string.Empty;
+    }
+
+    public async Task<string> MarkReimbursedAsync(Guid recordId, CancellationToken cancellationToken = default)
+    {
+        var record = await _db.ConsumptionRecords.FirstOrDefaultAsync(r => r.Id == recordId, cancellationToken);
+        if (record is null)
+            return "Consommation introuvable.";
+        if (!string.Equals(record.ReimbursementStatus, ConsumptionReimbursementStatus.Pending, StringComparison.OrdinalIgnoreCase))
+            return "Cette dépense n'est pas en attente de remboursement.";
+
+        record.ReimbursementStatus = ConsumptionReimbursementStatus.Reimbursed;
+        record.MarkUpdated();
+        await _db.SaveChangesAsync(cancellationToken);
+        return string.Empty;
+    }
+
+    private static string BuildFinanceDescription(ConsumptionRecord record)
+    {
+        var motif = string.IsNullOrWhiteSpace(record.ExpenseMotif) ? record.EquipmentSource : record.ExpenseMotif.Trim();
+        var paidBy = string.IsNullOrWhiteSpace(record.PaidBy) ? string.Empty : $" — payé par {record.PaidBy}";
+        var reimbursement = string.Equals(record.ReimbursementStatus, ConsumptionReimbursementStatus.Pending, StringComparison.OrdinalIgnoreCase)
+            ? " [à rembourser]"
+            : string.Empty;
+        return $"Consommation {DisplayTypeLabel(record)} — {motif}{paidBy}{reimbursement}";
+    }
+
     private static ConsumptionListItem MapItem(ConsumptionRecord r, List<ConsumptionRecord> all)
     {
-        var typeLabel = TypeLabel(r.Type);
+        var typeLabel = DisplayTypeLabel(r);
         var history = all
             .Where(x => x.Type == r.Type &&
                         (x.EquipmentSource == r.EquipmentSource || string.IsNullOrWhiteSpace(r.EquipmentSource)))
@@ -193,7 +275,11 @@ public class ConsumptionsService
             .ToList();
 
         var (bg, fg) = StatusStyle(r.Status);
+        var (reimbBg, reimbFg, reimbDisplay) = ReimbursementStyle(r);
         var varColor = r.VariationPercent > 15 ? "#DC2626" : r.VariationPercent > 5 ? "#EA580C" : r.VariationPercent < -5 ? "#2563EB" : "#64748B";
+        var paidBy = string.IsNullOrWhiteSpace(r.PaidBy)
+            ? (string.IsNullOrWhiteSpace(r.Responsible) ? "—" : r.Responsible)
+            : r.PaidBy;
 
         return new ConsumptionListItem
         {
@@ -207,7 +293,15 @@ public class ConsumptionsService
             CostDisplay = Fc(r.Cost),
             VariationDisplay = $"{r.VariationPercent:+0.0;-0.0}%",
             VariationColor = varColor,
-            Responsible = string.IsNullOrWhiteSpace(r.Responsible) ? "—" : r.Responsible,
+            Responsible = paidBy,
+            ExpenseMotif = string.IsNullOrWhiteSpace(r.ExpenseMotif) ? "—" : r.ExpenseMotif,
+            PaidBy = paidBy,
+            ReimbursementStatus = r.ReimbursementStatus,
+            ReimbursementDisplay = reimbDisplay,
+            ReimbursementBadgeBackground = reimbBg,
+            ReimbursementBadgeForeground = reimbFg,
+            CanMarkReimbursed = string.Equals(r.ReimbursementStatus, ConsumptionReimbursementStatus.Pending, StringComparison.OrdinalIgnoreCase),
+            HasReimbursementInfo = !string.Equals(r.ReimbursementStatus, ConsumptionReimbursementStatus.NotApplicable, StringComparison.OrdinalIgnoreCase),
             StatusLabel = r.Status,
             StatusBadgeBackground = bg,
             StatusBadgeForeground = fg,
@@ -234,7 +328,7 @@ public class ConsumptionsService
             alerts.Add(new ConsumptionAlertItem
             {
                 Title = r.Status == "Critique" ? "Anomalie énergétique" : "Surconsommation détectée",
-                Message = $"{TypeLabel(r.Type)} — {r.EquipmentSource} ({r.VariationPercent:+0.0}% vs N-1)",
+                Message = $"{DisplayTypeLabel(r)} — {r.EquipmentSource} ({r.VariationPercent:+0.0}% vs N-1)",
                 AccentColor = r.Status == "Critique" ? "#DC2626" : "#EA580C",
                 Background = r.Status == "Critique" ? "#FEE2E2" : "#FFEDD5"
             });
@@ -287,6 +381,18 @@ public class ConsumptionsService
         return alerts.Take(6).ToList();
     }
 
+    public static string DisplayTypeLabel(ConsumptionRecord record) =>
+        !string.IsNullOrWhiteSpace(record.CustomTypeLabel)
+            ? record.CustomTypeLabel.Trim()
+            : TypeLabel(record.Type);
+
+    public static bool IsKnownType(string label) => label.Trim() switch
+    {
+        "Électricité" or "Eau" or "Carburant générateur" or "Internet" or "Climatisation"
+            or "Éclairage" or "Groupe électrogène" or "Réseau technique" or "Énergie" => true,
+        _ => false
+    };
+
     public static string TypeLabel(ConsumptionType type) => type switch
     {
         ConsumptionType.Eau => "Eau",
@@ -325,6 +431,15 @@ public class ConsumptionsService
         _ => "#2D6A4F"
     };
 
+    private static (string Bg, string Fg, string Display) ReimbursementStyle(ConsumptionRecord record)
+    {
+        if (string.Equals(record.ReimbursementStatus, ConsumptionReimbursementStatus.Pending, StringComparison.OrdinalIgnoreCase))
+            return ("#FFEDD5", "#EA580C", $"À rembourser — {record.PaidBy}");
+        if (string.Equals(record.ReimbursementStatus, ConsumptionReimbursementStatus.Reimbursed, StringComparison.OrdinalIgnoreCase))
+            return ("#DCFCE7", "#166534", $"Remboursé — {record.PaidBy}");
+        return ("#F1F5F9", "#64748B", "—");
+    }
+
     private static (string Bg, string Fg) StatusStyle(string status) => status switch
     {
         "Élevé" => ("#FFEDD5", "#EA580C"),
@@ -332,6 +447,9 @@ public class ConsumptionsService
         "Économie" => ("#DBEAFE", "#1D4ED8"),
         _ => ("#DCFCE7", "#166534")
     };
+
+    private static string DefaultBuildingName() =>
+        AppConfigurationService.Instance?.Current.CompanyName ?? BuildingInfoDefaults.CompanyName;
 
     private static string Fc(decimal amount) => MoneyFormatter.Format(amount);
 }

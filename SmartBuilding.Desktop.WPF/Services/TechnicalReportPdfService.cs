@@ -26,7 +26,7 @@ public class TechnicalReportPdfService
     {
         _navy = AppConfigurationService.Instance?.Current.PdfHeaderHex ?? "#1B365D";
         _green = AppConfigurationService.Instance?.Current.PdfAccentHex ?? "#16A34A";
-        var company = AppConfigurationService.Instance?.Current.CompanyName ?? BuildingInfoDefaults.CompanyName;
+        var company = PdfThemeHelper.ResolveCompanyName();
         var culture = CultureInfo.GetCultureInfo("fr-FR");
         var list = items.ToList();
 
@@ -93,7 +93,7 @@ public class TechnicalReportPdfService
                         });
                     }));
 
-                    root.Item().PaddingTop(10).Text($"{list.Count} équipement(s) — rapport généré par SBMS Technique & Sécurité")
+                    root.Item().PaddingTop(10).Text($"{list.Count} équipement(s) — {company}")
                         .FontSize(7).FontColor("#94A3B8");
                 });
             });
@@ -114,8 +114,8 @@ public class TechnicalReportPdfService
         {
             row.RelativeItem().Column(left =>
             {
-                left.Item().Text("SBMS").Bold().FontSize(18).FontColor(_navy);
-                left.Item().Text(company).FontSize(8).FontColor("#64748B");
+                left.Item().Text(company).Bold().FontSize(16).FontColor(_navy);
+                left.Item().Text("Rapport technique & maintenance").FontSize(8).FontColor("#64748B");
             });
             row.RelativeItem(2).AlignCenter().Column(center =>
             {

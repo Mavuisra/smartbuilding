@@ -5,9 +5,11 @@ namespace SmartBuilding.Desktop.WPF.Models;
 /// <summary>Configuration globale unique (société + apparence) — source de vérité après chargement.</summary>
 public sealed class AppConfiguration
 {
+    public const string DefaultAppSubtitle = "Gestion immobilière";
+
     public string CompanyName { get; init; } = BuildingInfoDefaults.CompanyName;
-    public string AppTitle { get; init; } = "SBMS";
-    public string AppSubtitle { get; init; } = "Smart Building Management";
+    public string AppTitle { get; init; } = BuildingInfoDefaults.CompanyName;
+    public string AppSubtitle { get; init; } = DefaultAppSubtitle;
     public string? LogoPath { get; init; }
 
     public string Address { get; init; } = BuildingInfoDefaults.Address;

@@ -35,11 +35,24 @@
 
                 <StackPanel Grid.Column="0" VerticalAlignment="Center">
                     <TextBlock Text="Synchronisation" FontSize="26" FontWeight="Bold" Foreground="#1B3D3B"/>
-                    <TextBlock Text="Contrôle et gestion de la synchronisation des données"
-                               Foreground="{StaticResource SbmsTextMutedBrush}" FontSize="13" Margin="0,2,0,0"/>
+                    <TextBlock Text="Envoi automatique vers le cloud dès qu'Internet est disponible — aucun clic requis"
+                               Foreground="{StaticResource SbmsTextMutedBrush}" FontSize="13" Margin="0,2,0,0" TextWrapping="Wrap"/>
                 </StackPanel>
 
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0">
+                    <Border Style="{StaticResource SyncHeaderBadge}" MinWidth="220">
+                        <StackPanel Orientation="Horizontal">
+                            <Border Width="36" Height="36" CornerRadius="18" Background="#DBEAFE" Margin="0,0,10,0">
+                                <materialDesign:PackIcon Kind="Sync" Foreground="#2563EB"
+                                                         Width="22" Height="22" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="Sync automatique" FontWeight="SemiBold" FontSize="13"/>
+                                <TextBlock Text="{Binding AutoSyncStatusLabel}" FontSize="11"
+                                           Foreground="{StaticResource SbmsTextMutedBrush}" TextWrapping="Wrap" MaxWidth="200"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
                     <Border Style="{StaticResource SyncHeaderBadge}" MinWidth="200">
                         <StackPanel Orientation="Horizontal">
                             <Border Width="36" Height="36" CornerRadius="18" Background="#D1FAE5" Margin="0,0,10,0">
@@ -47,7 +60,7 @@
                                                          Width="22" Height="22" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
                             <StackPanel VerticalAlignment="Center">
-                                <TextBlock Text="Synchronisé" FontWeight="SemiBold" FontSize="13"/>
+                                <TextBlock Text="État des données" FontWeight="SemiBold" FontSize="13"/>
                                 <TextBlock Text="Toutes les données sont à jour" FontSize="11"
                                            Foreground="{StaticResource SbmsTextMutedBrush}"
                                            Visibility="{Binding IsSynchronized, Converter={StaticResource BoolToVisibilityConverter}}"/>
@@ -73,10 +86,11 @@
 
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                     <Button Command="{Binding SyncNowCommand}" Style="{StaticResource SyncPrimaryButton}" Margin="0,0,8,0"
-                            IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}">
+                            IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}"
+                            ToolTip="Forcer une synchronisation immédiate (en plus de l'envoi automatique)">
                         <StackPanel Orientation="Horizontal">
                             <materialDesign:PackIcon Kind="Sync" Width="18" Height="18" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                            <TextBlock Text="Synchroniser maintenant" VerticalAlignment="Center"/>
+                            <TextBlock Text="Forcer maintenant" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
                     <Button Style="{StaticResource MaterialDesignIconButton}" Width="40" Height="40" Margin="0,0,4,0">
@@ -276,12 +290,16 @@
                                         <materialDesign:PackIcon Kind="Sync" Width="32" Height="32" Foreground="#2D6A4F"
                                                                  HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                     </Border>
-                                    <Border Background="#D1FAE5" CornerRadius="12" Padding="8,4" Margin="0,12,0,4" HorizontalAlignment="Center">
-                                        <TextBlock Text="Mode de sync : Bidirectionnel" FontSize="10" Foreground="#059669" FontWeight="SemiBold"/>
+                                    <Border Background="#DBEAFE" CornerRadius="12" Padding="8,4" Margin="0,12,0,4" HorizontalAlignment="Center">
+                                        <TextBlock Text="Mode : Automatique" FontSize="10" Foreground="#1D4ED8" FontWeight="SemiBold"/>
                                     </Border>
-                                    <TextBlock Text="{Binding SyncIntervalLabel, StringFormat=Intervalle automatique : {0}}"
+                                    <TextBlock Text="{Binding AutoSyncStatusLabel}" FontSize="10" Foreground="#2563EB"
+                                               TextWrapping="Wrap" TextAlignment="Center" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                    <TextBlock Text="{Binding SyncIntervalLabel, StringFormat=Cycle de base : {0}}"
                                                FontSize="10" Foreground="{StaticResource SbmsTextMutedBrush}"
                                                TextWrapping="Wrap" TextAlignment="Center"/>
+                                    <TextBlock Text="(20s si données en attente)" FontSize="9" Foreground="#94A3B8"
+                                               TextAlignment="Center" Margin="0,2,0,0"/>
                                 </StackPanel>
 
                                 <Border Grid.Column="2" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="10" Padding="12" Background="#FAFBFC">
@@ -427,20 +445,25 @@
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
                                     <Grid.RowDefinitions>
-                                        <RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/>
+                                        <RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/>
                                     </Grid.RowDefinitions>
-                                    <TextBlock Grid.Row="0" Text="Mode de sync" FontSize="11" Foreground="{StaticResource SbmsTextMutedBrush}"/>
-                                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding SyncModeLabel}" FontWeight="SemiBold" FontSize="11"/>
-                                    <TextBlock Grid.Row="1" Text="Version application" FontSize="11" Foreground="{StaticResource SbmsTextMutedBrush}"/>
-                                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding AppVersion}" FontWeight="SemiBold" FontSize="11"/>
-                                    <TextBlock Grid.Row="2" Text="Base locale" FontSize="11" Foreground="{StaticResource SbmsTextMutedBrush}"/>
-                                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding LocalDatabaseEngine}" FontWeight="SemiBold" FontSize="11"/>
-                                    <TextBlock Grid.Row="3" Text="Base cloud" FontSize="11" Foreground="{StaticResource SbmsTextMutedBrush}"/>
-                                    <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding PostgresVersion}" FontWeight="SemiBold" FontSize="11"/>
-                                    <TextBlock Grid.Row="4" Text="Connexion" FontSize="11" Foreground="{StaticResource SbmsTextMutedBrush}"/>
-                                    <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding ConnectionSecurity}" FontWeight="SemiBold" FontSize="11"/>
-                                    <TextBlock Grid.Row="5" Text="Environnement" FontSize="11" Foreground="{StaticResource SbmsTextMutedBrush}"/>
-                                    <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding EnvironmentName}" FontWeight="SemiBold" FontSize="11"/>
+                                    <TextBlock Grid.Row="0" Text="Compte connecté" FontSize="11" Foreground="{StaticResource SbmsTextMutedBrush}"/>
+                                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding ConnectedUsername}" FontWeight="SemiBold" FontSize="11"/>
+                                    <TextBlock Grid.Row="1" Text="Identifiants cloud" FontSize="11" Foreground="{StaticResource SbmsTextMutedBrush}"/>
+                                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding CloudIdentityMessage}" FontWeight="SemiBold" FontSize="11"
+                                               TextWrapping="Wrap" Foreground="#2563EB"/>
+                                    <TextBlock Grid.Row="2" Text="Mode de sync" FontSize="11" Foreground="{StaticResource SbmsTextMutedBrush}"/>
+                                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SyncModeLabel}" FontWeight="SemiBold" FontSize="11"/>
+                                    <TextBlock Grid.Row="3" Text="Version application" FontSize="11" Foreground="{StaticResource SbmsTextMutedBrush}"/>
+                                    <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding AppVersion}" FontWeight="SemiBold" FontSize="11"/>
+                                    <TextBlock Grid.Row="4" Text="Base locale" FontSize="11" Foreground="{StaticResource SbmsTextMutedBrush}"/>
+                                    <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding LocalDatabaseEngine}" FontWeight="SemiBold" FontSize="11"/>
+                                    <TextBlock Grid.Row="5" Text="Base cloud" FontSize="11" Foreground="{StaticResource SbmsTextMutedBrush}"/>
+                                    <TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding PostgresVersion}" FontWeight="SemiBold" FontSize="11"/>
+                                    <TextBlock Grid.Row="6" Text="Connexion" FontSize="11" Foreground="{StaticResource SbmsTextMutedBrush}"/>
+                                    <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding ConnectionSecurity}" FontWeight="SemiBold" FontSize="11"/>
+                                    <TextBlock Grid.Row="7" Text="Environnement" FontSize="11" Foreground="{StaticResource SbmsTextMutedBrush}"/>
+                                    <TextBlock Grid.Row="7" Grid.Column="1" Text="{Binding EnvironmentName}" FontWeight="SemiBold" FontSize="11"/>
                                 </Grid>
                             </StackPanel>
                         </Border>
@@ -451,7 +474,7 @@
                                 <Button Style="{StaticResource SyncQuickActionButton}" Command="{Binding SyncNowCommand}">
                                     <StackPanel Orientation="Horizontal">
                                         <materialDesign:PackIcon Kind="Sync" Foreground="#2D6A4F" Margin="0,0,10,0"/>
-                                        <TextBlock Text="Synchroniser maintenant"/>
+                                        <TextBlock Text="Forcer la synchronisation"/>
                                     </StackPanel>
                                 </Button>
                                 <Button Style="{StaticResource SyncQuickActionButton}" Command="{Binding ForceFullSyncCommand}">

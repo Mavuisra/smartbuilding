@@ -3,7 +3,7 @@ namespace SmartBuilding.Domain.Entities.Building;
 /// <summary>Coordonnées officielles SBMS — Kinshasa, Gombe (RDC).</summary>
 public static class BuildingInfoDefaults
 {
-    public const string CompanyName = "SBMS Immobilier SARL";
+    public const string CompanyName = "BLOOM PROSPERTY INVESTISSEMENT";
     public const string Address = "123, Avenue de la Gombe";
     public const string City = "Kinshasa";
     public const string Country = "RDC";

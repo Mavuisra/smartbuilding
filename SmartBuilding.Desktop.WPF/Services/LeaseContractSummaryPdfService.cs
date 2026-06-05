@@ -34,7 +34,7 @@ public class LeaseContractSummaryPdfService
         var premise = contract.Premise;
         var culture = CultureInfo.GetCultureInfo("fr-FR");
         var companyName = string.IsNullOrWhiteSpace(building?.Name)
-            ? BuildingInfoDefaults.CompanyName
+            ? PdfThemeHelper.ResolveCompanyName()
             : building!.Name;
         var durationMonths = Math.Max(1,
             (contract.EndDate.Year - contract.StartDate.Year) * 12 +
@@ -94,8 +94,8 @@ public class LeaseContractSummaryPdfService
             {
                 row.RelativeItem().Column(left =>
                 {
-                    left.Item().Text("SBMS").Bold().FontSize(20).FontColor(_navy);
-                    left.Item().Text(companyName).FontSize(8).FontColor("#64748B");
+                    left.Item().Text(companyName).Bold().FontSize(16).FontColor(_navy);
+                    left.Item().Text("Gestion immobilière").FontSize(8).FontColor("#64748B");
                 });
                 row.RelativeItem(2).AlignCenter().Column(center =>
                 {
@@ -254,7 +254,7 @@ public class LeaseContractSummaryPdfService
             col.Item().PaddingTop(10).AlignCenter().Text(t =>
             {
                 t.DefaultTextStyle(x => x.FontSize(7).FontColor("#94A3B8"));
-                t.Span("Document généré automatiquement par SBMS — ");
+                t.Span($"Document généré automatiquement par {companyName} — ");
                 t.Span(DateTime.Now.ToString("dd/MM/yyyy HH:mm", culture)).Italic();
             });
         });

@@ -25,7 +25,7 @@ public class IncidentsReportPdfService
     {
         _navy = AppConfigurationService.Instance?.Current.PdfHeaderHex ?? "#1B365D";
         _green = AppConfigurationService.Instance?.Current.PdfAccentHex ?? "#16A34A";
-        var company = AppConfigurationService.Instance?.Current.CompanyName ?? BuildingInfoDefaults.CompanyName;
+        var company = PdfThemeHelper.ResolveCompanyName();
         var culture = CultureInfo.GetCultureInfo("fr-FR");
         var list = items.ToList();
 
@@ -71,6 +71,7 @@ public class IncidentsReportPdfService
                             Header("ID");
                             Header("Date");
                             Header("Type");
+                            Header("Matériel");
                             Header("Emplacement");
                             Header("Gravité");
                             Header("Responsable");
@@ -83,6 +84,7 @@ public class IncidentsReportPdfService
                                 table.Cell().Element(Td).Text(i.Code);
                                 table.Cell().Element(Td).Text(i.DateDisplay);
                                 table.Cell().Element(Td).Text(i.TypeLabel);
+                                table.Cell().Element(Td).Text(i.EquipmentLabel);
                                 table.Cell().Element(Td).Text(i.Location);
                                 table.Cell().Element(Td).Text(i.SeverityLabel);
                                 table.Cell().Element(Td).Text(i.Responsible);
@@ -93,7 +95,7 @@ public class IncidentsReportPdfService
                         });
                     }));
 
-                    root.Item().PaddingTop(10).Text($"{list.Count} incident(s) — SBMS Incidents & Sécurité")
+                    root.Item().PaddingTop(10).Text($"{list.Count} incident(s) — {company}")
                         .FontSize(7).FontColor("#94A3B8");
                 });
             });
@@ -114,8 +116,8 @@ public class IncidentsReportPdfService
         {
             row.RelativeItem().Column(left =>
             {
-                left.Item().Text("SBMS").Bold().FontSize(18).FontColor(_navy);
-                left.Item().Text(company).FontSize(8).FontColor("#64748B");
+                left.Item().Text(company).Bold().FontSize(16).FontColor(_navy);
+                left.Item().Text("Rapport incidents & sécurité").FontSize(8).FontColor("#64748B");
             });
             row.RelativeItem(2).AlignCenter().Column(center =>
             {

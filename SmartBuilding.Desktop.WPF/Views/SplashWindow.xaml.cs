@@ -30,6 +30,16 @@ public partial class SplashWindow : Window
         });
     }
 
+    public void ApplyBranding(string companyName, string subtitle)
+    {
+        Dispatcher.Invoke(() =>
+        {
+            Title = companyName;
+            BrandTitleText.Text = companyName;
+            BrandSubtitleText.Text = subtitle;
+        });
+    }
+
     public Task CloseAnimatedAsync()
     {
         _fadeOutTcs = new TaskCompletionSource();

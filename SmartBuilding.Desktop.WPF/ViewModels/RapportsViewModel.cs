@@ -26,6 +26,7 @@ public partial class RapportsViewModel : BaseViewModel
     private List<RapportIncidentRow> _allIncidents = [];
     private List<RapportVisiteRow> _allVisites = [];
     private List<RapportActiviteRow> _allActivites = [];
+    private List<RapportFinancierLigne> _allFinancierLignes = [];
 
     public const string AllDepartements = "Tous";
     public const string AllStatuts = "Tous";
@@ -37,7 +38,7 @@ public partial class RapportsViewModel : BaseViewModel
     [ObservableProperty] private string _userInitials = "AD";
     [ObservableProperty] private string _searchQuery = string.Empty;
     [ObservableProperty] private int _selectedSectionTab;
-    [ObservableProperty] private DateTime _dateFrom = new(DateTime.Today.Year, DateTime.Today.Month, 1);
+    [ObservableProperty] private DateTime _dateFrom = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1).AddMonths(-11);
     [ObservableProperty] private DateTime _dateTo = DateTime.Today;
 
     [ObservableProperty] private string _filterDepartement = AllDepartements;
@@ -78,6 +79,7 @@ public partial class RapportsViewModel : BaseViewModel
     public ObservableCollection<RapportIncidentRow> IncidentRows { get; } = [];
     public ObservableCollection<RapportVisiteRow> VisiteRows { get; } = [];
     public ObservableCollection<RapportActiviteRow> ActiviteRows { get; } = [];
+    public ObservableCollection<RapportFinancierLigne> FinancierLignes { get; } = [];
 
     public ObservableCollection<string> SectionTabs { get; } =
     [
@@ -128,6 +130,7 @@ public partial class RapportsViewModel : BaseViewModel
             _allIncidents = data.Incidents.ToList();
             _allVisites = data.Visites.ToList();
             _allActivites = data.Activites.ToList();
+            _allFinancierLignes = data.FinancierLignes.ToList();
             FinancierSummary = data.Financier;
 
             ReplaceFilters(DepartementFilters, data.DepartementFilters);
@@ -285,6 +288,7 @@ public partial class RapportsViewModel : BaseViewModel
         ReplaceCollection(IncidentRows, FilterIncidents(q));
         ReplaceCollection(VisiteRows, FilterVisites(q));
         ReplaceCollection(ActiviteRows, FilterActivites(q));
+        ReplaceCollection(FinancierLignes, FilterFinancierLignes(q));
         UpdateKpis();
     }
 
@@ -298,7 +302,8 @@ public partial class RapportsViewModel : BaseViewModel
     private IEnumerable<RapportLoyerRow> FilterLoyers(string q) =>
         _allLoyers.Where(l =>
             (FilterStatutLoyer == AllStatuts || l.StatutPaiement.Equals(FilterStatutLoyer, StringComparison.OrdinalIgnoreCase)) &&
-            (string.IsNullOrEmpty(q) || Contains(l.NomComplet, q) || Contains(l.Appartement, q) || Contains(l.Batiment, q)));
+            (string.IsNullOrEmpty(q) || Contains(l.NomComplet, q) || Contains(l.Appartement, q) ||
+             Contains(l.Batiment, q) || Contains(l.Periode, q) || Contains(l.Reference, q)));
 
     private IEnumerable<RapportDepenseRow> FilterDepenses(string q) =>
         _allDepenses.Where(d =>
@@ -308,7 +313,15 @@ public partial class RapportsViewModel : BaseViewModel
     private IEnumerable<RapportConsommationRow> FilterConsommations(string q) =>
         _allConsommations.Where(c =>
             (FilterCategorieConso == AllCategories || c.Categorie.Equals(FilterCategorieConso, StringComparison.OrdinalIgnoreCase)) &&
-            (string.IsNullOrEmpty(q) || Contains(c.Categorie, q) || Contains(c.Responsable, q)));
+            (string.IsNullOrEmpty(q) || Contains(c.Categorie, q) || Contains(c.Responsable, q) ||
+             Contains(c.Equipement, q) || Contains(c.Batiment, q) || Contains(c.Compteur, q) ||
+             Contains(c.Notes, q) || Contains(c.Statut, q)));
+
+    private IEnumerable<RapportFinancierLigne> FilterFinancierLignes(string q) =>
+        _allFinancierLignes.Where(l =>
+            string.IsNullOrEmpty(q) || Contains(l.Description, q) || Contains(l.Categorie, q) ||
+            Contains(l.Type, q) || Contains(l.Source, q) || Contains(l.Reference, q) ||
+            Contains(l.EnregistrePar, q));
 
     private IEnumerable<RapportContratRow> FilterContrats(string q) =>
         _allContrats.Where(c =>
@@ -344,15 +357,16 @@ public partial class RapportsViewModel : BaseViewModel
                     ("Masse salariale", MoneyFormatter.Format(PersonnelRows.Sum(p => p.Salaire))));
                 break;
             case 1:
-                var attendu = LoyerRows.Sum(l => l.MontantLoyer);
-                var encaisse = LoyerRows.Where(l => l.StatutPaiement == "Payé").Sum(l => l.MontantLoyer);
-                var retard = LoyerRows.Where(l => l.StatutPaiement is "En retard" or "Partiellement payé").Sum(l => l.MontantLoyer);
+                var attendu = LoyerRows.Sum(l => l.MontantDu);
+                var encaisse = LoyerRows.Sum(l => l.MontantPaye);
+                var retard = LoyerRows.Where(l => l.StatutPaiement is "En retard" or "Partiellement payé")
+                    .Sum(l => l.MontantDu - l.MontantPaye);
                 var taux = attendu > 0 ? $"{encaisse / attendu * 100:F1}%" : "0%";
                 SetKpis(
                     ("Loyers attendus", MoneyFormatter.Format(attendu)),
                     ("Loyers encaissés", MoneyFormatter.Format(encaisse)),
                     ("En retard", MoneyFormatter.Format(retard)),
-                    ("Locataires", LoyerRows.Count.ToString()),
+                    ("Paiements", LoyerRows.Count.ToString()),
                     ("Taux recouvrement", taux));
                 break;
             case 2:
@@ -377,8 +391,8 @@ public partial class RapportsViewModel : BaseViewModel
                     ("Total entrées", FinancierSummary.TotalEntreesDisplay),
                     ("Total sorties", FinancierSummary.TotalSortiesDisplay),
                     ("Solde actuel", FinancierSummary.SoldeActuelDisplay),
-                    ("Bénéfice", FinancierSummary.BeneficeDisplay),
-                    ("Perte", FinancierSummary.PerteDisplay));
+                    ("Lignes détaillées", FinancierLignes.Count.ToString()),
+                    ("Bénéfice période", FinancierSummary.BeneficeDisplay));
                 break;
             case 5:
                 SetKpis(
@@ -502,16 +516,18 @@ public partial class RapportsViewModel : BaseViewModel
                     p.Presences.ToString(), p.Absences.ToString(), p.Retards.ToString(), p.SalaireDisplay, p.StatutPaiement }).ToList(),
                 (labels, values)),
             1 => ("Rapport Loyers",
-                ["Locataire", "Appartement", "Bâtiment", "Loyer", "Échéance", "Dernier paiement", "Statut"],
-                LoyerRows.Select(l => new[] { l.NomComplet, l.Appartement, l.Batiment, l.MontantLoyerDisplay, l.DateEcheance, l.DernierPaiement, l.StatutPaiement }).ToList(),
+                ["Période", "Locataire", "Appartement", "Dû", "Payé", "Pénalité", "Échéance", "Paiement", "Mode", "Référence", "Statut"],
+                LoyerRows.Select(l => new[] { l.Periode, l.NomComplet, l.Appartement, l.MontantDuDisplay, l.MontantPayeDisplay,
+                    l.PenaliteDisplay, l.DateEcheance, l.DernierPaiement, l.ModePaiement, l.Reference, l.StatutPaiement }).ToList(),
                 (labels, values)),
             2 => ("Rapport Dépenses",
                 ["Date", "Catégorie", "Montant", "Description", "Responsable", "Statut", "Créé par", "Validé par"],
                 DepenseRows.Select(d => new[] { d.DateDisplay, d.Categorie, d.MontantDisplay, d.Description, d.Responsable, d.StatutValidation, d.CreePar, d.ValidePar }).ToList(),
                 (labels, values)),
             3 => ("Rapport Consommations",
-                ["Date", "Catégorie", "Quantité", "Coût unit.", "Coût total", "Responsable"],
-                ConsommationRows.Select(c => new[] { c.DateDisplay, c.Categorie, $"{c.Quantite} {c.Unite}", c.CoutUnitaireDisplay, c.CoutTotalDisplay, c.Responsable }).ToList(),
+                ["Période début", "Période fin", "Catégorie", "Équipement", "Bâtiment", "Quantité", "Coût unit.", "Coût total", "Compteur", "Statut", "Variation", "Responsable", "Notes"],
+                ConsommationRows.Select(c => new[] { c.PeriodeDebut, c.PeriodeFin, c.Categorie, c.Equipement, c.Batiment, c.QuantiteDisplay,
+                    c.CoutUnitaireDisplay, c.CoutTotalDisplay, c.Compteur, c.Statut, c.VariationDisplay, c.Responsable, c.Notes }).ToList(),
                 (labels, values)),
             5 => ("Rapport Contrats",
                 ["N° contrat", "Locataire", "Appartement", "Début", "Fin", "Type", "Statut", "Validé par"],
@@ -528,6 +544,11 @@ public partial class RapportsViewModel : BaseViewModel
             8 => ("Rapport Activités",
                 ["Utilisateur", "Action", "Module", "Date", "Heure", "IP", "Appareil"],
                 ActiviteRows.Select(a => new[] { a.Utilisateur, a.Action, a.Module, a.Date, a.Heure, a.AdresseIp, a.Appareil }).ToList(),
+                (labels, values)),
+            4 => ("Rapport Financier — détail",
+                ["Date", "Type", "Catégorie", "Description", "Montant", "Source", "Mode", "Référence", "Statut", "Enregistré par"],
+                FinancierLignes.Select(l => new[] { l.DateDisplay, l.Type, l.Categorie, l.Description, l.MontantDisplay,
+                    l.Source, l.ModePaiement, l.Reference, l.Statut, l.EnregistrePar }).ToList(),
                 (labels, values)),
             _ => ("Rapport Financier", new List<string> { "Libellé", "Montant" },
                 new List<string[]>

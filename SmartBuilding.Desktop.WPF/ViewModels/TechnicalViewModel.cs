@@ -7,6 +7,7 @@ using LiveChartsCore.SkiaSharpView;
 using LiveChartsCore.SkiaSharpView.Painting;
 using SkiaSharp;
 using SmartBuilding.Application.Interfaces;
+using SmartBuilding.Domain.Entities.Building;
 using SmartBuilding.Domain.Entities.Technical;
 using SmartBuilding.Domain.Enums;
 using SmartBuilding.Desktop.WPF.Helpers;
@@ -55,6 +56,7 @@ public partial class TechnicalViewModel : BaseViewModel
     [ObservableProperty] private string _lastSyncDisplay = "Dernière sync : —";
     [ObservableProperty] private int _openIncidentsCount;
     [ObservableProperty] private int _criticalIncidentsCount;
+    [ObservableProperty] private string _brandCompanyName = BuildingInfoDefaults.CompanyName;
 
     [ObservableProperty] private int _totalEquipment;
     [ObservableProperty] private int _operationalCount;
@@ -72,6 +74,9 @@ public partial class TechnicalViewModel : BaseViewModel
     [ObservableProperty] private string _formCategory = "Électricité";
     [ObservableProperty] private string _formLocation = string.Empty;
     [ObservableProperty] private string _formBrand = string.Empty;
+    [ObservableProperty] private string _formPurchasePriceText = string.Empty;
+    [ObservableProperty] private DateTime? _formPurchaseDate = DateTime.Today;
+    [ObservableProperty] private string _formStatus = "Opérationnel";
     [ObservableProperty] private string? _formError;
 
     [ObservableProperty] private ISeries[] _categoryPieSeries = [];
@@ -85,6 +90,8 @@ public partial class TechnicalViewModel : BaseViewModel
     public ObservableCollection<int> PageSizeOptions { get; } = [10, 20, 50];
     public ObservableCollection<string> EquipmentCategories { get; } =
         ["Électricité", "Climatisation", "Plomberie", "Sécurité", "Ascenseur", "Autre"];
+    public ObservableCollection<string> EquipmentStatusOptions { get; } =
+        ["Opérationnel", "En maintenance", "En panne", "Hors service"];
 
     public ObservableCollection<string> SectionTabs { get; } = ["Équipements", "Incidents & Sécurité"];
 
@@ -97,7 +104,12 @@ public partial class TechnicalViewModel : BaseViewModel
     {
         _technicalService = technicalService;
         _incidents = incidentsViewModel;
-        appConfiguration.ConfigurationChanged += (_, _) => _ = LoadAsync();
+        BrandCompanyName = appConfiguration.Current.CompanyName;
+        appConfiguration.ConfigurationChanged += (_, _) =>
+        {
+            BrandCompanyName = appConfiguration.Current.CompanyName;
+            _ = LoadAsync();
+        };
         _incidents.IsEmbedded = true;
         _syncService = syncService;
         UserName = session.CurrentUser?.FullName ?? "Admin Principal";
@@ -198,6 +210,9 @@ public partial class TechnicalViewModel : BaseViewModel
         FormCategory = "Électricité";
         FormLocation = "RDC — Local technique";
         FormBrand = string.Empty;
+        FormPurchasePriceText = string.Empty;
+        FormPurchaseDate = DateTime.Today;
+        FormStatus = "Opérationnel";
         FormError = null;
         IsAddFormOpen = true;
     }
@@ -209,6 +224,18 @@ public partial class TechnicalViewModel : BaseViewModel
     private async Task SaveEquipmentAsync()
     {
         FormError = null;
+
+        decimal purchaseValue = 0;
+        if (!string.IsNullOrWhiteSpace(FormPurchasePriceText))
+        {
+            if (!decimal.TryParse(FormPurchasePriceText.Replace(',', '.'), NumberStyles.Any, CultureInfo.InvariantCulture, out purchaseValue)
+                || purchaseValue < 0)
+            {
+                FormError = "Prix d'achat invalide.";
+                return;
+            }
+        }
+
         IsBusy = true;
         try
         {
@@ -219,7 +246,9 @@ public partial class TechnicalViewModel : BaseViewModel
                 Category = FormCategory,
                 Location = FormLocation,
                 Brand = FormBrand,
-                Status = EquipmentStatus.Operationnel,
+                PurchaseValue = purchaseValue,
+                InstallationDate = FormPurchaseDate,
+                Status = ParseEquipmentStatus(FormStatus),
                 LastMaintenanceDate = DateTime.Today.AddMonths(-3),
                 NextMaintenanceDate = DateTime.Today.AddMonths(3)
             });
@@ -401,4 +430,12 @@ public partial class TechnicalViewModel : BaseViewModel
             ? $"{parts[0][0]}{parts[^1][0]}".ToUpperInvariant()
             : name.Length >= 2 ? name[..2].ToUpperInvariant() : "AD";
     }
+
+    private static EquipmentStatus ParseEquipmentStatus(string label) => label switch
+    {
+        "En maintenance" => EquipmentStatus.Maintenance,
+        "En panne" => EquipmentStatus.EnPanne,
+        "Hors service" => EquipmentStatus.HorsService,
+        _ => EquipmentStatus.Operationnel
+    };
 }

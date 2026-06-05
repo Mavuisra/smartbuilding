@@ -6,6 +6,7 @@ using SmartBuilding.Application.Interfaces;
 using SmartBuilding.Domain.Interfaces;
 using SmartBuilding.Infrastructure.Persistence;
 using SmartBuilding.Infrastructure.Services;
+using SmartBuilding.Infrastructure.Sync;
 
 namespace SmartBuilding.Infrastructure;
 
@@ -58,6 +59,8 @@ public static class DependencyInjection
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<FinanceLedgerService>();
         services.AddScoped<IDashboardService, DashboardService>();
+        services.AddSingleton<ISyncNotifier, SyncNotifier>();
+        services.AddScoped<CloudIdentityService>();
         services.AddScoped<ISyncService, SyncService>();
         services.AddScoped<IEmailService, EmailService>();
         services.AddScoped<IReportService, ReportService>();

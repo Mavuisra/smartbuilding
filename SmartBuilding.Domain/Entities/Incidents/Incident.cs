@@ -12,6 +12,7 @@ public class Incident : BaseEntity
     public IncidentSeverity Severity { get; set; }
     public IncidentStatus Status { get; set; } = IncidentStatus.Ouvert;
     public string Location { get; set; } = string.Empty;
+    public Guid? EquipmentId { get; set; }
     public string Building { get; set; } = string.Empty;
     public string Responsible { get; set; } = string.Empty;
     public string RiskLevel { get; set; } = "Moyen";

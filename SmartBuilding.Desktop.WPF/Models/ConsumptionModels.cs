@@ -43,6 +43,14 @@ public partial class ConsumptionListItem : ObservableObject
     public string VariationDisplay { get; init; } = "—";
     public string VariationColor { get; init; } = "#64748B";
     public string Responsible { get; init; } = "—";
+    public string ExpenseMotif { get; init; } = "—";
+    public string PaidBy { get; init; } = "—";
+    public string ReimbursementStatus { get; init; } = "Non applicable";
+    public string ReimbursementDisplay { get; init; } = "—";
+    public string ReimbursementBadgeBackground { get; init; } = "#F1F5F9";
+    public string ReimbursementBadgeForeground { get; init; } = "#64748B";
+    public bool CanMarkReimbursed { get; init; }
+    public bool HasReimbursementInfo { get; init; }
     public string StatusLabel { get; init; } = "Normal";
     public string StatusBadgeBackground { get; init; } = "#DCFCE7";
     public string StatusBadgeForeground { get; init; } = "#166534";

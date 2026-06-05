@@ -47,6 +47,7 @@ public class SynchronizationService
 
         var apiUrl = _configuration["Api:BaseUrl"] ?? "https://localhost:7001/";
         var interval = _configuration.GetValue("Sync:IntervalSeconds", 60);
+        var autoSyncEnabled = _configuration.GetValue("Sync:EnableAutoSync", true);
         var dbPath = MaskConnectionString(_localDb.ConnectionString);
         (long Size, DateTime? LastWrite) dbInfo = _localDb.IsMySql
             ? (0L, null)
@@ -81,13 +82,15 @@ public class SynchronizationService
         var last7 = await BuildLast7DaysAsync(cancellationToken);
 
         var progress = totalRecords == 0 ? 100.0 : Math.Round(syncedCount * 100.0 / totalRecords, 0);
-        var statusText = pendingCount == 0 && cloudOk
-            ? "Terminée avec succès"
-            : pendingCount > 0
-                ? "En attente de synchronisation"
+        var statusText = !autoSyncEnabled
+            ? "Synchronisation automatique désactivée"
+            : !isOnline
+                ? "Hors ligne — envoi automatique dès reconnexion"
                 : !cloudOk
-                    ? "Hors ligne"
-                    : "À jour";
+                    ? "Internet OK — serveur cloud injoignable"
+                    : pendingCount > 0
+                        ? "Envoi automatique en cours…"
+                        : "À jour — sync automatique active";
 
         return new SyncPageData
         {
@@ -119,7 +122,9 @@ public class SynchronizationService
             History = history,
             Alerts = alerts,
             Last7DaysCounts = last7,
-            LastSyncError = lastSyncError
+            LastSyncError = lastSyncError,
+            AutoSyncEnabled = autoSyncEnabled,
+            AutoSyncStatusLabel = BuildAutoSyncStatusLabel(autoSyncEnabled, isOnline, cloudOk, pendingCount, interval)
         };
     }
 
@@ -257,14 +262,14 @@ public class SynchronizationService
         return new SyncHistoryRow
         {
             StartedAt = log.StartedAt.ToLocalTime(),
-            TypeLabel = log.Direction is "Manual" ? "Manuelle" : "Automatique",
+            TypeLabel = log.Direction.StartsWith("Manual", StringComparison.OrdinalIgnoreCase) ? "Manuelle" : "Automatique",
             Success = log.Success,
             ItemsCount = items,
             DataSizeLabel = items > 0 ? $"~{items * 2} KB" : "—",
             DurationLabel = duration.TotalSeconds > 0
                 ? $"{(int)duration.TotalMinutes:00}:{duration.Seconds:00}"
                 : "—",
-            UserName = log.Direction is "Manual" ? "Admin" : "Système",
+            UserName = log.Direction.StartsWith("Manual", StringComparison.OrdinalIgnoreCase) ? "Admin" : "Système",
             Detail = log.Success ? null : log.ErrorMessage
         };
     }
@@ -286,6 +291,34 @@ public class SynchronizationService
         return result;
     }
 
+    private static string BuildAutoSyncStatusLabel(
+        bool autoSyncEnabled,
+        bool isOnline,
+        bool cloudOk,
+        int pendingCount,
+        int intervalSeconds)
+    {
+        if (!autoSyncEnabled)
+            return "Désactivée dans la configuration";
+
+        if (!isOnline)
+            return "En attente d'Internet — envoi dès reconnexion";
+
+        if (!cloudOk)
+            return "Internet disponible — connexion au cloud en cours";
+
+        if (pendingCount > 0)
+        {
+            var fast = Math.Min(20, intervalSeconds);
+            return $"Active — {pendingCount} élément(s) en file (cycle {fast}s)";
+        }
+
+        var label = intervalSeconds >= 60
+            ? $"Active — vérification toutes les {intervalSeconds / 60} min"
+            : $"Active — vérification toutes les {intervalSeconds}s";
+        return label;
+    }
+
     private static IReadOnlyList<SyncAlertRow> BuildAlerts(
         int pending,
         int conflicts,
@@ -295,6 +328,20 @@ public class SynchronizationService
         bool isOnline)
     {
         var alerts = new List<SyncAlertRow>();
+
+        if (pending > 0)
+        {
+            alerts.Insert(0, new SyncAlertRow
+            {
+                IconKind = "Sync",
+                IconColor = "#2563EB",
+                Title = "Envoi automatique",
+                Message = isOnline && cloudOk
+                    ? $"{pending} élément(s) seront envoyés au cloud sans action requise"
+                    : $"{pending} élément(s) en file — envoi dès qu'Internet et le cloud sont disponibles",
+                TimeLabel = "Automatique"
+            });
+        }
 
         if (pending > 0)
         {
@@ -375,6 +422,18 @@ public class SynchronizationService
                 Title = "Échec de synchronisation",
                 Message = "La dernière synchronisation a échoué",
                 TimeLabel = FormatTimeAgo(lastLog.StartedAt)
+            });
+        }
+
+        if (isOnline && cloudOk)
+        {
+            alerts.Insert(0, new SyncAlertRow
+            {
+                IconKind = "AccountCheck",
+                IconColor = "#2D6A4F",
+                Title = "Identifiants unifiés",
+                Message = "Utilisez le même nom d'utilisateur et mot de passe sur le portail web en ligne.",
+                TimeLabel = "Local = Cloud"
             });
         }
 

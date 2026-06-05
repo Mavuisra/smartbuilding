@@ -230,6 +230,7 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="280"/>
+                        <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
                     <UniformGrid Grid.Row="0" Columns="2" Margin="0,0,0,10">
                         <Border Background="White" CornerRadius="10" Padding="16" Margin="4" BorderBrush="#E2E8F0" BorderThickness="1">
@@ -303,6 +304,30 @@
                             </StackPanel>
                         </Border>
                     </UniformGrid>
+                    <Border Grid.Row="2" Style="{StaticResource RapportsTableContainer}" Margin="4,10,4,0">
+                        <StackPanel>
+                            <TextBlock Text="Détail de toutes les opérations financières" FontWeight="Bold" Foreground="#1B3D3B" Margin="4,0,0,10"/>
+                            <DataGrid ItemsSource="{Binding FinancierLignes}" Style="{StaticResource RapportsDataGrid}"
+                                      CanUserSortColumns="True" MinWidth="1500" MinHeight="320"
+                                      materialDesign:DataGridAssist.CellPadding="14,10">
+                                <DataGrid.Resources>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource RapportsCellText}"/>
+                                </DataGrid.Resources>
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="DATE" Binding="{Binding DateDisplay}" Width="110" MinWidth="95"/>
+                                    <DataGridTextColumn Header="TYPE" Binding="{Binding Type}" Width="90" MinWidth="75"/>
+                                    <DataGridTextColumn Header="CATÉGORIE" Binding="{Binding Categorie}" Width="130" MinWidth="100"/>
+                                    <DataGridTextColumn Header="DESCRIPTION" Binding="{Binding Description}" Width="280" MinWidth="180"/>
+                                    <DataGridTextColumn Header="MONTANT" Binding="{Binding MontantDisplay}" Width="120" MinWidth="100"/>
+                                    <DataGridTextColumn Header="SOURCE" Binding="{Binding Source}" Width="110" MinWidth="90"/>
+                                    <DataGridTextColumn Header="MODE" Binding="{Binding ModePaiement}" Width="110" MinWidth="90"/>
+                                    <DataGridTextColumn Header="RÉFÉRENCE" Binding="{Binding Reference}" Width="120" MinWidth="90"/>
+                                    <DataGridTextColumn Header="STATUT" Binding="{Binding Statut}" Width="120" MinWidth="90"/>
+                                    <DataGridTextColumn Header="ENREGISTRÉ PAR" Binding="{Binding EnregistrePar}" Width="140" MinWidth="110"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </StackPanel>
+                    </Border>
                 </Grid>
 
                 <!-- Graphique consommations (section 3) -->
@@ -352,17 +377,19 @@
                             <Style TargetType="TextBlock" BasedOn="{StaticResource RapportsCellText}"/>
                         </DataGrid.Resources>
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="LOCATAIRE" Binding="{Binding NomComplet}" Width="180" MinWidth="130"/>
-                            <DataGridTextColumn Header="PROFESSION" Binding="{Binding Profession}" Width="140" MinWidth="100"/>
-                            <DataGridTextColumn Header="TÉLÉPHONE" Binding="{Binding Telephone}" Width="130" MinWidth="100"/>
-                            <DataGridTextColumn Header="APPARTEMENT" Binding="{Binding Appartement}" Width="140" MinWidth="100"/>
-                            <DataGridTextColumn Header="BÂTIMENT" Binding="{Binding Batiment}" Width="120" MinWidth="90"/>
-                            <DataGridTextColumn Header="TYPE CONTRAT" Binding="{Binding TypeContrat}" Width="120" MinWidth="90"/>
-                            <DataGridTextColumn Header="MONTANT LOYER" Binding="{Binding MontantLoyerDisplay}" Width="130" MinWidth="110"/>
-                            <DataGridTextColumn Header="GARANTIE" Binding="{Binding GarantieDisplay}" Width="120" MinWidth="100"/>
-                            <DataGridTextColumn Header="DATE ÉCHÉANCE" Binding="{Binding DateEcheance}" Width="120" MinWidth="100"/>
-                            <DataGridTextColumn Header="DERNIER PAIEMENT" Binding="{Binding DernierPaiement}" Width="140" MinWidth="110"/>
-                            <DataGridTemplateColumn Header="STATUT PAIEMENT" Width="160" MinWidth="130">
+                            <DataGridTextColumn Header="PÉRIODE" Binding="{Binding Periode}" Width="80" MinWidth="70"/>
+                            <DataGridTextColumn Header="LOCATAIRE" Binding="{Binding NomComplet}" Width="160" MinWidth="120"/>
+                            <DataGridTextColumn Header="APPARTEMENT" Binding="{Binding Appartement}" Width="120" MinWidth="90"/>
+                            <DataGridTextColumn Header="BÂTIMENT" Binding="{Binding Batiment}" Width="110" MinWidth="85"/>
+                            <DataGridTextColumn Header="MONTANT DÛ" Binding="{Binding MontantDuDisplay}" Width="115" MinWidth="95"/>
+                            <DataGridTextColumn Header="MONTANT PAYÉ" Binding="{Binding MontantPayeDisplay}" Width="115" MinWidth="95"/>
+                            <DataGridTextColumn Header="PÉNALITÉ" Binding="{Binding PenaliteDisplay}" Width="100" MinWidth="85"/>
+                            <DataGridTextColumn Header="ÉCHÉANCE" Binding="{Binding DateEcheance}" Width="105" MinWidth="90"/>
+                            <DataGridTextColumn Header="DATE PAIEMENT" Binding="{Binding DernierPaiement}" Width="115" MinWidth="95"/>
+                            <DataGridTextColumn Header="MODE" Binding="{Binding ModePaiement}" Width="110" MinWidth="90"/>
+                            <DataGridTextColumn Header="RÉFÉRENCE" Binding="{Binding Reference}" Width="110" MinWidth="85"/>
+                            <DataGridTextColumn Header="REÇU" Binding="{Binding NumeroRecu}" Width="100" MinWidth="80"/>
+                            <DataGridTemplateColumn Header="STATUT" Width="140" MinWidth="120">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <Border CornerRadius="10" Padding="10,6" Margin="4,2" Background="{Binding StatutBadgeBackground}">
@@ -385,13 +412,15 @@
                             <Style TargetType="TextBlock" BasedOn="{StaticResource RapportsCellText}"/>
                         </DataGrid.Resources>
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="DATE" Binding="{Binding DateDisplay}" Width="110" MinWidth="95"/>
-                            <DataGridTextColumn Header="CATÉGORIE" Binding="{Binding Categorie}" Width="140" MinWidth="110"/>
-                            <DataGridTextColumn Header="MONTANT" Binding="{Binding MontantDisplay}" Width="120" MinWidth="100"/>
-                            <DataGridTextColumn Header="DESCRIPTION" Binding="{Binding Description}" Width="280" MinWidth="180"/>
-                            <DataGridTextColumn Header="RESPONSABLE" Binding="{Binding Responsable}" Width="130" MinWidth="100"/>
-                            <DataGridTextColumn Header="SERVICE" Binding="{Binding Service}" Width="120" MinWidth="90"/>
-                            <DataGridTextColumn Header="JUSTIFICATIF" Binding="{Binding Justificatif}" Width="130" MinWidth="90"/>
+                            <DataGridTextColumn Header="DATE" Binding="{Binding DateDisplay}" Width="105" MinWidth="90"/>
+                            <DataGridTextColumn Header="RÉFÉRENCE" Binding="{Binding Reference}" Width="110" MinWidth="85"/>
+                            <DataGridTextColumn Header="CATÉGORIE" Binding="{Binding Categorie}" Width="130" MinWidth="100"/>
+                            <DataGridTextColumn Header="MONTANT" Binding="{Binding MontantDisplay}" Width="115" MinWidth="95"/>
+                            <DataGridTextColumn Header="DESCRIPTION" Binding="{Binding Description}" Width="240" MinWidth="160"/>
+                            <DataGridTextColumn Header="RESPONSABLE" Binding="{Binding Responsable}" Width="120" MinWidth="90"/>
+                            <DataGridTextColumn Header="SERVICE" Binding="{Binding Service}" Width="110" MinWidth="85"/>
+                            <DataGridTextColumn Header="MODE PAIEMENT" Binding="{Binding ModePaiement}" Width="120" MinWidth="95"/>
+                            <DataGridTextColumn Header="JUSTIFICATIF" Binding="{Binding Justificatif}" Width="110" MinWidth="85"/>
                             <DataGridTextColumn Header="STATUT VALIDATION" Binding="{Binding StatutValidation}" Width="150" MinWidth="110"/>
                             <DataGridTextColumn Header="CRÉÉ PAR" Binding="{Binding CreePar}" Width="120" MinWidth="90"/>
                             <DataGridTextColumn Header="VALIDÉ PAR" Binding="{Binding ValidePar}" Width="120" MinWidth="90"/>
@@ -403,22 +432,35 @@
 
                 <Border Style="{StaticResource RapportsTableContainer}"
                         Visibility="{Binding SelectedSectionTab, Converter={StaticResource IntEqualsToVisibilityConverter}, ConverterParameter=3}">
+                    <StackPanel>
+                        <TextBlock Text="Détail de chaque relevé de consommation (ligne par ligne)" FontWeight="Bold"
+                                   Foreground="#1B3D3B" Margin="4,0,0,10"/>
                     <DataGrid ItemsSource="{Binding ConsommationRows}" Style="{StaticResource RapportsDataGrid}"
-                              CanUserSortColumns="True" MinWidth="1100"
+                              CanUserSortColumns="True" MinWidth="2200"
                               materialDesign:DataGridAssist.CellPadding="14,10">
                         <DataGrid.Resources>
                             <Style TargetType="TextBlock" BasedOn="{StaticResource RapportsCellText}"/>
                         </DataGrid.Resources>
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="DATE" Binding="{Binding DateDisplay}" Width="115" MinWidth="95"/>
-                            <DataGridTextColumn Header="CATÉGORIE" Binding="{Binding Categorie}" Width="160" MinWidth="120"/>
-                            <DataGridTextColumn Header="QUANTITÉ" Binding="{Binding Quantite}" Width="100" MinWidth="80"/>
-                            <DataGridTextColumn Header="UNITÉ" Binding="{Binding Unite}" Width="90" MinWidth="70"/>
-                            <DataGridTextColumn Header="COÛT UNITAIRE" Binding="{Binding CoutUnitaireDisplay}" Width="130" MinWidth="110"/>
-                            <DataGridTextColumn Header="COÛT TOTAL" Binding="{Binding CoutTotalDisplay}" Width="130" MinWidth="110"/>
-                            <DataGridTextColumn Header="RESPONSABLE" Binding="{Binding Responsable}" Width="200" MinWidth="120"/>
+                            <DataGridTextColumn Header="PÉRIODE DÉBUT" Binding="{Binding PeriodeDebut}" Width="115" MinWidth="95"/>
+                            <DataGridTextColumn Header="PÉRIODE FIN" Binding="{Binding PeriodeFin}" Width="115" MinWidth="95"/>
+                            <DataGridTextColumn Header="CATÉGORIE" Binding="{Binding Categorie}" Width="130" MinWidth="100"/>
+                            <DataGridTextColumn Header="ÉQUIPEMENT" Binding="{Binding Equipement}" Width="200" MinWidth="140"/>
+                            <DataGridTextColumn Header="BÂTIMENT" Binding="{Binding Batiment}" Width="110" MinWidth="85"/>
+                            <DataGridTextColumn Header="QUANTITÉ" Binding="{Binding QuantiteDisplay}" Width="120" MinWidth="95"/>
+                            <DataGridTextColumn Header="COÛT UNITAIRE" Binding="{Binding CoutUnitaireDisplay}" Width="120" MinWidth="100"/>
+                            <DataGridTextColumn Header="COÛT TOTAL" Binding="{Binding CoutTotalDisplay}" Width="120" MinWidth="100"/>
+                            <DataGridTextColumn Header="DEVISE" Binding="{Binding Devise}" Width="70" MinWidth="55"/>
+                            <DataGridTextColumn Header="COMPTEUR" Binding="{Binding Compteur}" Width="130" MinWidth="95"/>
+                            <DataGridTextColumn Header="TYPE PÉRIODE" Binding="{Binding TypePeriode}" Width="100" MinWidth="80"/>
+                            <DataGridTextColumn Header="STATUT" Binding="{Binding Statut}" Width="95" MinWidth="75"/>
+                            <DataGridTextColumn Header="VARIATION" Binding="{Binding VariationDisplay}" Width="90" MinWidth="75"/>
+                            <DataGridTextColumn Header="ANOMALIE" Binding="{Binding Anomalie}" Width="85" MinWidth="70"/>
+                            <DataGridTextColumn Header="RESPONSABLE" Binding="{Binding Responsable}" Width="120" MinWidth="95"/>
+                            <DataGridTextColumn Header="NOTES" Binding="{Binding Notes}" Width="180" MinWidth="120"/>
                         </DataGrid.Columns>
                     </DataGrid>
+                    </StackPanel>
                 </Border>
 
                 <Border Style="{StaticResource RapportsTableContainer}"

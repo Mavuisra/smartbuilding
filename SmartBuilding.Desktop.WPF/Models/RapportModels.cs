@@ -7,6 +7,7 @@ public class RapportsPageData
     public IReadOnlyList<RapportDepenseRow> Depenses { get; init; } = [];
     public IReadOnlyList<RapportConsommationRow> Consommations { get; init; } = [];
     public RapportFinancierSummary Financier { get; init; } = new();
+    public IReadOnlyList<RapportFinancierLigne> FinancierLignes { get; init; } = [];
     public IReadOnlyList<RapportContratRow> Contrats { get; init; } = [];
     public IReadOnlyList<RapportIncidentRow> Incidents { get; init; } = [];
     public IReadOnlyList<RapportVisiteRow> Visites { get; init; } = [];
@@ -62,15 +63,25 @@ public class RapportLoyerRow
     public string Appartement { get; init; } = string.Empty;
     public string Batiment { get; init; } = string.Empty;
     public string TypeContrat { get; init; } = string.Empty;
+    public string Periode { get; init; } = string.Empty;
     public decimal MontantLoyer { get; init; }
     public string MontantLoyerDisplay { get; init; } = string.Empty;
+    public decimal MontantDu { get; init; }
+    public decimal MontantPaye { get; init; }
+    public string MontantDuDisplay { get; init; } = string.Empty;
+    public string MontantPayeDisplay { get; init; } = string.Empty;
+    public string PenaliteDisplay { get; init; } = string.Empty;
     public decimal Garantie { get; init; }
     public string GarantieDisplay { get; init; } = string.Empty;
     public string DateEcheance { get; init; } = string.Empty;
     public string DernierPaiement { get; init; } = string.Empty;
+    public string ModePaiement { get; init; } = string.Empty;
+    public string Reference { get; init; } = string.Empty;
+    public string NumeroRecu { get; init; } = string.Empty;
     public string StatutPaiement { get; init; } = string.Empty;
     public string StatutBadgeBackground { get; init; } = "#F1F5F9";
     public string StatutBadgeForeground { get; init; } = "#475569";
+    public DateTime DueDate { get; init; }
 }
 
 public class RapportDepenseRow
@@ -78,12 +89,14 @@ public class RapportDepenseRow
     public Guid Id { get; init; }
     public DateTime Date { get; init; }
     public string DateDisplay { get; init; } = string.Empty;
+    public string Reference { get; init; } = string.Empty;
     public string Categorie { get; init; } = string.Empty;
     public decimal Montant { get; init; }
     public string MontantDisplay { get; init; } = string.Empty;
     public string Description { get; init; } = string.Empty;
     public string Responsable { get; init; } = string.Empty;
     public string Service { get; init; } = string.Empty;
+    public string ModePaiement { get; init; } = string.Empty;
     public string Justificatif { get; init; } = string.Empty;
     public string StatutValidation { get; init; } = string.Empty;
     public string CreePar { get; init; } = string.Empty;
@@ -97,14 +110,43 @@ public class RapportConsommationRow
     public Guid Id { get; init; }
     public DateTime Date { get; init; }
     public string DateDisplay { get; init; } = string.Empty;
+    public string PeriodeDebut { get; init; } = string.Empty;
+    public string PeriodeFin { get; init; } = string.Empty;
     public string Categorie { get; init; } = string.Empty;
+    public string Equipement { get; init; } = string.Empty;
+    public string Batiment { get; init; } = string.Empty;
     public decimal Quantite { get; init; }
     public string Unite { get; init; } = string.Empty;
+    public string QuantiteDisplay { get; init; } = string.Empty;
     public decimal CoutUnitaire { get; init; }
     public string CoutUnitaireDisplay { get; init; } = string.Empty;
     public decimal CoutTotal { get; init; }
     public string CoutTotalDisplay { get; init; } = string.Empty;
+    public string Devise { get; init; } = string.Empty;
+    public string Compteur { get; init; } = string.Empty;
+    public string TypePeriode { get; init; } = string.Empty;
+    public string Statut { get; init; } = string.Empty;
+    public string VariationDisplay { get; init; } = string.Empty;
+    public string Anomalie { get; init; } = string.Empty;
     public string Responsable { get; init; } = string.Empty;
+    public string Notes { get; init; } = string.Empty;
+}
+
+public class RapportFinancierLigne
+{
+    public Guid Id { get; init; }
+    public DateTime Date { get; init; }
+    public string DateDisplay { get; init; } = string.Empty;
+    public string Type { get; init; } = string.Empty;
+    public string Categorie { get; init; } = string.Empty;
+    public string Description { get; init; } = string.Empty;
+    public decimal Montant { get; init; }
+    public string MontantDisplay { get; init; } = string.Empty;
+    public string Source { get; init; } = string.Empty;
+    public string ModePaiement { get; init; } = string.Empty;
+    public string Reference { get; init; } = string.Empty;
+    public string Statut { get; init; } = string.Empty;
+    public string EnregistrePar { get; init; } = string.Empty;
 }
 
 public class RapportFinancierSummary

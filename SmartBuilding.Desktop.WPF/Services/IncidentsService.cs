@@ -97,11 +97,19 @@ public class IncidentsService
             .Select(g => $"{g.Key} ({g.Count()} incidents)")
             .FirstOrDefault() ?? "—";
 
+        var equipmentById = allEquipment.ToDictionary(e => e.Id);
         var problematic = incidents
-            .GroupBy(i => i.IncidentType)
+            .Where(i => i.EquipmentId.HasValue && equipmentById.ContainsKey(i.EquipmentId.Value))
+            .GroupBy(i => equipmentById[i.EquipmentId!.Value].Name)
             .OrderByDescending(g => g.Count())
             .Select(g => $"{g.Key} ({g.Count()}×)")
-            .FirstOrDefault() ?? "—";
+            .FirstOrDefault()
+            ?? incidents
+                .GroupBy(i => string.IsNullOrWhiteSpace(i.IncidentType) ? "Autre" : i.IncidentType)
+                .OrderByDescending(g => g.Count())
+                .Select(g => $"{g.Key} ({g.Count()}×)")
+                .FirstOrDefault()
+            ?? "—";
 
         var recurring = incidents
             .GroupBy(i => i.IncidentType)
@@ -110,7 +118,7 @@ public class IncidentsService
             .Take(3)
             .ToList();
 
-        var items = incidents.Select(MapIncident).ToList();
+        var items = incidents.Select(i => MapIncident(i, equipmentById)).ToList();
         var interventionItems = allInterventions
             .OrderByDescending(iv => iv.StartedAt)
             .Select(iv => MapIntervention(iv, incidents))
@@ -185,12 +193,20 @@ public class IncidentsService
     {
         if (string.IsNullOrWhiteSpace(incident.Title))
             return "Le titre de l'incident est obligatoire.";
+        if (!incident.EquipmentId.HasValue || incident.EquipmentId == Guid.Empty)
+            return "Sélectionnez le matériel concerné.";
+
+        var equipment = await _db.Equipment.FirstOrDefaultAsync(e => e.Id == incident.EquipmentId, cancellationToken);
+        if (equipment is null)
+            return "Matériel introuvable.";
 
         if (string.IsNullOrWhiteSpace(incident.Code))
             incident.Code = $"INC-{DateTime.Today:yyyyMM}-{(await _db.Incidents.CountAsync(cancellationToken) + 1):D3}";
 
         incident.Building = string.IsNullOrWhiteSpace(incident.Building) ? "Tour SBMS" : incident.Building;
-        incident.Responsible = string.IsNullOrWhiteSpace(incident.Responsible) ? "Paul Ngoy" : incident.Responsible;
+        incident.Responsible = string.IsNullOrWhiteSpace(incident.Responsible) ? "—" : incident.Responsible.Trim();
+        if (string.IsNullOrWhiteSpace(incident.Location))
+            incident.Location = string.IsNullOrWhiteSpace(equipment.Location) ? "—" : equipment.Location.Trim();
         incident.ReportedAt = incident.ReportedAt == default ? DateTime.Now : incident.ReportedAt;
         incident.RiskLevel = SeverityToRisk(incident.Severity);
         incident.IsSynced = false;
@@ -449,11 +465,16 @@ public class IncidentsService
             .Take(500)
             .ToListAsync(cancellationToken);
 
-        return incidents.Select(MapIncident).ToList();
+        var equipment = await _db.Equipment.ToListAsync(cancellationToken);
+        var equipmentById = equipment.ToDictionary(e => e.Id);
+        return incidents.Select(i => MapIncident(i, equipmentById)).ToList();
     }
 
-    private static IncidentListItem MapIncident(Incident i)
+    private static IncidentListItem MapIncident(Incident i, IReadOnlyDictionary<Guid, Equipment>? equipmentById = null)
     {
+        string equipmentLabel = "—";
+        if (i.EquipmentId.HasValue && equipmentById is not null && equipmentById.TryGetValue(i.EquipmentId.Value, out var eq))
+            equipmentLabel = $"{eq.Name} — {eq.Category}";
         var (sBg, sFg) = SeverityStyle(i.Severity);
         var (stBg, stFg) = StatusStyle(i.Status);
         var interventions = i.Interventions.OrderByDescending(iv => iv.StartedAt).Select(MapInterventionRow).ToList();
@@ -469,6 +490,8 @@ public class IncidentsService
             TypeLabel = string.IsNullOrWhiteSpace(i.IncidentType) ? i.Title : i.IncidentType,
             Title = i.Title,
             Location = i.Location,
+            EquipmentId = i.EquipmentId,
+            EquipmentLabel = equipmentLabel,
             Building = string.IsNullOrWhiteSpace(i.Building) ? "—" : i.Building,
             SeverityLabel = SeverityLabel(i.Severity),
             SeverityBadgeBackground = sBg,

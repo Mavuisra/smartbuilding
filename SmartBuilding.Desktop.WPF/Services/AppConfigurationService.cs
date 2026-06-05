@@ -24,6 +24,7 @@ public sealed class AppConfigurationService
         "appearance-prefs.json");
 
     private readonly IServiceProvider _services;
+    private readonly AppBrandingState _branding;
     private readonly object _sync = new();
 
     public AppConfiguration Current { get; private set; } = AppConfiguration.Default;
@@ -33,9 +34,10 @@ public sealed class AppConfigurationService
 
     public event EventHandler? ConfigurationChanged;
 
-    public AppConfigurationService(IServiceProvider services)
+    public AppConfigurationService(IServiceProvider services, AppBrandingState branding)
     {
         _services = services;
+        _branding = branding;
         Instance = this;
     }
 
@@ -62,6 +64,8 @@ public sealed class AppConfigurationService
         var config = BuildConfiguration(building, appearance);
         lock (_sync)
             Current = config;
+
+        _branding.Apply(config);
 
         ThemeResourceHelper.EnsureMutableThemeBrushes();
         ApplyCulture(config);
@@ -156,8 +160,8 @@ public sealed class AppConfigurationService
         return new AppConfiguration
         {
             CompanyName = companyName,
-            AppTitle = companyName.Length > 24 ? companyName[..24] + "…" : companyName,
-            AppSubtitle = "Smart Building Management",
+            AppTitle = companyName,
+            AppSubtitle = AppConfiguration.DefaultAppSubtitle,
             LogoPath = building.LogoPath,
             Address = string.IsNullOrWhiteSpace(building.Address) ? BuildingInfoDefaults.Address : building.Address,
             City = string.IsNullOrWhiteSpace(building.City) ? BuildingInfoDefaults.City : building.City,

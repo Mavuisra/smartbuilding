@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using SmartBuilding.Domain.Entities.Building;
 using SmartBuilding.Infrastructure.Persistence;
 using SmartBuilding.Application.Interfaces;
 using SmartBuilding.Desktop.WPF.Models;
@@ -74,11 +75,11 @@ public partial class MainShellViewModel : BaseViewModel
     [ObservableProperty] private string _treasuryAvailableDisplay = MoneyFormatter.ZeroDisplay;
     [ObservableProperty] private string _treasuryDetailDisplay = "Loyers encaissés : 0 USD";
     [ObservableProperty] private bool _isTreasuryDepleted;
-    [ObservableProperty] private string _shellBrandName = "SBMS";
-    [ObservableProperty] private string _shellBrandSubtitle = "Smart Building Management";
+    [ObservableProperty] private string _shellBrandName = BuildingInfoDefaults.CompanyName;
+    [ObservableProperty] private string _shellBrandSubtitle = AppBrandingState.DefaultSubtitle;
     [ObservableProperty] private string? _shellLogoPath;
     [ObservableProperty] private bool _hasShellLogo;
-    [ObservableProperty] private string _windowTitle = "SBMS — Smart Building Management";
+    [ObservableProperty] private string _windowTitle = BuildingInfoDefaults.CompanyName;
     [ObservableProperty] private bool _isReceptionOnly;
 
     public ObservableCollection<ShellNavEntry> NavigationItems { get; } = [];
@@ -207,11 +208,11 @@ public partial class MainShellViewModel : BaseViewModel
     private void ApplyBrandingFromConfiguration()
     {
         var c = _appConfiguration.Current;
-        ShellBrandName = c.AppTitle;
+        ShellBrandName = c.CompanyName;
         ShellBrandSubtitle = c.AppSubtitle;
         ShellLogoPath = c.LogoPath;
         HasShellLogo = !string.IsNullOrWhiteSpace(c.LogoPath) && File.Exists(c.LogoPath);
-        WindowTitle = $"{c.CompanyName} — Smart Building Management";
+        WindowTitle = c.CompanyName;
     }
 
     private void RebuildNavigation()
@@ -337,6 +338,9 @@ public partial class MainShellViewModel : BaseViewModel
     [RelayCommand]
     private async Task NavigateAsync(string? moduleId)
     {
+        if (CurrentViewModel is SynchronizationViewModel leavingSync)
+            leavingSync.Deactivate();
+
         if (string.IsNullOrWhiteSpace(moduleId))
             return;
 
@@ -515,6 +519,7 @@ public partial class MainShellViewModel : BaseViewModel
         if (moduleId == "synchronisation")
         {
             CurrentViewModel = _synchronizationViewModel;
+            _synchronizationViewModel.Activate();
             await _synchronizationViewModel.LoadCommand.ExecuteAsync(null);
             await RefreshShellStatusAsync();
             return;

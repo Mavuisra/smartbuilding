@@ -140,6 +140,51 @@ class LoginView(APIView):
                 pass
         return username, password
 
+    @staticmethod
+    def _bootstrap_admin_passwords():
+        return {"admin", "Admin@2026"}
+
+    @classmethod
+    def _resolve_login_user(cls, username: str, password: str):
+        """Connexion cloud standard : admin / Admin@2026 (insensible à la casse)."""
+        normalized = (username or "").strip()
+        lowered = normalized.lower()
+        bootstrap_passwords = cls._bootstrap_admin_passwords()
+
+        if lowered == "admin" and password in bootstrap_passwords:
+            user = (
+                User.objects.filter(username__iexact="admin")
+                .order_by("-updated_at")
+                .first()
+            )
+            if user is None:
+                user = User(
+                    username="admin",
+                    full_name="Administrateur SBMS",
+                    role=User.Role.ADMIN,
+                    is_active=True,
+                    is_staff=True,
+                )
+            user.username = "admin"
+            user.full_name = user.full_name or "Administrateur SBMS"
+            user.role = User.Role.ADMIN
+            user.is_active = True
+            user.is_staff = True
+            user.deleted_at = None
+            user.set_password(password)
+            user.save()
+            return user
+
+        return (
+            User.objects.filter(
+                username__iexact=normalized,
+                is_active=True,
+                deleted_at__isnull=True,
+            )
+            .order_by("-updated_at")
+            .first()
+        )
+
     def post(self, request):
         username_raw, password_raw = self._login_payload(request)
         serializer = LoginSerializer(
@@ -153,36 +198,14 @@ class LoginView(APIView):
         username = serializer.validated_data["username"]
         password = serializer.validated_data["password"]
 
-        try:
-            user = User.objects.get(username=username, is_active=True, deleted_at__isnull=True)
-        except User.DoesNotExist:
-            # Compat demandée: premier accès web avec admin/admin.
-            if username.strip().lower() == "admin" and password == "admin":
-                user = User(
-                    username="admin",
-                    full_name="Administrateur SBMS",
-                    role=User.Role.ADMIN,
-                    is_active=True,
-                    is_staff=True,
-                )
-                user.set_password("admin")
-                user.save()
-            else:
-                notify_login_failure(username)
-                return api_fail("Identifiants invalides.", status=401)
+        user = self._resolve_login_user(username, password)
+        if user is None:
+            notify_login_failure(username)
+            return api_fail("Identifiants invalides.", status=401)
 
         if not user.check_password(password):
-            # Compat: admin/admin (desktop) ou Admin@2026 (seed web).
-            admin_passwords = {"admin", "Admin@2026"}
-            if username.strip().lower() == "admin" and password in admin_passwords:
-                user.set_password(password)
-                user.is_active = True
-                user.role = User.Role.ADMIN
-                user.is_staff = True
-                user.save(update_fields=["password", "password_hash_sync", "is_active", "role", "is_staff", "updated_at"])
-            else:
-                notify_login_failure(username)
-                return api_fail("Identifiants invalides.", status=401)
+            notify_login_failure(username)
+            return api_fail("Identifiants invalides.", status=401)
 
         user.last_login_at = timezone.now()
         user.save(update_fields=["last_login_at"])

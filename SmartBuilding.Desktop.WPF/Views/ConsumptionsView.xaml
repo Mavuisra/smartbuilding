@@ -183,13 +183,7 @@
                         <Button Command="{Binding OpenAddFormCommand}" Style="{StaticResource ConsumptionsPrimaryButton}">
                             <StackPanel Orientation="Horizontal">
                                 <materialDesign:PackIcon Kind="Plus" Margin="0,0,6,0"/>
-                                <TextBlock Text="Ajouter consommation"/>
-                            </StackPanel>
-                        </Button>
-                        <Button Command="{Binding OpenNewRecordFormCommand}" Style="{StaticResource ConsumptionsToolbarButton}">
-                            <StackPanel Orientation="Horizontal">
-                                <materialDesign:PackIcon Kind="Counter" Margin="0,0,6,0"/>
-                                <TextBlock Text="Nouvel enregistrement"/>
+                                <TextBlock Text="Nouvelle consommation"/>
                             </StackPanel>
                         </Button>
                         <Button Command="{Binding OpenRecordHistoryCommand}" Style="{StaticResource ConsumptionsToolbarButton}">
@@ -252,14 +246,14 @@
                     </Border>
                 </UniformGrid>
 
-                <Grid Grid.Row="3" MinHeight="360">
+                <Grid Grid.Row="3" MinHeight="400">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="300"/>
+                        <ColumnDefinition Width="*" MinWidth="720"/>
+                        <ColumnDefinition Width="272"/>
                     </Grid.ColumnDefinitions>
 
-                    <Border Grid.Column="0" Background="White" CornerRadius="10" BorderBrush="#E8EFED" BorderThickness="1"
-                            Margin="0,0,8,0" Padding="10,8">
+                    <Border Grid.Column="0" Background="White" CornerRadius="12" BorderBrush="#BFDBFE" BorderThickness="1"
+                            Margin="0,0,8,0" Padding="12,10">
                         <DockPanel>
                             <ScrollViewer DockPanel.Dock="Top" HorizontalScrollBarVisibility="Auto" Margin="0,0,0,6">
                                 <StackPanel Orientation="Horizontal">
@@ -275,52 +269,102 @@
                             </ScrollViewer>
 
                             <DataGrid ItemsSource="{Binding Records}" SelectedItem="{Binding SelectedRecord}"
-                                      Style="{StaticResource ConsumptionsDataGrid}" materialDesign:DataGridAssist.CellPadding="8,4" MinHeight="220">
+                                      Style="{StaticResource ConsumptionsDataGrid}" MinHeight="300">
                                 <DataGrid.Columns>
-                                    <DataGridTextColumn Header="DATE" Binding="{Binding DateDisplay}" Width="85"/>
-                                    <DataGridTemplateColumn Header="TYPE" Width="120">
+                                    <DataGridTemplateColumn Header="DATE" MinWidth="100" Width="100">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding DateDisplay}" Style="{StaticResource ConsumptionsCellText}" FontWeight="SemiBold"/>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTemplateColumn Header="TYPE" MinWidth="130" Width="140">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
                                                 <StackPanel Orientation="Horizontal">
-                                                    <Border Width="8" Height="8" CornerRadius="4" Margin="0,0,6,0" VerticalAlignment="Center"
+                                                    <Border Width="10" Height="10" CornerRadius="5" VerticalAlignment="Top" Margin="0,6,8,0"
                                                             Background="{Binding TypeIconColor, Converter={StaticResource HexToBrushConverter}}"/>
-                                                    <TextBlock Text="{Binding TypeLabel}" FontSize="11" FontWeight="SemiBold"/>
+                                                    <TextBlock Text="{Binding TypeLabel}" Style="{StaticResource ConsumptionsCellText}" FontWeight="SemiBold"/>
                                                 </StackPanel>
                                             </DataTemplate>
                                         </DataGridTemplateColumn.CellTemplate>
                                     </DataGridTemplateColumn>
-                                    <DataGridTextColumn Header="ÉQUIPEMENT" Binding="{Binding EquipmentSource}" Width="*"/>
-                                    <DataGridTextColumn Header="COÛT" Binding="{Binding CostDisplay}" Width="95"/>
-                                    <DataGridTemplateColumn Header="VARIATION" Width="80">
+                                    <DataGridTemplateColumn Header="ÉQUIPEMENT" MinWidth="150" Width="180">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
-                                                <TextBlock Text="{Binding VariationDisplay}" Foreground="{Binding VariationColor}" FontWeight="SemiBold" FontSize="11"/>
+                                                <TextBlock Text="{Binding EquipmentSource}" Style="{StaticResource ConsumptionsCellText}"/>
                                             </DataTemplate>
                                         </DataGridTemplateColumn.CellTemplate>
                                     </DataGridTemplateColumn>
-                                    <DataGridTextColumn Header="RESPONSABLE" Binding="{Binding Responsible}" Width="100"/>
-                                    <DataGridTemplateColumn Header="STATUT" Width="90">
+                                    <DataGridTemplateColumn Header="MOTIF" MinWidth="140" Width="160">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
-                                                <Border CornerRadius="8" Padding="6,2" Background="{Binding StatusBadgeBackground}">
+                                                <TextBlock Text="{Binding ExpenseMotif}" Style="{StaticResource ConsumptionsCellText}" Foreground="#475569"/>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTemplateColumn Header="PAYÉ PAR" MinWidth="120" Width="130">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding PaidBy}" Style="{StaticResource ConsumptionsCellText}"/>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTemplateColumn Header="COÛT" MinWidth="90" Width="100">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding CostDisplay}" Style="{StaticResource ConsumptionsCellText}" FontWeight="Bold" Foreground="#2563EB"/>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTemplateColumn Header="VARIATION" MinWidth="90" Width="95">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding VariationDisplay}" Style="{StaticResource ConsumptionsCellText}"
+                                                           Foreground="{Binding VariationColor}" FontWeight="SemiBold"/>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTemplateColumn Header="REMBOURSEMENT" MinWidth="150" Width="170">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <Grid>
+                                                    <Border CornerRadius="8" Padding="8,4"
+                                                            Background="{Binding ReimbursementBadgeBackground}"
+                                                            Visibility="{Binding HasReimbursementInfo, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                        <TextBlock Text="{Binding ReimbursementDisplay}"
+                                                                   Foreground="{Binding ReimbursementBadgeForeground}"
+                                                                   FontSize="11" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                                    </Border>
+                                                    <TextBlock Text="—" Style="{StaticResource ConsumptionsCellText}"
+                                                               Visibility="{Binding HasReimbursementInfo, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=Inverse}"/>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTemplateColumn Header="STATUT" MinWidth="100" Width="110">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <Border CornerRadius="8" Padding="8,4" Background="{Binding StatusBadgeBackground}">
                                                     <TextBlock Text="{Binding StatusLabel}" Foreground="{Binding StatusBadgeForeground}"
-                                                               FontSize="10" FontWeight="SemiBold"/>
+                                                               FontSize="11" FontWeight="SemiBold"/>
                                                 </Border>
                                             </DataTemplate>
                                         </DataGridTemplateColumn.CellTemplate>
                                     </DataGridTemplateColumn>
-                                    <DataGridTemplateColumn Header="" Width="90">
+                                    <DataGridTemplateColumn Header="ACTIONS" MinWidth="100" Width="100">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
-                                                <StackPanel Orientation="Horizontal">
-                                                    <Button Style="{StaticResource MaterialDesignIconButton}" ToolTip="Voir détail" Command="{Binding DataContext.OpenRecordDetailsCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}">
-                                                        <materialDesign:PackIcon Kind="EyeOutline"/>
+                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                                    <Button Style="{StaticResource MaterialDesignIconButton}" ToolTip="Voir détail"
+                                                            Command="{Binding DataContext.OpenRecordDetailsCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                            CommandParameter="{Binding}" Width="36" Height="36">
+                                                        <materialDesign:PackIcon Kind="EyeOutline" Width="18" Height="18"/>
                                                     </Button>
-                                                    <Button Style="{StaticResource MaterialDesignIconButton}" ToolTip="Modifier">
-                                                        <materialDesign:PackIcon Kind="PencilOutline"/>
-                                                    </Button>
-                                                    <Button Style="{StaticResource MaterialDesignIconButton}">
-                                                        <materialDesign:PackIcon Kind="DotsVertical"/>
+                                                    <Button Style="{StaticResource MaterialDesignIconButton}" ToolTip="Modifier"
+                                                            Command="{Binding DataContext.OpenEditFormCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                            CommandParameter="{Binding}" Width="36" Height="36" Foreground="#2563EB">
+                                                        <materialDesign:PackIcon Kind="PencilOutline" Width="18" Height="18"/>
                                                     </Button>
                                                 </StackPanel>
                                             </DataTemplate>
@@ -438,6 +482,12 @@
                                             <TextBlock Margin="0,2,0,6"><Run Text="{Binding CostDisplay}"/></TextBlock>
                                             <TextBlock Text="Variation vs N-1" FontSize="10" Foreground="#94A3B8"/>
                                             <TextBlock Text="{Binding VariationDisplay}" Foreground="{Binding VariationColor}" FontWeight="SemiBold" Margin="0,2,0,6"/>
+                                            <TextBlock Text="Motif" FontSize="10" Foreground="#94A3B8"/>
+                                            <TextBlock Text="{Binding ExpenseMotif}" TextWrapping="Wrap" Margin="0,2,0,6"/>
+                                            <TextBlock Text="Payé par" FontSize="10" Foreground="#94A3B8"/>
+                                            <TextBlock Text="{Binding PaidBy}" Margin="0,2,0,6"/>
+                                            <TextBlock Text="Remboursement" FontSize="10" Foreground="#94A3B8"/>
+                                            <TextBlock Text="{Binding ReimbursementDisplay}" TextWrapping="Wrap" Margin="0,2,0,6"/>
                                             <TextBlock Text="Période" FontSize="10" Foreground="#94A3B8"/><TextBlock Text="{Binding PeriodType}" Margin="0,2,0,6"/>
                                             <TextBlock Text="Bâtiment" FontSize="10" Foreground="#94A3B8"/><TextBlock Text="{Binding Building}" Margin="0,2,0,6"/>
                                             <TextBlock Text="Responsable" FontSize="10" Foreground="#94A3B8"/><TextBlock Text="{Binding Responsible}" Margin="0,2,0,6"/>
@@ -468,8 +518,11 @@
                                 </ScrollViewer>
                                 <Border Grid.Row="2" Padding="14,10,14,12" BorderBrush="#E8EFED" BorderThickness="0,1,0,0">
                                     <UniformGrid Columns="2">
-                                        <Button Command="{Binding OpenRecordDetailsCommand}" Style="{StaticResource ConsumptionsToolbarButton}" Margin="0,0,4,0">
-                                            <TextBlock Text="Modifier" FontSize="11"/>
+                                        <Button Command="{Binding OpenEditFormCommand}" Style="{StaticResource ConsumptionsToolbarButton}" Margin="0,0,4,0">
+                                            <StackPanel Orientation="Horizontal">
+                                                <materialDesign:PackIcon Kind="PencilOutline" Width="14" Height="14" Margin="0,0,4,0"/>
+                                                <TextBlock Text="Modifier" FontSize="11"/>
+                                            </StackPanel>
                                         </Button>
                                         <Button Command="{Binding GenerateReportCommand}" Style="{StaticResource ConsumptionsPrimaryButton}" Margin="4,0,0,0">
                                             <TextBlock Text="Rapport" FontSize="11"/>
@@ -484,22 +537,46 @@
         </ScrollViewer>
 
         <Border Grid.RowSpan="2" Background="#80000000" Visibility="{Binding IsAddFormOpen, Converter={StaticResource BoolToVisibilityConverter}}">
-            <Border Background="White" CornerRadius="12" Padding="24" MaxWidth="460" VerticalAlignment="Center" HorizontalAlignment="Center">
+            <Border Background="White" CornerRadius="14" Padding="28" MaxWidth="520" MaxHeight="640"
+                    VerticalAlignment="Center" HorizontalAlignment="Center" Margin="24">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="580">
                 <StackPanel>
-                    <TextBlock Text="Nouvelle consommation" FontSize="18" FontWeight="Bold" Foreground="#1B3D3B" Margin="0,0,0,16"/>
-                    <ComboBox ItemsSource="{Binding ConsumptionTypes}" SelectedItem="{Binding FormType}" Style="{StaticResource ConsumptionsFilterCombo}" Margin="0,0,0,8"/>
-                    <TextBox materialDesign:HintAssist.Hint="Nouveau type de dépense (si absent du select)"
-                             Text="{Binding FormNewType, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
-                    <TextBox materialDesign:HintAssist.Hint="Poste / source de dépense" Text="{Binding FormEquipment, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
-                    <TextBox materialDesign:HintAssist.Hint="Montant (USD)" Text="{Binding FormCostText, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
-                    <ComboBox ItemsSource="{Binding PeriodTypes}" SelectedItem="{Binding FormPeriodType}" Style="{StaticResource ConsumptionsFilterCombo}" Margin="0,0,0,8"/>
+                    <TextBlock Text="{Binding FormDialogTitle}" FontSize="20" FontWeight="Bold" Foreground="#1B3D3B" Margin="0,0,0,4"/>
+                    <TextBlock Text="Saisissez une rubrique librement ou choisissez une suggestion." FontSize="12" Foreground="#64748B" Margin="0,0,0,16"/>
+                    <TextBlock Text="Rubrique" FontSize="12" FontWeight="SemiBold" Foreground="#1B3D3B" Margin="0,0,0,4"/>
+                    <ComboBox IsEditable="True" ItemsSource="{Binding ConsumptionTypes}"
+                              Text="{Binding FormRubrique, UpdateSourceTrigger=PropertyChanged}"
+                              Style="{StaticResource ConsumptionsFilterCombo}" Margin="0,0,0,12"/>
+                    <TextBlock Text="Poste / source" FontSize="12" FontWeight="SemiBold" Foreground="#1B3D3B" Margin="0,0,0,4"/>
+                    <TextBox materialDesign:HintAssist.Hint="Ex. Compteur principal, Générateur bloc B…"
+                             Text="{Binding FormEquipment, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,12"/>
+                    <TextBlock Text="Motif de dépense" FontSize="12" FontWeight="SemiBold" Foreground="#1B3D3B" Margin="0,0,0,4"/>
+                    <TextBox materialDesign:HintAssist.Hint="Ex. Réparation urgente, achat carburant…"
+                             Text="{Binding FormMotif, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,12"/>
+                    <TextBlock Text="Payé par" FontSize="12" FontWeight="SemiBold" Foreground="#1B3D3B" Margin="0,0,0,4"/>
+                    <TextBox materialDesign:HintAssist.Hint="Nom de la personne"
+                             Text="{Binding FormPaidBy, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
+                    <CheckBox Content="Avance personnelle — à rembourser par l'entreprise"
+                              IsChecked="{Binding FormRequiresReimbursement}" Margin="0,0,0,12"/>
+                    <TextBlock Text="Montant (USD)" FontSize="12" FontWeight="SemiBold" Foreground="#1B3D3B" Margin="0,0,0,4"/>
+                    <TextBox materialDesign:HintAssist.Hint="0,00"
+                             Text="{Binding FormCostText, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,12"/>
+                    <TextBlock Text="Période" FontSize="12" FontWeight="SemiBold" Foreground="#1B3D3B" Margin="0,0,0,4"/>
+                    <ComboBox ItemsSource="{Binding PeriodTypes}" SelectedItem="{Binding FormPeriodType}" Style="{StaticResource ConsumptionsFilterCombo}" Margin="0,0,0,12"/>
+                    <TextBlock Text="Statut" FontSize="12" FontWeight="SemiBold" Foreground="#1B3D3B" Margin="0,0,0,4"/>
+                    <ComboBox ItemsSource="{Binding FormStatusOptions}" SelectedItem="{Binding FormStatus}" Style="{StaticResource ConsumptionsFilterCombo}" Margin="0,0,0,12"/>
+                    <TextBlock Text="Notes (optionnel)" FontSize="12" FontWeight="SemiBold" Foreground="#1B3D3B" Margin="0,0,0,4"/>
+                    <TextBox materialDesign:HintAssist.Hint="Commentaire interne…"
+                             Text="{Binding FormNotes, UpdateSourceTrigger=PropertyChanged}"
+                             AcceptsReturn="True" TextWrapping="Wrap" MinHeight="60" Margin="0,0,0,12"/>
                     <TextBlock Text="{Binding FormError}" Foreground="#DC2626" FontSize="12" Margin="0,0,0,8"
                                Visibility="{Binding FormError, Converter={StaticResource NullToVisibilityConverter}}"/>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                         <Button Content="Annuler" Command="{Binding CloseAddFormCommand}" Style="{StaticResource ConsumptionsToolbarButton}" Margin="0,0,8,0"/>
-                        <Button Content="Enregistrer" Command="{Binding SaveRecordCommand}" Style="{StaticResource ConsumptionsPrimaryButton}"/>
+                        <Button Content="{Binding FormSaveButtonLabel}" Command="{Binding SaveRecordCommand}" Style="{StaticResource ConsumptionsPrimaryButton}"/>
                     </StackPanel>
                 </StackPanel>
+                </ScrollViewer>
             </Border>
         </Border>
 
@@ -539,14 +616,26 @@
                     <TextBlock Text="{Binding PeriodType}" FontWeight="SemiBold" Margin="0,0,0,6"/>
                     <TextBlock Text="Bâtiment" FontSize="11" Foreground="#94A3B8"/>
                     <TextBlock Text="{Binding Building}" FontWeight="SemiBold" Margin="0,0,0,6"/>
-                    <TextBlock Text="Responsable" FontSize="11" Foreground="#94A3B8"/>
-                    <TextBlock Text="{Binding Responsible}" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                    <TextBlock Text="Motif" FontSize="11" Foreground="#94A3B8"/>
+                    <TextBlock Text="{Binding ExpenseMotif}" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,0,0,6"/>
+                    <TextBlock Text="Payé par" FontSize="11" Foreground="#94A3B8"/>
+                    <TextBlock Text="{Binding PaidBy}" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                    <TextBlock Text="Remboursement" FontSize="11" Foreground="#94A3B8"/>
+                    <TextBlock Text="{Binding ReimbursementDisplay}" FontWeight="SemiBold" Margin="0,0,0,6"/>
                     <TextBlock Text="Compteur" FontSize="11" Foreground="#94A3B8"/>
                     <TextBlock Text="{Binding MeterReference}" FontWeight="SemiBold" Margin="0,0,0,6"/>
                     <TextBlock Text="Notes" FontSize="11" Foreground="#94A3B8"/>
                     <TextBlock Text="{Binding Notes}" TextWrapping="Wrap" Margin="0,0,0,10"/>
 
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Command="{Binding DataContext.MarkReimbursedCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                CommandParameter="{Binding}"
+                                Content="Marquer remboursé"
+                                Style="{StaticResource ConsumptionsToolbarButton}" Margin="0,0,8,0"
+                                Visibility="{Binding CanMarkReimbursed, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                        <Button Command="{Binding DataContext.OpenEditFormCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                CommandParameter="{Binding}"
+                                Content="Modifier" Style="{StaticResource ConsumptionsToolbarButton}" Margin="0,0,8,0"/>
                         <Button Command="{Binding DataContext.GenerateReportCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" Content="Exporter PDF" Style="{StaticResource ConsumptionsToolbarButton}" Margin="0,0,8,0"/>
                         <Button Command="{Binding DataContext.CloseRecordDetailsCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" Content="Fermer" Style="{StaticResource ConsumptionsPrimaryButton}"/>
                     </StackPanel>

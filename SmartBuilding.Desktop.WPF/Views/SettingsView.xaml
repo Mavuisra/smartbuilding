@@ -392,7 +392,7 @@
                     <Button Content="Conditions d'utilisation" Style="{StaticResource MaterialDesignFlatButton}"
                             Foreground="{StaticResource SbmsTextMutedBrush}" Padding="8,0"/>
                 </StackPanel>
-                <TextBlock Text="© 2026 SBMS — Smart Building Management System. Tous droits réservés."
+                <TextBlock Text="{Binding CopyrightText}"
                            VerticalAlignment="Center" Foreground="{StaticResource SbmsTextMutedBrush}" FontSize="11"/>
             </DockPanel>
         </Border>

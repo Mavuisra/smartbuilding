@@ -28,7 +28,7 @@ public class RapportsReportPdfService
     {
         _navy = AppConfigurationService.Instance?.Current.PdfHeaderHex ?? "#3D6B52";
         _accent = AppConfigurationService.Instance?.Current.PdfAccentHex ?? "#4cc26b";
-        var company = AppConfigurationService.Instance?.Current.CompanyName ?? BuildingInfoDefaults.CompanyName;
+        var company = PdfThemeHelper.ResolveCompanyName();
         var culture = CultureInfo.GetCultureInfo("fr-FR");
         var list = rows.ToList();
 
@@ -118,7 +118,7 @@ public class RapportsReportPdfService
     {
         _navy = AppConfigurationService.Instance?.Current.PdfHeaderHex ?? "#3D6B52";
         _accent = AppConfigurationService.Instance?.Current.PdfAccentHex ?? "#4cc26b";
-        var company = AppConfigurationService.Instance?.Current.CompanyName ?? BuildingInfoDefaults.CompanyName;
+        var company = PdfThemeHelper.ResolveCompanyName();
 
         var folder = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),

@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Win32;
+using SmartBuilding.Domain.Entities.Building;
 using SmartBuilding.Desktop.WPF.Models;
 using SmartBuilding.Desktop.WPF.Services;
 using SmartBuilding.Infrastructure.Services;
@@ -46,6 +47,8 @@ public partial class InitialSetupViewModel : ObservableObject
     [ObservableProperty] private string _selectedPrimaryColor = "#2D6A4F";
     [ObservableProperty] private string _selectedSidebarColor = "#1B3D3B";
     [ObservableProperty] private string _selectedSecondaryColor = "#0D9488";
+
+    public string WelcomeTitle => $"Bienvenue — {BuildingInfoDefaults.CompanyName}";
 
     public int StepNumber => StepIndex + 1;
     public int TotalSteps => LastStepIndex + 1;

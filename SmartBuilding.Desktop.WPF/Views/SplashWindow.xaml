@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
-        Title="SBMS"
+        Title="Chargement…"
         WindowStartupLocation="CenterScreen"
         WindowStyle="None"
         ResizeMode="NoResize"
@@ -103,9 +103,9 @@
                                              Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                 </Border>
 
-                <TextBlock Text="SBMS" FontSize="30" FontWeight="Bold" Foreground="White"
-                           HorizontalAlignment="Center"/>
-                <TextBlock Text="Smart Building Management" FontSize="13" Foreground="#D1FAE5"
+                <TextBlock x:Name="BrandTitleText" Text="Chargement…" FontSize="22" FontWeight="Bold" Foreground="White"
+                           HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="380"/>
+                <TextBlock x:Name="BrandSubtitleText" Text="Gestion immobilière" FontSize="13" Foreground="#D1FAE5"
                            HorizontalAlignment="Center" Margin="0,4,0,28"/>
 
                 <!-- Anneau de chargement -->

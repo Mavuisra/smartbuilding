@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Media;
 using Microsoft.Extensions.DependencyInjection;
 using SmartBuilding.Desktop.WPF.Services;
+using SmartBuilding.Domain.Entities.Building;
 using SmartBuilding.Desktop.WPF.ViewModels;
 using SmartBuilding.Infrastructure.Services;
 
@@ -74,9 +75,11 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
+            var dialogTitle = AppConfigurationService.Instance?.Current.CompanyName
+                              ?? BuildingInfoDefaults.CompanyName;
             MessageBox.Show(
                 $"Impossible de charger le tableau de bord.\n\n{DbSaveExceptionTranslator.ToDetailedMessage(ex)}",
-                "SBMS",
+                dialogTitle,
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning);
         }

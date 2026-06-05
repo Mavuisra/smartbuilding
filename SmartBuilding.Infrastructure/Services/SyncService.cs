@@ -21,6 +21,7 @@ public class SyncService : ISyncService
     private readonly INetworkService _network;
     private readonly IConfiguration _configuration;
     private readonly ILogger<SyncService> _logger;
+    private readonly ISyncNotifier _notifier;
 
     private DateTime? _lastSyncAt;
 
@@ -31,12 +32,14 @@ public class SyncService : ISyncService
         IDbContextFactory<SmartBuildingDbContext> contextFactory,
         INetworkService network,
         IConfiguration configuration,
-        ILogger<SyncService> logger)
+        ILogger<SyncService> logger,
+        ISyncNotifier notifier)
     {
         _contextFactory = contextFactory;
         _network = network;
         _configuration = configuration;
         _logger = logger;
+        _notifier = notifier;
     }
 
     public Task<bool> IsOnlineAsync(CancellationToken cancellationToken = default) =>
@@ -73,10 +76,6 @@ public class SyncService : ISyncService
         if (IsSyncing)
             return new SyncResult(false, 0, 0, 0, "Synchronisation déjà en cours.");
 
-        var storedToken = SyncCloudTokenStore.Load();
-        if (!manual && string.IsNullOrWhiteSpace(storedToken))
-            return new SyncResult(false, 0, 0, 0, null);
-
         if (!await IsOnlineAsync(cancellationToken))
             return new SyncResult(false, 0, 0, 0, "Hors ligne — synchronisation reportée.");
 
@@ -99,17 +98,17 @@ public class SyncService : ISyncService
             var lastSync = _lastSyncAt ?? DateTime.MinValue;
             var baseUrl = GetApiBaseUrl();
 
-            var token = storedToken;
-            if (string.IsNullOrWhiteSpace(token) && manual)
+            var token = SyncCloudTokenStore.Load();
+            if (string.IsNullOrWhiteSpace(token))
                 token = await SyncCloudTokenStore.AcquireAsync(_configuration, cancellationToken: cancellationToken);
 
             if (string.IsNullOrWhiteSpace(token))
             {
-                return new SyncResult(
+                var noToken = new SyncResult(
                     false, 0, 0, 0,
-                    manual
-                        ? "Synchronisation cloud indisponible — l'application fonctionne en mode local."
-                        : null);
+                    "Synchronisation cloud indisponible — vérifiez l'URL API et les identifiants.");
+                _notifier.Notify(noToken);
+                return noToken;
             }
 
             using var api = new CloudApiClient(baseUrl, token);
@@ -199,7 +198,9 @@ public class SyncService : ISyncService
                 _logger.LogInformation(
                     "Sync OK: pushed={Pushed}, pulled={Pulled}, pending=0",
                     pushed, pulled);
-                return new SyncResult(true, pushed, pulled, conflicts, null);
+                var ok = new SyncResult(true, pushed, pulled, conflicts, null);
+                _notifier.Notify(ok);
+                return ok;
             }
 
             var message = failures.Count > 0
@@ -209,14 +210,18 @@ public class SyncService : ISyncService
                 message += $" — {remainingPending} enregistrement(s) encore en attente.";
             log.ErrorMessage = message;
             _logger.LogWarning(message);
-            return new SyncResult(pushed > 0 && remainingPending == 0, pushed, pulled, conflicts, message);
+            var partial = new SyncResult(pushed > 0 && remainingPending == 0, pushed, pulled, conflicts, message);
+            _notifier.Notify(partial);
+            return partial;
         }
         catch (Exception ex)
         {
             log.Success = false;
             log.ErrorMessage = ex.Message;
             _logger.LogError(ex, "Échec synchronisation");
-            return new SyncResult(false, pushed, pulled, conflicts, ex.Message);
+            var failed = new SyncResult(false, pushed, pulled, conflicts, ex.Message);
+            _notifier.Notify(failed);
+            return failed;
         }
         finally
         {
