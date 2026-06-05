@@ -43,10 +43,11 @@
             <div id="pending-list"></div>
           </div>
           <div class="dm-card">
-            <h2 class="h6 fw-bold">Historique</h2>
-            <div class="table-responsive">
+            <h2 class="h6 fw-bold">Historique complet</h2>
+            <div class="dm-table-count" id="history-table-count"></div>
+            <div class="dm-table-wrap">
               <table class="table dm-table mb-0">
-                <thead><tr><th>Date</th><th>Type</th><th>Statut</th><th>Éléments</th><th>Détail</th></tr></thead>
+                <thead id="history-table-head"></thead>
                 <tbody id="history-body"></tbody>
               </table>
             </div>
@@ -92,10 +93,17 @@ function render(d) {
   document.getElementById('pending-list').innerHTML = (d.pendingItems||[]).length
     ? d.pendingItems.map(p => `<div class="dm-list-item"><strong>${p.typeLabel}</strong><br><small>${p.description}</small></div>`).join('')
     : '<p class="text-muted small mb-0">Aucun élément en attente.</p>';
-  document.getElementById('history-body').innerHTML = (d.history||[]).map(h =>
-    `<tr><td>${new Date(h.startedAt).toLocaleString('fr-FR')}</td><td>${h.typeLabel}</td>
-    <td><span class="dm-badge ${h.success?'ok':'err'}">${h.success?'Succès':'Échec'}</span></td>
-    <td>${h.itemsCount}</td><td class="small">${h.detail||'—'}</td></tr>`).join('');
+  Sbms.renderDataTable(
+    document.getElementById('history-table-head'),
+    document.getElementById('history-body'),
+    d.historyTableRows || [],
+    {
+      countEl: document.getElementById('history-table-count'),
+      badgeCols: {
+        'Succès': (v) => String(v).toLowerCase() === 'oui' ? 'ok' : 'err',
+      },
+    }
+  );
 }
 
 async function load() {

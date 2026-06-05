@@ -21,6 +21,16 @@
       <div id="load-error" class="alert alert-danger d-none"></div>
       <div id="empty-banner" class="alert alert-info d-none"></div>
       <div class="dm-kpi-grid" id="kpi-row"></div>
+      <div class="dm-card mb-3">
+        <h2 class="h6 fw-bold mb-2">Tableau complet des documents</h2>
+        <div class="dm-table-count" id="docs-table-count"></div>
+        <div class="dm-table-wrap">
+          <table class="table dm-table mb-0">
+            <thead id="docs-table-head"></thead>
+            <tbody id="docs-table-body"></tbody>
+          </table>
+        </div>
+      </div>
       <div class="dm-settings-grid">
         <div class="dm-card">
           <div class="fw-bold mb-2">Catégories</div>
@@ -61,6 +71,32 @@ function filteredDocs() {
     if (q && !JSON.stringify(d).toLowerCase().includes(q)) return false;
     return true;
   });
+}
+
+function filteredTableRows() {
+  const q = (document.getElementById('search').value || '').toLowerCase().trim();
+  const t = document.getElementById('filter-type').value;
+  return (data?.tableRows || []).filter(r => {
+    if (selectedCat !== 'all') {
+      const catLabel = (data?.categories || []).find(c => c.categoryId === selectedCat)?.label;
+      if (catLabel && r['Catégorie'] !== catLabel) return false;
+    }
+    if (t && t !== 'Tous types' && r['Type entité'] !== t) return false;
+    if (q && !JSON.stringify(r).toLowerCase().includes(q)) return false;
+    return true;
+  });
+}
+
+function renderDocsTable() {
+  Sbms.renderDataTable(
+    document.getElementById('docs-table-head'),
+    document.getElementById('docs-table-body'),
+    filteredTableRows(),
+    {
+      countEl: document.getElementById('docs-table-count'),
+      badgeCols: { 'Statut': () => 'ok' },
+    }
+  );
 }
 
 function renderKpis() {
@@ -128,8 +164,11 @@ function showDetail(id) {
     <h5 class="mb-3">${d.fileName}</h5>
     <p><strong>Catégorie :</strong> ${d.categoryLabel}</p>
     <p><strong>Type entité :</strong> ${d.entityType}</p>
+    <p><strong>ID document :</strong> ${d.id}</p>
+    <p><strong>ID entité :</strong> ${d.entityId || '—'}</p>
     <p><strong>Format :</strong> ${d.fileType} (${d.mimeType})</p>
-    <p><strong>Taille :</strong> ${d.sizeDisplay}</p>
+    <p><strong>Taille :</strong> ${d.sizeDisplay} (${d.sizeBytes} octets)</p>
+    <p><strong>SHA-256 :</strong> <code class="small">${d.contentSha256 || '—'}</code></p>
     <p><strong>Ajouté le :</strong> ${d.addedAtDisplay}</p>
     <p><strong>Modifié le :</strong> ${d.modifiedAtDisplay}</p>
     <p><strong>Ajouté par :</strong> ${d.addedBy}</p>
@@ -165,6 +204,7 @@ function renderAll() {
   renderKpis();
   renderCategories();
   renderList();
+  renderDocsTable();
   const banner = document.getElementById('empty-banner');
   if (data?.emptyMessage && !(data?.documents || []).length) {
     banner.textContent = data.emptyMessage;
@@ -188,8 +228,8 @@ async function load() {
 }
 
 document.getElementById('refresh-btn').onclick = load;
-document.getElementById('search').oninput = () => { page = 1; renderList(); };
-document.getElementById('filter-type').onchange = () => { page = 1; renderList(); };
+document.getElementById('search').oninput = () => { page = 1; renderList(); renderDocsTable(); };
+document.getElementById('filter-type').onchange = () => { page = 1; renderList(); renderDocsTable(); };
 document.getElementById('prev-page').onclick = () => { if (page > 1) { page--; renderList(); } };
 document.getElementById('next-page').onclick = () => {
   const total = Math.ceil(filteredDocs().length / pageSize);

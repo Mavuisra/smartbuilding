@@ -24,7 +24,8 @@
       <div class="dm-tabs" id="section-tabs"></div>
       <div class="dm-kpi-grid" id="kpi-row"></div>
       <div class="dm-card">
-        <div class="table-responsive">
+        <div class="dm-table-count" id="table-count"></div>
+        <div class="dm-table-wrap">
           <table class="table dm-table mb-0">
             <thead id="table-head"></thead>
             <tbody id="table-body"></tbody>
@@ -72,16 +73,31 @@ function applySearch(rows) {
 function renderTable() {
   const rows = applySearch(currentSection().rows || []);
   filteredRows = rows;
-  const cols = rows.length ? Object.keys(rows[0]) : [];
-  document.getElementById('table-head').innerHTML = `<tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr>`;
-  document.getElementById('table-body').innerHTML = rows.length
-    ? rows.map(r => `<tr>${cols.map(c => {
-        const v = r[c] ?? '—';
-        if (c === 'Statut' && String(v).toLowerCase().includes('retard')) return `<td><span class="dm-badge err">${v}</span></td>`;
-        if (c === 'Statut' && String(v).toLowerCase().includes('pay')) return `<td><span class="dm-badge ok">${v}</span></td>`;
-        return `<td>${v}</td>`;
-      }).join('')}</tr>`).join('')
-    : '<tr><td colspan="99" class="text-muted text-center py-4">Aucune donnée pour cette section.</td></tr>';
+  Sbms.renderDataTable(
+    document.getElementById('table-head'),
+    document.getElementById('table-body'),
+    rows,
+    {
+      countEl: document.getElementById('table-count'),
+      emptyMessage: 'Aucune donnée pour cette section.',
+      badgeCols: {
+        'Statut': (v) => {
+          const s = String(v).toLowerCase();
+          if (s.includes('retard') || s.includes('échec') || s === 'non') return 'err';
+          if (s.includes('pay') || s.includes('actif') || s === 'oui') return 'ok';
+          return '';
+        },
+        'Statut paiement': (v) => {
+          const s = String(v).toLowerCase();
+          if (s.includes('retard') || s.includes('attente')) return 'warn';
+          if (s.includes('pay')) return 'ok';
+          return '';
+        },
+        'Succès': (v) => String(v).toLowerCase() === 'oui' ? 'ok' : 'err',
+        'En retard': (v) => String(v).toLowerCase() === 'oui' ? 'err' : '',
+      },
+    }
+  );
 }
 
 function renderAll() { renderTabs(); renderKpis(); renderTable(); }

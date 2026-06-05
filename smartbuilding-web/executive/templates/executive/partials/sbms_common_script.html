@@ -134,6 +134,45 @@ Sbms.apiFetch = async (path, options = {}) => {
   return json;
 };
 
+Sbms.escapeHtml = (value) => {
+  if (value === null || value === undefined) return '—';
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+};
+
+/**
+ * Rendu tableau exhaustif — toutes les colonnes, texte intégral (dates/heures incluses).
+ */
+Sbms.renderDataTable = (headEl, bodyEl, rows, options = {}) => {
+  const countEl = options.countEl || null;
+  const badgeCols = options.badgeCols || {};
+  const emptyMessage = options.emptyMessage || 'Aucune donnée.';
+  const safeRows = Array.isArray(rows) ? rows : [];
+  if (countEl) {
+    countEl.textContent = `${safeRows.length} ligne(s) · ${safeRows.length ? Object.keys(safeRows[0]).length : 0} colonne(s)`;
+  }
+  if (!safeRows.length) {
+    headEl.innerHTML = '';
+    bodyEl.innerHTML = `<tr><td class="text-muted text-center py-4">${Sbms.escapeHtml(emptyMessage)}</td></tr>`;
+    return;
+  }
+  const cols = Object.keys(safeRows[0]);
+  headEl.innerHTML = `<tr>${cols.map(c => `<th title="${Sbms.escapeHtml(c)}">${Sbms.escapeHtml(c)}</th>`).join('')}</tr>`;
+  bodyEl.innerHTML = safeRows.map(r => `<tr>${cols.map(c => {
+    const raw = r[c];
+    const text = raw === null || raw === undefined || raw === '' ? '—' : String(raw);
+    const badge = badgeCols[c];
+    if (badge) {
+      const cls = badge(text);
+      if (cls) return `<td><span class="dm-badge ${cls}">${Sbms.escapeHtml(text)}</span></td>`;
+    }
+    return `<td title="${Sbms.escapeHtml(text)}">${Sbms.escapeHtml(text)}</td>`;
+  }).join('')}</tr>`).join('');
+};
+
 Sbms.downloadFile = async (url, fileName) => {
   const token = Sbms.getToken();
   const headers = {};

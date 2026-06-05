@@ -52,6 +52,33 @@ def _fmt_date(d) -> str:
     return d.strftime("%d/%m/%Y")
 
 
+def _fmt_datetime(dt) -> str:
+    if not dt:
+        return "—"
+    if isinstance(dt, date) and not isinstance(dt, datetime):
+        return dt.strftime("%d/%m/%Y")
+    if timezone.is_aware(dt):
+        dt = timezone.localtime(dt)
+    return dt.strftime("%d/%m/%Y %H:%M:%S")
+
+
+def _audit_row(obj) -> dict:
+    """Métadonnées communes : ID, création, modification, sync, suppression."""
+    return {
+        "ID": str(getattr(obj, "id", "")),
+        "Créé le": _fmt_datetime(getattr(obj, "created_at", None)),
+        "Modifié le": _fmt_datetime(getattr(obj, "updated_at", None)),
+        "Synchronisé": "Oui" if getattr(obj, "is_synced", True) else "Non",
+        "Supprimé le": _fmt_datetime(getattr(obj, "deleted_at", None)),
+    }
+
+
+def _full_text(value) -> str:
+    if value is None or value == "":
+        return "—"
+    return str(value)
+
+
 def _trend(today: int, yesterday: int) -> str:
     if yesterday == 0:
         return f"+{today}" if today else "—"
@@ -79,60 +106,81 @@ def load_rapports(date_from: date | None = None, date_to: date | None = None) ->
     start = timezone.make_aware(datetime.combine(date_from, datetime.min.time()))
     end = timezone.make_aware(datetime.combine(date_to, datetime.max.time()))
 
-    personnel = [
-        {
-            "Matricule": e.employee_number or "—",
-            "Nom complet": e.full_name or "—",
-            "Fonction": e.position or "—",
-            "Département": e.department or "—",
-            "Salaire": _money(e.monthly_salary),
+    personnel = []
+    for e in Employee.objects.filter(deleted_at__isnull=True).order_by("full_name")[:500]:
+        personnel.append({
+            "Matricule": _full_text(e.employee_number),
+            "Nom complet": _full_text(e.full_name),
+            "Fonction": _full_text(e.position),
+            "Département": _full_text(e.department),
+            "Email": _full_text(e.email),
+            "Téléphone": _full_text(e.phone),
+            "Salaire mensuel": _money(e.monthly_salary),
             "Statut": "Actif" if e.is_active else "Inactif",
-        }
-        for e in Employee.objects.filter(deleted_at__isnull=True).order_by("full_name")[:500]
-    ]
+            **_audit_row(e),
+        })
 
     rent_qs = filter_to_synced(
-        RentPayment.objects.filter(deleted_at__isnull=True), "RentPayments"
+        RentPayment.objects.filter(deleted_at__isnull=True).select_related(
+            "lease_contract", "lease_contract__tenant", "lease_contract__premise"
+        ),
+        "RentPayments",
     )
     loyers = []
     for p in rent_qs.order_by("-year", "-month")[:500]:
+        contract = p.lease_contract
         loyers.append({
+            "Année": p.year,
+            "Mois": p.month,
             "Période": f"{p.month:02d}/{p.year}",
+            "ID contrat (sync)": _full_text(p.lease_contract_id_sync),
+            "N° contrat": _full_text(contract.contract_number if contract else None),
+            "Locataire": _full_text(contract.tenant.name if contract and contract.tenant else None),
+            "Local": _full_text(contract.premise.name if contract and contract.premise else None),
             "Montant dû": _money(p.amount_due),
             "Montant payé": _money(p.amount_paid),
             "Échéance": _fmt_date(p.due_date),
             "Date paiement": _fmt_date(p.paid_date),
-            "Statut": p.payment_status or ("Payé" if p.amount_paid >= p.amount_due else "En attente"),
+            "Statut paiement": _full_text(
+                p.payment_status or ("Payé" if p.amount_paid >= p.amount_due else "En attente")
+            ),
             "En retard": "Oui" if p.is_late else "Non",
+            **_audit_row(p),
         })
 
-    depenses = [
-        {
-            "Date": _fmt_date(t.transaction_date),
-            "Catégorie": t.category or "—",
+    depenses = []
+    for t in FinancialTransaction.objects.filter(
+        deleted_at__isnull=True,
+        type=FinancialTransaction.TxType.DEPENSE,
+        transaction_date__gte=start,
+        transaction_date__lte=end,
+    ).order_by("-transaction_date")[:500]:
+        depenses.append({
+            "Date transaction": _fmt_datetime(t.transaction_date),
+            "Type": "Dépense",
+            "Catégorie": _full_text(t.category),
             "Montant": _money(t.amount),
-            "Description": (t.description or "—")[:80],
-            "Statut": t.status or "—",
-            "Référence": t.reference or "—",
-        }
-        for t in FinancialTransaction.objects.filter(
-            deleted_at__isnull=True,
-            type=FinancialTransaction.TxType.DEPENSE,
-            transaction_date__gte=start,
-            transaction_date__lte=end,
-        ).order_by("-transaction_date")[:500]
-    ]
+            "Description": _full_text(t.description),
+            "Référence": _full_text(t.reference),
+            "Mode paiement": _full_text(t.payment_method),
+            "Statut": _full_text(t.status),
+            "Enregistré par": _full_text(t.recorded_by),
+            "Approbation PDG requise": "Oui" if t.requires_pdg_approval else "Non",
+            "Approuvé le": _fmt_datetime(t.approved_at),
+            "Approuvé par": _full_text(t.approved_by),
+            **_audit_row(t),
+        })
 
-    consommations = [
-        {
+    consommations = []
+    for c in ConsumptionRecord.objects.filter(deleted_at__isnull=True).order_by("-period_end")[:500]:
+        consommations.append({
+            "Type consommation": _full_text(c.consumption_type),
             "Période début": _fmt_date(c.period_start),
             "Période fin": _fmt_date(c.period_end),
-            "Catégorie": c.consumption_type or "—",
             "Quantité": str(c.quantity),
             "Coût total": _money(c.cost),
-        }
-        for c in ConsumptionRecord.objects.filter(deleted_at__isnull=True).order_by("-period_end")[:500]
-    ]
+            **_audit_row(c),
+        })
 
     recettes = FinancialTransaction.objects.filter(
         deleted_at__isnull=True, type=FinancialTransaction.TxType.RECETTE
@@ -142,65 +190,82 @@ def load_rapports(date_from: date | None = None, date_to: date | None = None) ->
     ).aggregate(t=Sum("amount"))["t"] or Decimal(0)
     rent_paid = rent_qs.aggregate(t=Sum("amount_paid"))["t"] or Decimal(0)
 
-    financier_lignes = [
-        {
-            "Date": _fmt_date(t.transaction_date),
+    financier_lignes = []
+    for t in FinancialTransaction.objects.filter(deleted_at__isnull=True).order_by("-transaction_date")[:500]:
+        financier_lignes.append({
+            "Date transaction": _fmt_datetime(t.transaction_date),
             "Type": "Recette" if t.type == FinancialTransaction.TxType.RECETTE else "Dépense",
-            "Catégorie": t.category or "—",
-            "Description": (t.description or "—")[:80],
+            "Catégorie": _full_text(t.category),
+            "Description": _full_text(t.description),
             "Montant": _money(t.amount),
-            "Référence": t.reference or "—",
-            "Statut": t.status or "—",
-        }
-        for t in FinancialTransaction.objects.filter(deleted_at__isnull=True)
-        .order_by("-transaction_date")[:300]
-    ]
+            "Référence": _full_text(t.reference),
+            "Mode paiement": _full_text(t.payment_method),
+            "Statut": _full_text(t.status),
+            "Enregistré par": _full_text(t.recorded_by),
+            "Approbation PDG requise": "Oui" if t.requires_pdg_approval else "Non",
+            "Approuvé le": _fmt_datetime(t.approved_at),
+            "Approuvé par": _full_text(t.approved_by),
+            **_audit_row(t),
+        })
 
-    contrats = [
-        {
-            "N° contrat": c.contract_number or "—",
-            "Début": _fmt_date(c.start_date),
-            "Fin": _fmt_date(c.end_date),
+    contrats = []
+    for c in LeaseContract.objects.filter(deleted_at__isnull=True).select_related(
+        "premise", "tenant"
+    ).order_by("-start_date")[:500]:
+        contrats.append({
+            "N° contrat": _full_text(c.contract_number),
+            "Locataire": _full_text(c.tenant.name if c.tenant else None),
+            "ID locataire (sync)": _full_text(c.tenant_id_sync),
+            "Local": _full_text(c.premise.name if c.premise else None),
+            "ID local (sync)": _full_text(c.premise_id_sync),
+            "Date début": _fmt_date(c.start_date),
+            "Date fin": _fmt_date(c.end_date),
             "Loyer mensuel": _money(c.monthly_rent),
-            "Statut": c.status or "—",
-        }
-        for c in LeaseContract.objects.filter(deleted_at__isnull=True).order_by("-start_date")[:300]
-    ]
+            "Caution": _money(c.deposit),
+            "Statut": _full_text(c.status),
+            **_audit_row(c),
+        })
 
-    incidents = [
-        {
-            "Code": i.code or "—",
-            "Titre": i.title or "—",
-            "Sévérité": i.severity or "—",
-            "Statut": i.status or "—",
-            "Lieu": i.location or "—",
+    incidents = []
+    for i in Incident.objects.filter(deleted_at__isnull=True).order_by("-reported_at")[:500]:
+        incidents.append({
+            "Code": _full_text(i.code),
+            "Titre": _full_text(i.title),
+            "Description": _full_text(i.description),
+            "Type incident": _full_text(i.incident_type),
+            "Sévérité": _full_text(i.severity),
+            "Statut": _full_text(i.status),
+            "Lieu": _full_text(i.location),
+            "Bâtiment": _full_text(i.building),
+            "Signalé le": _fmt_datetime(i.reported_at),
             "Coût": _money(i.cost),
-        }
-        for i in Incident.objects.filter(deleted_at__isnull=True).order_by("-reported_at")[:300]
-    ]
+            **_audit_row(i),
+        })
 
-    visites = [
-        {
-            "Visiteur": v.full_name or "—",
-            "Société": v.company or "—",
-            "Motif": v.purpose or "—",
-            "Arrivée": _iso(v.check_in_at),
-            "Départ": _iso(v.check_out_at),
-        }
-        for v in Visitor.objects.filter(deleted_at__isnull=True).order_by("-check_in_at")[:300]
-    ]
+    visites = []
+    for v in Visitor.objects.filter(deleted_at__isnull=True).order_by("-check_in_at")[:500]:
+        visites.append({
+            "Visiteur": _full_text(v.full_name),
+            "Société": _full_text(v.company),
+            "Motif": _full_text(v.purpose),
+            "Arrivée": _fmt_datetime(v.check_in_at),
+            "Départ": _fmt_datetime(v.check_out_at),
+            **_audit_row(v),
+        })
 
-    activites = [
-        {
-            "Utilisateur": e.username or "Système",
-            "Rôle": e.user_role or "—",
-            "Type": e.entity_type,
-            "Direction": e.direction,
+    activites = []
+    for e in ServerSyncEvent.objects.order_by("-created_at")[:500]:
+        activites.append({
+            "ID événement": str(e.id),
+            "Date/heure": _fmt_datetime(e.created_at),
+            "Utilisateur": _full_text(e.username) if e.username else "Système",
+            "Rôle": _full_text(e.user_role),
+            "Type entité": _full_text(e.entity_type),
+            "Direction": _full_text(e.direction),
+            "Nb enregistrements": e.records_count,
             "Succès": "Oui" if e.success else "Non",
-            "Date": _iso(e.created_at),
-        }
-        for e in ServerSyncEvent.objects.order_by("-created_at")[:300]
-    ]
+            "Message erreur": _full_text(e.error_message),
+        })
 
     sections = [
         {"index": 0, "label": "Personnel", "rows": personnel},
@@ -254,9 +319,11 @@ def load_users(current_username: str | None = None) -> dict:
         User.objects.filter(deleted_at__isnull=True).order_by("-created_at")
     )
     items = []
+    table_rows = []
     for u in users:
         is_online = u.is_active and u.last_login_at and u.last_login_at >= online_threshold
-        items.append({
+        last_login = _fmt_datetime(u.last_login_at) if u.last_login_at else "Jamais"
+        row = {
             "id": str(u.id),
             "username": u.username,
             "fullName": u.full_name or u.username,
@@ -265,13 +332,30 @@ def load_users(current_username: str | None = None) -> dict:
             "department": "Administration",
             "statusLabel": "Actif" if u.is_active else "Suspendu",
             "isOnline": is_online,
-            "lastLoginDisplay": (
-                timezone.localtime(u.last_login_at).strftime("%d/%m/%Y %H:%M")
-                if u.last_login_at else "Jamais"
-            ),
+            "lastLoginDisplay": last_login,
             "initials": _initials(u.full_name or u.username),
-            "createdAtDisplay": timezone.localtime(u.created_at).strftime("%d/%m/%Y"),
+            "createdAtDisplay": _fmt_datetime(u.created_at),
+            "updatedAtDisplay": _fmt_datetime(u.updated_at),
+            "deletedAtDisplay": _fmt_datetime(u.deleted_at),
+            "isSynced": u.is_synced,
+            "isStaff": u.is_staff,
             "jobTitle": u.role,
+        }
+        items.append(row)
+        table_rows.append({
+            "ID": str(u.id),
+            "Identifiant": u.username,
+            "Nom complet": _full_text(u.full_name),
+            "Email": _full_text(u.email),
+            "Rôle": u.role,
+            "Statut": "Actif" if u.is_active else "Suspendu",
+            "Staff": "Oui" if u.is_staff else "Non",
+            "En ligne": "Oui" if is_online else "Non",
+            "Dernière connexion": last_login,
+            "Créé le": _fmt_datetime(u.created_at),
+            "Modifié le": _fmt_datetime(u.updated_at),
+            "Synchronisé": "Oui" if u.is_synced else "Non",
+            "Supprimé le": _fmt_datetime(u.deleted_at),
         })
 
     logins_today = sum(1 for u in users if u.last_login_at and u.last_login_at.date() == today)
@@ -312,6 +396,7 @@ def load_users(current_username: str | None = None) -> dict:
         "activeSessionsTrend": "Temps réel",
         "loginsSparkline": [p["count"] for p in login_trend],
         "users": items,
+        "tableRows": table_rows,
         "roleDistribution": [{"role": k, "count": v} for k, v in role_dist.items()],
         "statusDistribution": [
             {"status": "Actif", "count": active},
@@ -340,11 +425,12 @@ def load_user_detail(user_id: str) -> dict | None:
         "email": u.email or "",
         "roleLabel": u.role,
         "statusLabel": "Actif" if u.is_active else "Suspendu",
-        "createdAtDisplay": timezone.localtime(u.created_at).strftime("%d/%m/%Y %H:%M"),
-        "lastLoginDisplay": (
-            timezone.localtime(u.last_login_at).strftime("%d/%m/%Y %H:%M")
-            if u.last_login_at else "Jamais"
-        ),
+        "isStaff": u.is_staff,
+        "isSynced": u.is_synced,
+        "createdAtDisplay": _fmt_datetime(u.created_at),
+        "updatedAtDisplay": _fmt_datetime(u.updated_at),
+        "deletedAtDisplay": _fmt_datetime(u.deleted_at),
+        "lastLoginDisplay": _fmt_datetime(u.last_login_at) if u.last_login_at else "Jamais",
         "permissions": [
             {"code": p, "name": p.replace(".", " ").title(), "module": p.split(".")[0]}
             for p in perms
@@ -369,20 +455,36 @@ def load_sync_page() -> dict:
         total_store += count
         data_types.append({"name": et, "synced": count, "total": count, "isComplete": True})
 
-    events = list(ServerSyncEvent.objects.order_by("-created_at")[:50])
-    history = [
-        {
+    events = list(ServerSyncEvent.objects.order_by("-created_at")[:200])
+    history = []
+    history_table_rows = []
+    for e in events:
+        history.append({
+            "id": str(e.id),
             "startedAt": _iso(e.created_at),
+            "startedAtDisplay": _fmt_datetime(e.created_at),
             "typeLabel": e.entity_type or "Sync",
             "success": e.success,
             "itemsCount": e.records_count,
             "durationLabel": "—",
             "dataSizeLabel": "—",
             "userName": e.username or "Système",
+            "userRole": e.user_role or "—",
+            "direction": e.direction or "—",
             "detail": e.error_message or e.direction,
-        }
-        for e in events
-    ]
+            "errorMessage": e.error_message or "—",
+        })
+        history_table_rows.append({
+            "ID événement": str(e.id),
+            "Date/heure": _fmt_datetime(e.created_at),
+            "Utilisateur": _full_text(e.username) if e.username else "Système",
+            "Rôle": _full_text(e.user_role),
+            "Type entité": _full_text(e.entity_type),
+            "Direction": _full_text(e.direction),
+            "Nb enregistrements": e.records_count,
+            "Succès": "Oui" if e.success else "Non",
+            "Message erreur": _full_text(e.error_message),
+        })
 
     failed = [e for e in events if not e.success]
     pending_types = {}
@@ -425,6 +527,7 @@ def load_sync_page() -> dict:
         "pendingItems": pending_items,
         "conflicts": [],
         "history": history,
+        "historyTableRows": history_table_rows,
         "alerts": [
             {
                 "title": "Portail cloud",
@@ -472,20 +575,26 @@ def load_activity_log() -> dict:
 
         activities.append({
             "id": str(e.id),
-            "timeDisplay": timezone.localtime(e.created_at).strftime("%H:%M"),
+            "timeDisplay": timezone.localtime(e.created_at).strftime("%H:%M:%S"),
             "dateDisplay": timezone.localtime(e.created_at).strftime("%d/%m/%Y"),
+            "dateTimeDisplay": _fmt_datetime(e.created_at),
             "userName": e.username or "Système",
             "userRole": e.user_role or "—",
             "userInitials": _initials(e.username or "S"),
             "actionTitle": f"{e.entity_type} — {e.direction}",
             "actionDescription": e.error_message or f"{e.records_count} enregistrement(s)",
             "module": e.entity_type or "Sync",
+            "entityType": e.entity_type or "—",
+            "direction": e.direction or "—",
+            "recordsCount": e.records_count,
             "details": e.error_message or "",
+            "errorMessage": e.error_message or "—",
             "deviceInfo": "Cloud Render",
             "ipAddress": "—",
             "statusLabel": "Succès" if e.success else "Échec",
+            "success": e.success,
             "activityType": act_type,
-            "activityCode": str(e.id)[:8],
+            "activityCode": str(e.id),
             "occurredAt": _iso(e.created_at),
             "oldValues": "",
             "newValues": "",
@@ -514,6 +623,25 @@ def load_activity_log() -> dict:
         "syncTrend": _trend(count_type(today_items, "Synchronisation"), count_type(yesterday_items, "Synchronisation")),
         "activitiesSparkline": _last7_sync_counts(),
         "activities": activities,
+        "tableRows": [
+            {
+                "ID": a["activityCode"],
+                "Date/heure": a["dateTimeDisplay"],
+                "Type activité": a["activityType"],
+                "Utilisateur": a["userName"],
+                "Rôle": a["userRole"],
+                "Module / entité": a["entityType"],
+                "Direction": a["direction"],
+                "Nb enregistrements": a["recordsCount"],
+                "Statut": a["statusLabel"],
+                "Action": a["actionTitle"],
+                "Description": a["actionDescription"],
+                "Message erreur": a["errorMessage"],
+                "Appareil": a["deviceInfo"],
+                "Adresse IP": a["ipAddress"],
+            }
+            for a in activities
+        ],
         "typeFilters": ["Tous les types"] + sorted({a["activityType"] for a in activities}),
         "moduleFilters": ["Tous les modules"] + sorted({a["module"] for a in activities}),
         "userFilters": ["Tous les utilisateurs"] + sorted({a["userName"] for a in activities}),
@@ -539,6 +667,33 @@ def load_settings_page() -> dict:
         {"id": "about", "label": "À propos", "icon": "info-circle"},
     ]
     building = Building.objects.filter(deleted_at__isnull=True).first()
+    sync_entities = list(
+        SyncedEntityStore.objects.order_by("-updated_at")[:300]
+    )
+    sync_table_rows = [
+        {
+            "ID": str(s.id),
+            "Type entité": s.entity_type,
+            "Créé le": _fmt_datetime(s.created_at),
+            "Modifié le": _fmt_datetime(s.updated_at),
+            "Supprimé le": _fmt_datetime(s.deleted_at),
+            "Données JSON": str(s.json_data) if s.json_data else "—",
+        }
+        for s in sync_entities
+    ]
+    building_rows = []
+    if building:
+        building_rows.append({
+            "ID": str(building.id),
+            "Nom": _full_text(building.name),
+            "Adresse": _full_text(building.address),
+            "Ville": _full_text(building.city),
+            "Étages": building.floors,
+            "Créé le": _fmt_datetime(building.created_at),
+            "Modifié le": _fmt_datetime(building.updated_at),
+            "Synchronisé": "Oui" if building.is_synced else "Non",
+            "Supprimé le": _fmt_datetime(building.deleted_at),
+        })
     return {
         "layout": "desktop",
         "categories": categories,
@@ -563,6 +718,8 @@ def load_settings_page() -> dict:
         ],
         "canResetDatabase": True,
         "resetConfirmPhrase": "REINITIALISER SBMS",
+        "buildingTableRows": building_rows,
+        "syncEntityTableRows": sync_table_rows,
     }
 
 
@@ -659,26 +816,46 @@ def load_documents_page() -> dict:
         for cid, label, color in _DOCUMENT_CATEGORIES
     ]
 
-    items = [
-        {
+    items = []
+    table_rows = []
+    for d in docs:
+        item = {
             "id": str(d.id),
             "fileName": d.file_name,
             "fileType": _file_type_label(d.mime_type, d.file_name),
             "categoryId": d.category,
             "categoryLabel": _CATEGORY_LABELS.get(d.category, "Document"),
             "entityType": d.entity_type,
+            "entityId": str(d.entity_id),
             "sizeDisplay": _fmt_size(d.file_size),
             "sizeBytes": d.file_size,
-            "dateDisplay": _fmt_date(d.updated_at),
-            "addedAtDisplay": d.created_at.strftime("%d/%m/%Y %H:%M") if d.created_at else "—",
-            "modifiedAtDisplay": d.updated_at.strftime("%d/%m/%Y %H:%M") if d.updated_at else "—",
+            "dateDisplay": _fmt_datetime(d.updated_at),
+            "addedAtDisplay": _fmt_datetime(d.created_at),
+            "modifiedAtDisplay": _fmt_datetime(d.updated_at),
             "addedBy": d.added_by or "Desktop SBMS",
             "downloadUrl": f"/api/documents/{d.id}/",
             "mimeType": d.mime_type,
+            "contentSha256": d.content_sha256 or "—",
             "status": "Synchronisé",
         }
-        for d in docs
-    ]
+        items.append(item)
+        table_rows.append({
+            "ID document": str(d.id),
+            "Fichier": d.file_name,
+            "Format": _file_type_label(d.mime_type, d.file_name),
+            "Type MIME": d.mime_type,
+            "Catégorie": _CATEGORY_LABELS.get(d.category, d.category),
+            "Type entité": d.entity_type,
+            "ID entité": str(d.entity_id),
+            "Taille": _fmt_size(d.file_size),
+            "Taille (octets)": d.file_size,
+            "SHA-256": d.content_sha256 or "—",
+            "Ajouté par": d.added_by or "Desktop SBMS",
+            "Créé le": _fmt_datetime(d.created_at),
+            "Modifié le": _fmt_datetime(d.updated_at),
+            "Statut": "Synchronisé",
+            "Téléchargement": f"/api/documents/{d.id}/",
+        })
 
     entity_types = sorted({d.entity_type for d in docs if d.entity_type})
 
@@ -687,6 +864,7 @@ def load_documents_page() -> dict:
         "selectedCategoryId": "all",
         "categories": categories,
         "documents": items,
+        "tableRows": table_rows,
         "entityTypeFilters": ["Tous types", *entity_types],
         "totalCount": len(docs),
         "recentCount": recent,

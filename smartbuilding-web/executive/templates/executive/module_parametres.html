@@ -29,6 +29,10 @@
         <div class="dm-card" id="cat-panel">
           <p class="text-muted">Chargement…</p>
         </div>
+        <div class="dm-card d-none" id="entity-tables-panel">
+          <h2 class="h6 fw-bold">Données synchronisées (détail)</h2>
+          <div id="entity-tables-host"></div>
+        </div>
         <div class="dm-card">
           <h2 class="h6 fw-bold">Informations système</h2>
           <div id="sys-info" class="small mt-2"></div>
@@ -58,22 +62,52 @@ const CAT_CONTENT = {
   general: d => `<h2 class="h5 fw-bold">Général</h2><p class="text-muted small">Profil société et environnement cloud.</p>
     <div class="row g-2 mt-2"><div class="col-md-6"><label class="small fw-bold">Société</label><div class="form-control-plaintext">${d.companyName}</div></div>
     <div class="col-md-6"><label class="small fw-bold">Version</label><div class="form-control-plaintext">${d.appVersion}</div></div></div>`,
-  buildings: d => `<h2 class="h5 fw-bold">Société &amp; bailleur</h2><p class="small text-muted">Données synchronisées depuis le desktop (quittances PDF).</p>
-    <p class="mt-2"><strong>${d.companyName}</strong></p>`,
+  buildings: d => `<h2 class="h5 fw-bold">Société &amp; bailleur</h2><p class="small text-muted">Toutes les informations du bâtiment synchronisé.</p>
+    <div id="building-table-slot"></div>`,
+  synchronisation: d => `<h2 class="h5 fw-bold">Synchronisation</h2><p>Taux de succès : <strong>${d.syncKpiLabel}</strong></p>
+    <a href="/synchronisation/" class="btn btn-sm btn-outline-primary">Ouvrir Synchronisation</a>
+    <div class="mt-3" id="sync-entity-table-slot"></div>`,
   utilisateurs: d => `<h2 class="h5 fw-bold">Utilisateurs &amp; rôles</h2><p>${d.activeUsersDisplay} utilisateur(s) actif(s).</p>
     <a href="/utilisateurs/" class="btn btn-sm btn-outline-primary">Ouvrir le module Utilisateurs</a>`,
-  synchronisation: d => `<h2 class="h5 fw-bold">Synchronisation</h2><p>Taux de succès : <strong>${d.syncKpiLabel}</strong></p>
-    <a href="/synchronisation/" class="btn btn-sm btn-outline-primary">Ouvrir Synchronisation</a>`,
   logs: d => `<h2 class="h5 fw-bold">Logs système</h2><a href="/journal/" class="btn btn-sm btn-outline-primary">Journal d'activité</a>`,
   about: d => `<h2 class="h5 fw-bold">À propos</h2><p class="small">SBMS Web — portail administration cloud Render.</p>
     <p class="small">BDD : ${d.databaseLabel}</p>`,
 };
+
+function mountInlineTable(slotId, rows, title) {
+  const slot = document.getElementById(slotId);
+  if (!slot) return;
+  const uid = slotId.replace(/[^a-z0-9]/gi, '');
+  slot.innerHTML = `
+    <div class="mt-3">
+      <div class="fw-bold small mb-1">${title}</div>
+      <div class="dm-table-count" id="count-${uid}"></div>
+      <div class="dm-table-wrap">
+        <table class="table dm-table mb-0">
+          <thead id="head-${uid}"></thead>
+          <tbody id="body-${uid}"></tbody>
+        </table>
+      </div>
+    </div>`;
+  Sbms.renderDataTable(
+    document.getElementById(`head-${uid}`),
+    document.getElementById(`body-${uid}`),
+    rows || [],
+    { countEl: document.getElementById(`count-${uid}`) }
+  );
+}
 
 function renderCat(id) {
   activeCat = id;
   document.querySelectorAll('.dm-cat-link').forEach(b => b.classList.toggle('active', b.dataset.id === id));
   const fn = CAT_CONTENT[id] || (d => `<h2 class="h5 fw-bold">${id}</h2><p class="text-muted small">Paramètres gérés sur l'application desktop.</p>`);
   document.getElementById('cat-panel').innerHTML = fn(data);
+  if (id === 'buildings') {
+    mountInlineTable('building-table-slot', data.buildingTableRows, 'Bâtiment');
+  }
+  if (id === 'synchronisation') {
+    mountInlineTable('sync-entity-table-slot', data.syncEntityTableRows, 'Entités synchronisées (JSON complet)');
+  }
 }
 
 async function load() {
