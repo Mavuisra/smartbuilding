@@ -233,6 +233,7 @@ public partial class PersonnelService
         }
 
         await _db.SaveChangesAsync(cancellationToken);
+        await PushDocumentAsync(payment.PaySlipPdfPath, "SalaryPayments", payment.Id, "personnel", cancellationToken);
 
         return (string.Empty, payment);
     }
@@ -278,6 +279,7 @@ public partial class PersonnelService
         payment.PaySlipPdfPath = _paySlipPdf.Generate(payment, payment.Employee);
         payment.MarkUpdated();
         await _db.SaveChangesAsync(cancellationToken);
+        await PushDocumentAsync(payment.PaySlipPdfPath, "SalaryPayments", payment.Id, "personnel", cancellationToken);
         return payment.PaySlipPdfPath;
     }
 

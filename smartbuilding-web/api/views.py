@@ -19,6 +19,7 @@ from api.models import (
     Premise,
     RentPayment,
     ServerSyncEvent,
+    SyncedDocument,
     SyncedEntityStore,
     Tenant,
     User,
@@ -340,6 +341,99 @@ class SyncPullView(APIView):
                 "entities": entities,
             }
         )
+
+
+class DocumentUploadView(APIView):
+    """Réception des PDF/documents desktop — contenu binaire inchangé."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        import base64
+        import hashlib
+
+        entity_type = request.data.get("entityType") or request.data.get("EntityType") or ""
+        entity_id = request.data.get("entityId") or request.data.get("EntityId")
+        category = request.data.get("category") or request.data.get("Category") or "rapports"
+        file_name = request.data.get("fileName") or request.data.get("FileName") or "document.pdf"
+        mime_type = request.data.get("mimeType") or request.data.get("MimeType") or "application/pdf"
+        content_b64 = request.data.get("contentBase64") or request.data.get("ContentBase64") or ""
+        added_by = request.data.get("addedBy") or request.data.get("AddedBy") or ""
+        sha_client = (request.data.get("contentSha256") or request.data.get("ContentSha256") or "").lower()
+
+        if not entity_type or not entity_id:
+            return api_fail("entityType et entityId sont requis.", status=400)
+        if not content_b64:
+            return api_fail("contentBase64 est requis.", status=400)
+
+        import uuid as uuid_mod
+
+        try:
+            uid = uuid_mod.UUID(str(entity_id))
+        except (ValueError, AttributeError):
+            return api_fail("entityId invalide.", status=400)
+
+        try:
+            raw = base64.b64decode(content_b64, validate=True)
+        except Exception:
+            return api_fail("contentBase64 invalide.", status=400)
+
+        if len(raw) > 20 * 1024 * 1024:
+            return api_fail("Fichier trop volumineux (max 20 Mo).", status=400)
+
+        sha = hashlib.sha256(raw).hexdigest()
+        if sha_client and sha_client != sha:
+            return api_fail("Hash SHA256 incohérent.", status=400)
+
+        doc_id = uid
+        existing = SyncedDocument.objects.filter(
+            entity_type=entity_type, entity_id=uid, content_sha256=sha
+        ).first()
+        if existing is not None:
+            return api_ok({"id": str(existing.id), "duplicate": True})
+
+        SyncedDocument.objects.update_or_create(
+            id=doc_id,
+            defaults={
+                "entity_type": entity_type,
+                "entity_id": uid,
+                "category": category,
+                "file_name": file_name[:260],
+                "mime_type": mime_type[:120],
+                "file_data": raw,
+                "file_size": len(raw),
+                "content_sha256": sha,
+                "added_by": added_by[:150],
+                "updated_at": timezone.now(),
+            },
+        )
+
+        ServerSyncEvent.objects.create(
+            username=getattr(request.user, "username", ""),
+            user_role=getattr(request.user, "role", ""),
+            entity_type="Documents",
+            direction="push",
+            records_count=1,
+            success=True,
+        )
+        return api_ok({"id": str(doc_id), "fileSize": len(raw), "sha256": sha})
+
+
+class DocumentDownloadView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, document_id):
+        try:
+            doc = SyncedDocument.objects.get(id=document_id)
+        except SyncedDocument.DoesNotExist:
+            return api_fail("Document introuvable.", status=404)
+
+        from django.http import HttpResponse
+
+        response = HttpResponse(bytes(doc.file_data), content_type=doc.mime_type)
+        response["Content-Disposition"] = f'inline; filename="{doc.file_name}"'
+        response["Content-Length"] = str(doc.file_size)
+        return response
 
 
 class DashboardSummaryView(APIView):

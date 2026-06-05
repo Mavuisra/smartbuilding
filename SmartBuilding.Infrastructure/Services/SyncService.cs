@@ -22,6 +22,7 @@ public class SyncService : ISyncService
     private readonly IConfiguration _configuration;
     private readonly ILogger<SyncService> _logger;
     private readonly ISyncNotifier _notifier;
+    private readonly IDocumentCloudUploadService _documentUpload;
 
     private DateTime? _lastSyncAt;
 
@@ -33,13 +34,15 @@ public class SyncService : ISyncService
         INetworkService network,
         IConfiguration configuration,
         ILogger<SyncService> logger,
-        ISyncNotifier notifier)
+        ISyncNotifier notifier,
+        IDocumentCloudUploadService documentUpload)
     {
         _contextFactory = contextFactory;
         _network = network;
         _configuration = configuration;
         _logger = logger;
         _notifier = notifier;
+        _documentUpload = documentUpload;
     }
 
     public Task<bool> IsOnlineAsync(CancellationToken cancellationToken = default) =>
@@ -224,6 +227,17 @@ public class SyncService : ISyncService
             }
 
             await context.SaveChangesAsync(cancellationToken);
+
+            try
+            {
+                var docsUploaded = await _documentUpload.UploadAllPendingAsync(cancellationToken);
+                if (docsUploaded > 0)
+                    _logger.LogInformation("Documents cloud : {Count} fichier(s) envoyé(s).", docsUploaded);
+            }
+            catch (Exception docEx)
+            {
+                _logger.LogDebug(docEx, "Upload documents cloud ignoré");
+            }
 
             // Phase 2 — Pull : récupérer les changements des autres postes via PostgreSQL.
             foreach (var entityType in SyncEntityRegistry.SyncableTypes)

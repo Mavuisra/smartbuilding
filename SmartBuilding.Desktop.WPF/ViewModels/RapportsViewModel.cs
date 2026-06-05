@@ -1,6 +1,9 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Security.Cryptography;
+using System.Text;
 using CommunityToolkit.Mvvm.ComponentModel;
+using SmartBuilding.Application.Interfaces;
 using CommunityToolkit.Mvvm.Input;
 using LiveChartsCore;
 using LiveChartsCore.SkiaSharpView;
@@ -16,6 +19,7 @@ public partial class RapportsViewModel : BaseViewModel
     private readonly RapportsService _rapportsService;
     private readonly RapportsReportPdfService _pdfService;
     private readonly SessionService _session;
+    private readonly IDocumentCloudUploadService _documentUpload;
 
     private RapportsPageData? _pageData;
     private List<RapportPersonnelRow> _allPersonnel = [];
@@ -102,11 +106,13 @@ public partial class RapportsViewModel : BaseViewModel
     public RapportsViewModel(
         RapportsService rapportsService,
         RapportsReportPdfService pdfService,
-        SessionService session)
+        SessionService session,
+        IDocumentCloudUploadService documentUpload)
     {
         _rapportsService = rapportsService;
         _pdfService = pdfService;
         _session = session;
+        _documentUpload = documentUpload;
         UserName = session.CurrentUser?.FullName ?? "Administrateur";
         UserRole = session.CurrentUser?.Role ?? "Administrateur";
         UserInitials = GetInitials(UserName);
@@ -185,13 +191,21 @@ public partial class RapportsViewModel : BaseViewModel
 
             StatusMessage = $"PDF exporté : {path}";
             Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+            var docId = DeterministicGuid(path);
+            await _documentUpload.TryUploadFileAsync(path, "Reports", docId, "rapports", _session.CurrentUser?.FullName);
         }
         catch (Exception ex)
         {
             ErrorMessage = ex.Message;
         }
+    }
 
-        await Task.CompletedTask;
+    private static Guid DeterministicGuid(string input)
+    {
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(input.ToLowerInvariant()));
+        var bytes = new byte[16];
+        Array.Copy(hash, bytes, 16);
+        return new Guid(bytes);
     }
 
     [RelayCommand]

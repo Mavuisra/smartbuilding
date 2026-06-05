@@ -309,7 +309,10 @@ public partial class LocationsService
                 ? $"{amount:N2} FC remboursés — décharge : {g.DischargePdfPath}"
                 : $"{amount:N2} FC remboursés.",
             cancellationToken);
-        return await _db.SaveChangesWithMessageAsync(cancellationToken);
+        var saveError = await _db.SaveChangesWithMessageAsync(cancellationToken);
+        if (string.IsNullOrEmpty(saveError) && !string.IsNullOrWhiteSpace(g.DischargePdfPath))
+            await PushDocumentAsync(g.DischargePdfPath, "LeaseGuarantees", g.Id, "contrats", cancellationToken);
+        return saveError;
     }
 
     public async Task<string?> GetGuaranteeDischargePdfPathAsync(Guid guaranteeId, CancellationToken cancellationToken = default)
@@ -356,6 +359,7 @@ public partial class LocationsService
         contract.MarkUpdated();
         if (!string.IsNullOrEmpty(await _db.SaveChangesWithMessageAsync(cancellationToken)))
             return null;
+        await PushDocumentAsync(contract.ContractPdfPath, "LeaseContracts", contract.Id, "contrats", cancellationToken);
         return contract.ContractPdfPath;
     }
 
@@ -458,6 +462,7 @@ public partial class LocationsService
         if (!string.IsNullOrEmpty(await _db.SaveChangesWithMessageAsync(cancellationToken)))
             return null;
 
+        await PushDocumentAsync(payment.ReceiptPdfPath, "RentPayments", payment.Id, "factures", cancellationToken);
         return payment.ReceiptPdfPath;
     }
 

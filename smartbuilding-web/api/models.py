@@ -258,6 +258,29 @@ class SyncedEntityStore(models.Model):
         ]
 
 
+class SyncedDocument(models.Model):
+    """Fichiers PDF/documents poussés par le desktop — octets originaux conservés."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    entity_type = models.CharField(max_length=64, db_index=True)
+    entity_id = models.UUIDField(db_index=True)
+    category = models.CharField(max_length=32, db_index=True, default="rapports")
+    file_name = models.CharField(max_length=260)
+    mime_type = models.CharField(max_length=120, default="application/pdf")
+    file_data = models.BinaryField()
+    file_size = models.BigIntegerField(default=0)
+    content_sha256 = models.CharField(max_length=64, blank=True, default="", db_index=True)
+    added_by = models.CharField(max_length=150, blank=True, default="")
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["entity_type", "entity_id"]),
+            models.Index(fields=["category", "updated_at"]),
+        ]
+
+
 class ServerSyncEvent(models.Model):
     """Journal côté serveur : chaque push/pull des gérants."""
 

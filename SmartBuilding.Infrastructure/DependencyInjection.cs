@@ -62,6 +62,7 @@ public static class DependencyInjection
         services.AddSingleton<ISyncNotifier, SyncNotifier>();
         services.AddScoped<CloudIdentityService>();
         services.AddScoped<ISyncService, SyncService>();
+        services.AddScoped<IDocumentCloudUploadService, CloudDocumentUploadService>();
         services.AddScoped<IEmailService, EmailService>();
         services.AddScoped<IReportService, ReportService>();
         services.AddScoped<LocationDataCleaner>();
