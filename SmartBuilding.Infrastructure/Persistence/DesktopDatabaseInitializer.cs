@@ -1,3 +1,4 @@
+using System.Data.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SmartBuilding.Infrastructure.Services;
@@ -52,6 +53,7 @@ public static class DesktopDatabaseInitializer
                 string.Join(", ", pending));
 
             await context.Database.MigrateAsync(cancellationToken);
+            await EnsureMySqlSchemaPatchesAsync(context, cancellationToken);
             return;
         }
 
@@ -64,6 +66,68 @@ public static class DesktopDatabaseInitializer
             throw new InvalidOperationException(
                 $"Impossible d'accéder à la base sur le serveur {localDb.ServerHost}.");
         }
+
+        await EnsureMySqlSchemaPatchesAsync(context, cancellationToken);
+    }
+
+    /// <summary>Correctifs idempotents pour colonnes ajoutées hors migration ou base déjà en production.</summary>
+    private static async Task EnsureMySqlSchemaPatchesAsync(
+        SmartBuildingDbContext context,
+        CancellationToken cancellationToken)
+    {
+        if (!IsMySqlProvider(context))
+            return;
+
+        var connection = context.Database.GetDbConnection();
+        var wasOpen = connection.State == System.Data.ConnectionState.Open;
+        if (!wasOpen)
+            await connection.OpenAsync(cancellationToken);
+
+        try
+        {
+            await EnsureMySqlColumnAsync(connection, "ConsumptionRecords", "CustomTypeLabel", "longtext NULL", cancellationToken);
+            await EnsureMySqlColumnAsync(connection, "ConsumptionRecords", "ExpenseMotif", "longtext NULL", cancellationToken);
+            await EnsureMySqlColumnAsync(connection, "ConsumptionRecords", "PaidBy", "longtext NOT NULL DEFAULT ''", cancellationToken);
+            await EnsureMySqlColumnAsync(connection, "ConsumptionRecords", "ReimbursementStatus", "longtext NOT NULL DEFAULT 'Non applicable'", cancellationToken);
+            await EnsureMySqlColumnAsync(connection, "Incidents", "EquipmentId", "char(36) NULL", cancellationToken);
+        }
+        finally
+        {
+            if (!wasOpen)
+                await connection.CloseAsync();
+        }
+    }
+
+    private static async Task EnsureMySqlColumnAsync(
+        DbConnection connection,
+        string table,
+        string column,
+        string columnDefinition,
+        CancellationToken cancellationToken)
+    {
+        await using var check = connection.CreateCommand();
+        check.CommandText = """
+            SELECT COUNT(*) FROM information_schema.columns
+            WHERE table_schema = DATABASE()
+              AND table_name = @table
+              AND column_name = @column
+            """;
+        var tableParam = check.CreateParameter();
+        tableParam.ParameterName = "@table";
+        tableParam.Value = table;
+        check.Parameters.Add(tableParam);
+        var columnParam = check.CreateParameter();
+        columnParam.ParameterName = "@column";
+        columnParam.Value = column;
+        check.Parameters.Add(columnParam);
+
+        var exists = Convert.ToInt32(await check.ExecuteScalarAsync(cancellationToken)) > 0;
+        if (exists)
+            return;
+
+        await using var alter = connection.CreateCommand();
+        alter.CommandText = $"ALTER TABLE `{table}` ADD COLUMN `{column}` {columnDefinition}";
+        await alter.ExecuteNonQueryAsync(cancellationToken);
     }
 
     /// <summary>Détecte une base créée par l'ancien EnsureCreated (tables sans __EFMigrationsHistory).</summary>

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using SmartBuilding.Application.Interfaces;
 using SmartBuilding.Domain.Entities.Location;
 using SmartBuilding.Domain.Enums;
 using SmartBuilding.Desktop.WPF.Models;
@@ -11,12 +12,27 @@ public partial class LocationsService
 {
     private readonly SmartBuildingDbContext _db;
     private readonly FinanceLedgerService _financeLedger;
+    private readonly IDocumentCloudUploadService _documentUpload;
 
-    public LocationsService(SmartBuildingDbContext db, FinanceLedgerService financeLedger)
+    public LocationsService(
+        SmartBuildingDbContext db,
+        FinanceLedgerService financeLedger,
+        IDocumentCloudUploadService documentUpload)
     {
         _db = db;
         _financeLedger = financeLedger;
+        _documentUpload = documentUpload;
     }
+
+    private Task PushDocumentAsync(
+        string? path,
+        string entityType,
+        Guid entityId,
+        string category,
+        CancellationToken cancellationToken = default) =>
+        string.IsNullOrWhiteSpace(path)
+            ? Task.CompletedTask
+            : _documentUpload.TryUploadFileAsync(path, entityType, entityId, category, cancellationToken: cancellationToken);
 
     public async Task<LocationsPageData> LoadAsync(CancellationToken cancellationToken = default)
     {

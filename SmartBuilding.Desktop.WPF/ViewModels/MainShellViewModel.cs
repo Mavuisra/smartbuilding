@@ -7,10 +7,10 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using SmartBuilding.Domain.Entities.Building;
 using SmartBuilding.Infrastructure.Persistence;
 using SmartBuilding.Application.Interfaces;
 using SmartBuilding.Desktop.WPF.Models;
-using SmartBuilding.Shared.Constants;
 using SmartBuilding.Desktop.WPF.Services;
 using SmartBuilding.Infrastructure.Services;
 
@@ -27,6 +27,7 @@ public partial class MainShellViewModel : BaseViewModel
     private readonly LocationsTenantsViewModel _locationsTenantsViewModel;
     private readonly LocationsPatrimoineViewModel _locationsPatrimoineViewModel;
     private readonly FinancesViewModel _financesViewModel;
+    private readonly RapportsViewModel _rapportsViewModel;
     private readonly TechnicalViewModel _technicalViewModel;
     private readonly SuppliersViewModel _suppliersViewModel;
     private readonly InventoryViewModel _inventoryViewModel;
@@ -74,11 +75,11 @@ public partial class MainShellViewModel : BaseViewModel
     [ObservableProperty] private string _treasuryAvailableDisplay = MoneyFormatter.ZeroDisplay;
     [ObservableProperty] private string _treasuryDetailDisplay = "Loyers encaissés : 0 USD";
     [ObservableProperty] private bool _isTreasuryDepleted;
-    [ObservableProperty] private string _shellBrandName = BrandConstants.AppName;
-    [ObservableProperty] private string _shellBrandSubtitle = BrandConstants.AppSubtitle;
+    [ObservableProperty] private string _shellBrandName = BuildingInfoDefaults.CompanyName;
+    [ObservableProperty] private string _shellBrandSubtitle = AppBrandingState.DefaultSubtitle;
     [ObservableProperty] private string? _shellLogoPath;
     [ObservableProperty] private bool _hasShellLogo;
-    [ObservableProperty] private string _windowTitle = BrandConstants.WindowTitle;
+    [ObservableProperty] private string _windowTitle = BuildingInfoDefaults.CompanyName;
     [ObservableProperty] private bool _isReceptionOnly;
 
     public ObservableCollection<ShellNavEntry> NavigationItems { get; } = [];
@@ -93,6 +94,7 @@ public partial class MainShellViewModel : BaseViewModel
         LocationsTenantsViewModel locationsTenantsViewModel,
         LocationsPatrimoineViewModel locationsPatrimoineViewModel,
         FinancesViewModel financesViewModel,
+        RapportsViewModel rapportsViewModel,
         TechnicalViewModel technicalViewModel,
         SuppliersViewModel suppliersViewModel,
         InventoryViewModel inventoryViewModel,
@@ -128,6 +130,7 @@ public partial class MainShellViewModel : BaseViewModel
         _locationsTenantsViewModel = locationsTenantsViewModel;
         _locationsPatrimoineViewModel = locationsPatrimoineViewModel;
         _financesViewModel = financesViewModel;
+        _rapportsViewModel = rapportsViewModel;
         _technicalViewModel = technicalViewModel;
         _suppliersViewModel = suppliersViewModel;
         _inventoryViewModel = inventoryViewModel;
@@ -205,11 +208,11 @@ public partial class MainShellViewModel : BaseViewModel
     private void ApplyBrandingFromConfiguration()
     {
         var c = _appConfiguration.Current;
-        ShellBrandName = c.AppTitle;
+        ShellBrandName = c.CompanyName;
         ShellBrandSubtitle = c.AppSubtitle;
         ShellLogoPath = c.LogoPath;
         HasShellLogo = !string.IsNullOrWhiteSpace(c.LogoPath) && File.Exists(c.LogoPath);
-        WindowTitle = $"{c.CompanyName} — {BrandConstants.AppSubtitle}";
+        WindowTitle = c.CompanyName;
     }
 
     private void RebuildNavigation()
@@ -335,6 +338,9 @@ public partial class MainShellViewModel : BaseViewModel
     [RelayCommand]
     private async Task NavigateAsync(string? moduleId)
     {
+        if (CurrentViewModel is SynchronizationViewModel leavingSync)
+            leavingSync.Deactivate();
+
         if (string.IsNullOrWhiteSpace(moduleId))
             return;
 
@@ -438,6 +444,14 @@ public partial class MainShellViewModel : BaseViewModel
             return;
         }
 
+        if (moduleId == "rapports")
+        {
+            CurrentViewModel = _rapportsViewModel;
+            await _rapportsViewModel.LoadCommand.ExecuteAsync(null);
+            await RefreshShellStatusAsync();
+            return;
+        }
+
         if (moduleId is "technique" or "incidents")
         {
             SelectedModuleId = "technique";
@@ -505,6 +519,7 @@ public partial class MainShellViewModel : BaseViewModel
         if (moduleId == "synchronisation")
         {
             CurrentViewModel = _synchronizationViewModel;
+            _synchronizationViewModel.Activate();
             await _synchronizationViewModel.LoadCommand.ExecuteAsync(null);
             await RefreshShellStatusAsync();
             return;

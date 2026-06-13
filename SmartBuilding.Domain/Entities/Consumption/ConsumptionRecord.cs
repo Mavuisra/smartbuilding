@@ -6,6 +6,10 @@ namespace SmartBuilding.Domain.Entities.Consumption;
 public class ConsumptionRecord : BaseEntity
 {
     public ConsumptionType Type { get; set; }
+    public string? CustomTypeLabel { get; set; }
+    public string? ExpenseMotif { get; set; }
+    public string PaidBy { get; set; } = string.Empty;
+    public string ReimbursementStatus { get; set; } = ConsumptionReimbursementStatus.NotApplicable;
     public DateTime PeriodStart { get; set; }
     public DateTime PeriodEnd { get; set; }
     public decimal Quantity { get; set; }

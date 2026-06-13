@@ -1,5 +1,6 @@
 using QuestPDF.Fluent;
 using QuestPDF.Infrastructure;
+using SmartBuilding.Domain.Entities.Building;
 
 namespace SmartBuilding.Desktop.WPF.Services;
 
@@ -14,6 +15,9 @@ public static class PdfThemeHelper
 
     public static string ResolveAccentColor() =>
         AppConfigurationService.Instance?.Current.PdfAccentHex ?? "#16A34A";
+
+    public static string ResolveCompanyName() =>
+        AppConfigurationService.Instance?.Current.CompanyName ?? BuildingInfoDefaults.CompanyName;
 
     public static void SectionBox(IContainer container, string title, string headerColor, Action<ColumnDescriptor> content)
     {

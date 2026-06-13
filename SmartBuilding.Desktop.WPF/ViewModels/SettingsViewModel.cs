@@ -169,7 +169,12 @@ public partial class SettingsViewModel : BaseViewModel
         _settingsService = settingsService;
         _cloudDatabaseReset = cloudDatabaseReset;
         _appConfiguration = appConfiguration;
-        _appConfiguration.ConfigurationChanged += (_, _) => SyncAppearanceFromGlobalConfig();
+        _appConfiguration.ConfigurationChanged += (_, _) =>
+        {
+            SyncAppearanceFromGlobalConfig();
+            SyncBrandingFromGlobalConfig();
+        };
+        SyncBrandingFromGlobalConfig();
         _session = session;
         UserName = session.CurrentUser?.FullName ?? "Admin SBMS";
         UserRole = session.CurrentUser?.Role ?? "Administrateur";
@@ -199,6 +204,21 @@ public partial class SettingsViewModel : BaseViewModel
             : city.Length > 0 ? city : country.Length > 0 ? country : "—";
     }
 
+    private void SyncBrandingFromGlobalConfig()
+    {
+        var c = _appConfiguration.Current;
+        if (!string.IsNullOrWhiteSpace(c.CompanyName))
+            CompanyName = c.CompanyName;
+        OnPropertyChanged(nameof(CopyrightText));
+        OnPropertyChanged(nameof(AppDisplayName));
+    }
+
+    public string CopyrightText =>
+        $"© {DateTime.Now.Year} {CompanyName}. Tous droits réservés.";
+
+    public string AppDisplayName =>
+        string.IsNullOrWhiteSpace(CompanyName) ? BuildingInfoDefaults.CompanyName : CompanyName;
+
     private void SyncAppearanceFromGlobalConfig()
     {
         var c = _appConfiguration.Current;
@@ -218,6 +238,8 @@ public partial class SettingsViewModel : BaseViewModel
         {
             var data = await _settingsService.LoadAsync();
             CompanyName = data.CompanyName;
+            OnPropertyChanged(nameof(CopyrightText));
+            OnPropertyChanged(nameof(AppDisplayName));
             SelectedTimeZone = SettingsLookups.ToTimeZoneDisplay(data.TimeZoneId);
             SelectedCurrency = SettingsLookups.ToCurrencyDisplay(data.Currency);
             UsdExchangeRateText = data.UsdExchangeRate > 0

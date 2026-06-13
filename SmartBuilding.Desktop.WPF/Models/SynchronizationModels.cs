@@ -31,6 +31,8 @@ public sealed class SyncPageData
     public IReadOnlyList<SyncAlertRow> Alerts { get; init; } = [];
     public IReadOnlyList<int> Last7DaysCounts { get; init; } = [];
     public string? LastSyncError { get; init; }
+    public bool AutoSyncEnabled { get; init; } = true;
+    public string AutoSyncStatusLabel { get; init; } = "Active";
 }
 
 public sealed class SyncDataTypeRow

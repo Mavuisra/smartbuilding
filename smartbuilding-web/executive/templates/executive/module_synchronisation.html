@@ -1,0 +1,117 @@
+{% extends "executive/base.html" %}
+{% block title %}Synchronisation — SBMS{% endblock %}
+{% block extra_head %}{% include "executive/partials/desktop_module_styles.html" %}{% endblock %}
+{% block body %}
+<div class="app-shell dm-page">
+  {% include "executive/partials/sidebar.html" %}
+  <main class="app-main">
+    <div class="dm-hero mx-3 mt-3">
+      <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+        <div>
+          <div class="small opacity-75 text-uppercase">Synchronisation cloud</div>
+          <h1 class="h3 fw-bold mb-1" id="sync-status">Chargement…</h1>
+          <div id="cloud-identity" class="small opacity-90"></div>
+        </div>
+        <div class="d-flex flex-wrap gap-2" id="conn-pills"></div>
+      </div>
+      <div class="progress mt-3" style="height:8px;background:rgba(255,255,255,.2)">
+        <div class="progress-bar bg-light" id="global-progress" style="width:0%"></div>
+      </div>
+    </div>
+    <div class="sb-page-wrap">
+      <div id="load-error" class="alert alert-danger d-none"></div>
+      <div class="dm-kpi-grid" id="kpi-row"></div>
+      <div class="row g-3">
+        <div class="col-lg-4">
+          <div class="dm-card">
+            <h2 class="h6 fw-bold">Sources de données</h2>
+            <div class="small mt-2"><strong>Desktop MySQL</strong><br><span class="text-muted">Sync via application SBMS</span></div>
+            <div class="text-center my-2"><i class="bi bi-arrow-left-right"></i></div>
+            <div class="small"><strong>Cloud PostgreSQL</strong><br><span id="cloud-url" class="text-muted"></span></div>
+          </div>
+          <div class="dm-card">
+            <h2 class="h6 fw-bold">Types de données</h2>
+            <div id="data-types"></div>
+          </div>
+        </div>
+        <div class="col-lg-8">
+          <div class="dm-card">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h2 class="h6 fw-bold mb-0">En attente</h2>
+              <button class="btn btn-sm btn-success" id="refresh-btn">Actualiser</button>
+            </div>
+            <div id="pending-list"></div>
+          </div>
+          <div class="dm-card">
+            <h2 class="h6 fw-bold">Historique complet</h2>
+            <div class="dm-table-count" id="history-table-count"></div>
+            <div class="dm-table-wrap">
+              <table class="table dm-table mb-0">
+                <thead id="history-table-head"></thead>
+                <tbody id="history-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+{% endblock %}
+{% block scripts %}
+{% include "executive/partials/nav_script.html" %}
+<script>
+if (!Sbms.requireAuth()) throw new Error('auth');
+const apiFetch = Sbms.apiFetch;
+
+function render(d) {
+  document.getElementById('sync-status').textContent = d.syncStatusText || '—';
+  document.getElementById('cloud-identity').textContent = d.cloudIdentityMessage || '';
+  document.getElementById('global-progress').style.width = `${d.globalProgress || 0}%`;
+  document.getElementById('cloud-url').textContent = d.cloudServerUrl || '—';
+  const pills = [
+    ['Internet', d.isOnline],
+    ['Serveur cloud', d.isCloudReachable],
+    ['Base locale', true],
+    ['Sync auto', d.autoSyncEnabled],
+  ];
+  document.getElementById('conn-pills').innerHTML = pills.map(([l,ok]) =>
+    `<span class="dm-pill ${ok?'on':'off'}">${l}: ${ok?'OK':'—'}</span>`).join('');
+  const kpis = [
+    ['Synchronisées', d.syncedCount],
+    ['En attente', d.pendingCount],
+    ['Conflits', d.conflictCount],
+    ['Total entités', d.totalRecords],
+    ['Taux succès', `${d.globalProgress||0}%`],
+    ['Intervalle', `${d.syncIntervalSeconds||60}s`],
+  ];
+  document.getElementById('kpi-row').innerHTML = kpis.map(([l,v]) =>
+    `<div class="dm-kpi"><small>${l}</small><strong>${v}</strong></div>`).join('');
+  document.getElementById('data-types').innerHTML = (d.dataTypes||[]).map(t =>
+    `<div class="d-flex justify-content-between small py-1 border-bottom">
+      <span>${t.name}</span><span class="fw-bold">${t.synced}/${t.total} ${t.isComplete?'✓':''}</span></div>`).join('');
+  document.getElementById('pending-list').innerHTML = (d.pendingItems||[]).length
+    ? d.pendingItems.map(p => `<div class="dm-list-item"><strong>${p.typeLabel}</strong><br><small>${p.description}</small></div>`).join('')
+    : '<p class="text-muted small mb-0">Aucun élément en attente.</p>';
+  Sbms.renderDataTable(
+    document.getElementById('history-table-head'),
+    document.getElementById('history-body'),
+    d.historyTableRows || [],
+    {
+      countEl: document.getElementById('history-table-count'),
+      badgeCols: {
+        'Succès': (v) => String(v).toLowerCase() === 'oui' ? 'ok' : 'err',
+      },
+    }
+  );
+}
+
+async function load() {
+  const d = await apiFetch('/api/executive/modules/synchronisation/');
+  render(d);
+}
+document.getElementById('refresh-btn').onclick = load;
+load();
+setInterval(load, 20000);
+</script>
+{% endblock %}

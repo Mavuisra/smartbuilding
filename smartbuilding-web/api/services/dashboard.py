@@ -177,6 +177,7 @@ def get_sync_health(window_hours: int = 24) -> dict:
     pull_events = events.filter(direction="pull").count()
     records_synced = events.aggregate(t=Sum("records_count"))["t"] or 0
     last_sync = events.order_by("-created_at").first()
+    pipeline = get_data_pipeline_diagnostics()
 
     return {
         "windowHours": window_hours,
@@ -188,6 +189,9 @@ def get_sync_health(window_hours: int = 24) -> dict:
         "pullEvents": pull_events,
         "recordsSynced": records_synced,
         "lastSyncAt": last_sync.created_at.isoformat() if last_sync else None,
+        "syncStoreTotal": pipeline.get("syncStoreTotal", 0),
+        "pipelineStatus": pipeline.get("status", "empty"),
+        "hasBusinessData": pipeline.get("status") in ("ok", "sync_store_only"),
     }
 
 

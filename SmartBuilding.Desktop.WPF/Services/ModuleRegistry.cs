@@ -11,6 +11,7 @@ public static class ModuleRegistry
         new("locations", "Location", "Locataires, locaux et contrats", "HomeCity", "gestion", PermissionCodes.LocationManage),
         new("personnel", "Personnel", "Employés, présences et salaires", "AccountGroup", "gestion", PermissionCodes.PersonnelView),
         new("finances", "Finances", "Recettes, dépenses et trésorerie", "CashMultiple", "gestion", PermissionCodes.FinanceView),
+        new("rapports", "Rapports", "Statistiques consolidées et exports", "ChartBoxOutline", "gestion", PermissionCodes.ReportsExport),
         new("technique", "Technique & Sécurité", "Équipements, maintenance et incidents", "HammerWrench", "gestion", PermissionCodes.TechnicalManage),
         new("fournisseurs", "Fournisseurs", "Partenaires et contrats fournisseurs", "TruckDelivery", "gestion", PermissionCodes.SuppliersManage),
         new("consommations", "Consommations", "Énergie, eau et coûts", "LightningBolt", "gestion", PermissionCodes.ConsumptionManage),

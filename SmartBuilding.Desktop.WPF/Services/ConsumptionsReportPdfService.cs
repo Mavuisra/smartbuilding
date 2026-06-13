@@ -15,6 +15,7 @@ public class ConsumptionsReportPdfService
 
     private readonly string _navy = PdfThemeHelper.ResolveHeaderColor();
     private readonly string _green = PdfThemeHelper.ResolveAccentColor();
+    private readonly string _company = PdfThemeHelper.ResolveCompanyName();
 
     static ConsumptionsReportPdfService()
     {
@@ -50,7 +51,9 @@ public class ConsumptionsReportPdfService
                             InfoLine(col, "Date", item.DateDisplay);
                             InfoLine(col, "Type", item.TypeLabel);
                             InfoLine(col, "Bâtiment", item.Building);
-                            InfoLine(col, "Responsable", item.Responsible);
+                            InfoLine(col, "Payé par", item.PaidBy);
+                            InfoLine(col, "Motif", item.ExpenseMotif);
+                            InfoLine(col, "Remboursement", item.ReimbursementDisplay);
                             InfoLine(col, "Équipement / source", item.EquipmentSource);
                         }));
 
@@ -89,7 +92,7 @@ public class ConsumptionsReportPdfService
 
                     root.Item().PaddingTop(16).Element(c => SectionBox(c, "SIGNATURE & CACHET", col =>
                     {
-                        col.Item().Text("Rapport généré automatiquement par SBMS").FontSize(8).FontColor("#64748B");
+                        col.Item().Text($"Rapport généré par {_company}").FontSize(8).FontColor("#64748B");
                         col.Item().PaddingTop(12).Text("_________________________").FontSize(10);
                         col.Item().Text("Validation responsable").SemiBold().FontSize(8);
                         col.Item().Text($"Fait le {DateTime.Now.ToString("dd/MM/yyyy HH:mm", culture)}").FontSize(7).FontColor("#64748B");
@@ -107,8 +110,8 @@ public class ConsumptionsReportPdfService
         {
             row.RelativeItem().Column(col =>
             {
-                col.Item().Text("SBMS").Bold().FontSize(20).FontColor(_navy);
-                col.Item().Text("Smart Building Management System").FontSize(8).FontColor("#64748B");
+                col.Item().Text(_company).Bold().FontSize(16).FontColor(_navy);
+                col.Item().Text("Gestion immobilière & consommations").FontSize(8).FontColor("#64748B");
             });
 
             row.RelativeItem(2).Column(col =>

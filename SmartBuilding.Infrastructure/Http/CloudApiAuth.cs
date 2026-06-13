@@ -4,10 +4,10 @@ namespace SmartBuilding.Infrastructure.Http;
 
 public static class CloudApiAuth
 {
+    /// <summary>Compte bootstrap cloud (portail Render) — admin / Admin@2026.</summary>
     private static readonly (string Username, string Password)[] LoginFallbacks =
     [
         ("admin", "Admin@2026"),
-        ("admin", "admin"),
     ];
 
     public static async Task<string?> LoginAsync(

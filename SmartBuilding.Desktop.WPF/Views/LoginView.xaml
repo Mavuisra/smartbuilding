@@ -84,8 +84,9 @@
                         </Grid>
                     </Border>
                     <StackPanel Margin="14,2,0,0" VerticalAlignment="Center">
-                        <TextBlock Text="Bloom Prosperity" FontSize="26" FontWeight="Bold" Foreground="White" LineHeight="30"/>
-                        <TextBlock Text="Gestion immobilière"
+                        <TextBlock Text="{Binding Branding.CompanyName}" FontSize="22" FontWeight="Bold" Foreground="White"
+                                   LineHeight="26" TextWrapping="Wrap" MaxWidth="280"/>
+                        <TextBlock Text="{Binding Branding.AppSubtitle}"
                                    FontSize="12" Foreground="#E2E8F0" TextWrapping="Wrap"
                                    LineHeight="18" Margin="0,6,0,0" MaxWidth="280"/>
                     </StackPanel>
@@ -256,8 +257,8 @@
                                     <TextBlock Text="Mode hors ligne" FontSize="10" Foreground="#64748B"/>
                                 </StackPanel>
                             </DockPanel>
-                            <TextBlock Text="© 2025 Bloom Prosperity — Tous droits réservés" FontSize="10" Foreground="#94A3B8"
-                                       HorizontalAlignment="Center"/>
+                            <TextBlock Text="{Binding Branding.CopyrightText}" FontSize="10" Foreground="#94A3B8"
+                                       HorizontalAlignment="Center" TextWrapping="Wrap"/>
                         </StackPanel>
                     </Grid>
                 </Border>

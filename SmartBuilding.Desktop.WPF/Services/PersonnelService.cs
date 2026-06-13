@@ -1,5 +1,6 @@
 using System.Globalization;
 using Microsoft.EntityFrameworkCore;
+using SmartBuilding.Application.Interfaces;
 using SmartBuilding.Domain.Entities.Personnel;
 using SmartBuilding.Desktop.WPF.Models;
 using SmartBuilding.Infrastructure.Persistence;
@@ -11,12 +12,27 @@ public partial class PersonnelService
 {
     private readonly SmartBuildingDbContext _db;
     private readonly FinanceLedgerService _financeLedger;
+    private readonly IDocumentCloudUploadService _documentUpload;
 
-    public PersonnelService(SmartBuildingDbContext db, FinanceLedgerService financeLedger)
+    public PersonnelService(
+        SmartBuildingDbContext db,
+        FinanceLedgerService financeLedger,
+        IDocumentCloudUploadService documentUpload)
     {
         _db = db;
         _financeLedger = financeLedger;
+        _documentUpload = documentUpload;
     }
+
+    private Task PushDocumentAsync(
+        string? path,
+        string entityType,
+        Guid entityId,
+        string category,
+        CancellationToken cancellationToken = default) =>
+        string.IsNullOrWhiteSpace(path)
+            ? Task.CompletedTask
+            : _documentUpload.TryUploadFileAsync(path, entityType, entityId, category, cancellationToken: cancellationToken);
 
     public async Task<PersonnelPageData> LoadAsync(CancellationToken cancellationToken = default)
     {
@@ -476,6 +492,7 @@ public partial class PersonnelService
         existing.MarkUpdated();
 
         await _db.SaveChangesAsync(cancellationToken);
+        await PushDocumentAsync(existing.ContractPdfPath, "Employees", existing.Id, "personnel", cancellationToken);
         return string.Empty;
     }
 

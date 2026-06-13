@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SmartBuilding.Domain.Entities.Building;
 using SmartBuilding.Desktop.WPF.Models;
 using SmartBuilding.Desktop.WPF.Services;
 
@@ -17,11 +18,18 @@ public partial class ModulePageViewModel : BaseViewModel
     [ObservableProperty] private string _iconKind = "FolderOutline";
     [ObservableProperty] private int _totalCount;
     [ObservableProperty] private string _searchQuery = string.Empty;
+    [ObservableProperty] private string _companyName = BuildingInfoDefaults.CompanyName;
 
     public ObservableCollection<string> ColumnHeaders { get; } = [];
     public ObservableCollection<ModuleListRow> Items { get; } = [];
 
-    public ModulePageViewModel(ModuleDataService dataService) => _dataService = dataService;
+    public ModulePageViewModel(ModuleDataService dataService, AppConfigurationService appConfiguration)
+    {
+        _dataService = dataService;
+        CompanyName = appConfiguration.Current.CompanyName;
+        appConfiguration.ConfigurationChanged += (_, _) =>
+            CompanyName = appConfiguration.Current.CompanyName;
+    }
 
     public void Initialize(string moduleId)
     {

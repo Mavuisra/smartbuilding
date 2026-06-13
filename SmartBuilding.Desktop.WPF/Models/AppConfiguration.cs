@@ -1,14 +1,15 @@
 using SmartBuilding.Domain.Entities.Building;
-using SmartBuilding.Shared.Constants;
 
 namespace SmartBuilding.Desktop.WPF.Models;
 
 /// <summary>Configuration globale unique (société + apparence) — source de vérité après chargement.</summary>
 public sealed class AppConfiguration
 {
+    public const string DefaultAppSubtitle = "Gestion immobilière";
+
     public string CompanyName { get; init; } = BuildingInfoDefaults.CompanyName;
-    public string AppTitle { get; init; } = BrandConstants.AppName;
-    public string AppSubtitle { get; init; } = BrandConstants.AppSubtitle;
+    public string AppTitle { get; init; } = BuildingInfoDefaults.CompanyName;
+    public string AppSubtitle { get; init; } = DefaultAppSubtitle;
     public string? LogoPath { get; init; }
 
     public string Address { get; init; } = BuildingInfoDefaults.Address;

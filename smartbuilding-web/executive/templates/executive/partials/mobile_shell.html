@@ -1,0 +1,98 @@
+<style>
+  .sb-mobile-bar {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 14px;
+    background: #1b3d3b;
+    color: #fff;
+    position: sticky;
+    top: 0;
+    z-index: 1100;
+  }
+  .sb-menu-btn {
+    border: 0;
+    background: rgba(255,255,255,.15);
+    color: #fff;
+    border-radius: 10px;
+    width: 44px;
+    height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+  }
+  .sb-sidebar-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15,23,42,.45);
+    z-index: 1040;
+  }
+  .sb-sidebar-backdrop.show { display: block; }
+
+  @media (max-width: 900px) {
+    .sb-mobile-bar { display: flex; }
+    .app-shell { flex-direction: column; }
+    .sb-sidebar {
+      position: fixed;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: min(280px, 88vw);
+      z-index: 1050;
+      transform: translateX(-105%);
+      transition: transform .25s ease;
+      box-shadow: 8px 0 32px rgba(0,0,0,.2);
+    }
+    .sb-sidebar.open { transform: translateX(0); }
+    .dm-header { flex-direction: column; align-items: stretch !important; }
+    .dm-header > div:last-child { width: 100%; }
+    .dm-search { min-width: 0 !important; width: 100%; }
+    .sb-page-wrap { padding: 12px 12px 24px; }
+  }
+</style>
+<script>
+(function () {
+  function ensureMobileBar() {
+    if (document.getElementById('sb-mobile-bar')) return;
+    const shell = document.querySelector('.app-shell');
+    if (!shell) return;
+    const bar = document.createElement('div');
+    bar.id = 'sb-mobile-bar';
+    bar.className = 'sb-mobile-bar';
+    bar.innerHTML = `
+      <button type="button" class="sb-menu-btn" id="sb-menu-open" aria-label="Menu">
+        <i class="bi bi-list"></i>
+      </button>
+      <div class="fw-bold small">SBMS</div>
+      <div style="width:44px"></div>`;
+    shell.insertBefore(bar, shell.firstChild);
+
+    let backdrop = document.getElementById('sb-sidebar-backdrop');
+    if (!backdrop) {
+      backdrop = document.createElement('div');
+      backdrop.id = 'sb-sidebar-backdrop';
+      backdrop.className = 'sb-sidebar-backdrop';
+      document.body.appendChild(backdrop);
+    }
+
+    const sidebar = document.getElementById('app-sidebar');
+    const open = () => { sidebar?.classList.add('open'); backdrop.classList.add('show'); };
+    const close = () => { sidebar?.classList.remove('open'); backdrop.classList.remove('show'); };
+
+    bar.querySelector('#sb-menu-open')?.addEventListener('click', open);
+    backdrop.addEventListener('click', close);
+    document.getElementById('sidebar-nav')?.addEventListener('click', (e) => {
+      if (e.target.closest('a')) close();
+    });
+    window.addEventListener('resize', () => { if (window.innerWidth > 900) close(); });
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', ensureMobileBar);
+  } else {
+    ensureMobileBar();
+  }
+})();
+</script>

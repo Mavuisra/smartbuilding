@@ -17,6 +17,7 @@ from api.models import (
 )
 from api.sync.registry import register
 from api.sync.utils import (
+    inject_entity_id,
     map_base_fields,
     normalize_sync_datetime,
     parse_bool,
@@ -24,8 +25,42 @@ from api.sync.utils import (
     parse_datetime,
     parse_decimal,
     parse_int,
+    parse_uuid,
     pick,
 )
+
+_ORM_BY_TYPE = {
+    "Premises": Premise,
+    "Tenants": Tenant,
+    "LeaseContracts": LeaseContract,
+}
+
+
+def ensure_entity_materialized(entity_type: str, entity_id) -> bool:
+    """Matérialise un parent depuis le magasin sync si absent de l'ORM."""
+    uid = parse_uuid(entity_id)
+    if not uid:
+        return False
+
+    model = _ORM_BY_TYPE.get(entity_type)
+    if model is not None and model.objects.filter(id=uid).exists():
+        return True
+
+    try:
+        store = SyncedEntityStore.objects.get(id=uid, entity_type=entity_type)
+    except SyncedEntityStore.DoesNotExist:
+        return False
+
+    from api.sync.registry import _HANDLERS, register_all
+
+    register_all()
+    handler = _HANDLERS.get(entity_type)
+    if handler is None:
+        return False
+
+    payload = store.json_data if isinstance(store.json_data, dict) else {}
+    handler(inject_entity_id(payload, uid))
+    return model is None or model.objects.filter(id=uid).exists()
 
 
 @register("Users")
@@ -168,11 +203,19 @@ def materialize_lease(data: dict):
     pid = pick(data, "PremiseId", "premiseId")
     tid = pick(data, "TenantId", "tenantId")
     if pid:
+        ensure_entity_materialized("Premises", pid)
         obj.premise_id_sync = pid
-        obj.premise_id = pid
+        if Premise.objects.filter(id=pid).exists():
+            obj.premise_id = pid
+        else:
+            obj.premise_id = None
     if tid:
+        ensure_entity_materialized("Tenants", tid)
         obj.tenant_id_sync = tid
-        obj.tenant_id = tid
+        if Tenant.objects.filter(id=tid).exists():
+            obj.tenant_id = tid
+        else:
+            obj.tenant_id = None
     obj.save()
 
 
@@ -191,11 +234,21 @@ def materialize_rent_payment(data: dict):
     obj.paid_date = parse_date(pick(data, "PaidDate", "paidDate"))
     obj.is_late = parse_bool(pick(data, "IsLate", "isLate"), False)
     obj.payment_status = pick(data, "PaymentStatus", "paymentStatus") or ""
+
+    obj.lease_contract_id = None
+    obj.lease_contract_id_sync = None
     lid = pick(data, "LeaseContractId", "leaseContractId")
     if lid:
+        ensure_entity_materialized("LeaseContracts", lid)
         obj.lease_contract_id_sync = lid
-        obj.lease_contract_id = lid
-    obj.save()
+        if LeaseContract.objects.filter(id=lid).exists():
+            obj.lease_contract_id = lid
+
+    try:
+        obj.save()
+    except Exception:
+        obj.lease_contract_id = None
+        obj.save()
 
 
 def _parse_tx_type(value) -> int:

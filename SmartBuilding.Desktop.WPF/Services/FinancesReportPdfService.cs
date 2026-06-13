@@ -27,7 +27,7 @@ public class FinancesReportPdfService
     {
         _navy = AppConfigurationService.Instance?.Current.PdfHeaderHex ?? "#3D6B52";
         _accent = AppConfigurationService.Instance?.Current.PdfAccentHex ?? GelGreen;
-        var company = AppConfigurationService.Instance?.Current.CompanyName ?? BuildingInfoDefaults.CompanyName;
+        var company = PdfThemeHelper.ResolveCompanyName();
         var culture = CultureInfo.GetCultureInfo("fr-FR");
         var list = items.ToList();
 
@@ -103,7 +103,7 @@ public class FinancesReportPdfService
                         });
                     }));
 
-                    root.Item().PaddingTop(8).Text($"{list.Count} transaction(s) — SBMS Finances")
+                    root.Item().PaddingTop(8).Text($"{list.Count} transaction(s) — {company}")
                         .FontSize(7).FontColor("#94A3B8");
                 });
             });
@@ -133,8 +133,8 @@ public class FinancesReportPdfService
         {
             row.RelativeItem().Column(left =>
             {
-                left.Item().Text("SBMS").Bold().FontSize(18).FontColor(_navy);
-                left.Item().Text(company).FontSize(8).FontColor("#64748B");
+                left.Item().Text(company).Bold().FontSize(16).FontColor(_navy);
+                left.Item().Text("Gestion financière et trésorerie").FontSize(8).FontColor("#64748B");
             });
             row.RelativeItem(2).AlignCenter().Column(center =>
             {

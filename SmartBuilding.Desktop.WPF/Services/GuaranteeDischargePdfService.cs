@@ -34,7 +34,7 @@ public class GuaranteeDischargePdfService
     {
         var culture = CultureInfo.GetCultureInfo("fr-FR");
         var companyName = string.IsNullOrWhiteSpace(building?.Name)
-            ? BuildingInfoDefaults.CompanyName
+            ? PdfThemeHelper.ResolveCompanyName()
             : building!.Name;
         var companyAddress = FormatAddress(building);
         var dischargeNo = $"DCH-{refundDate:yyyyMMdd}-{guarantee.Id.ToString("N")[..8].ToUpperInvariant()}";
@@ -92,8 +92,8 @@ public class GuaranteeDischargePdfService
             {
                 row.RelativeItem().Column(left =>
                 {
-                    left.Item().Text("SBMS").Bold().FontSize(18).FontColor(_navy);
-                    left.Item().Text(companyName).FontSize(9).FontColor("#64748B");
+                    left.Item().Text(companyName).Bold().FontSize(16).FontColor(_navy);
+                    left.Item().Text("Gestion locative").FontSize(9).FontColor("#64748B");
                 });
                 row.RelativeItem(2).AlignCenter().Column(center =>
                 {

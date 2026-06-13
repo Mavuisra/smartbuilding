@@ -7,11 +7,27 @@ public class SessionService
 {
     public LoginResponse? CurrentUser { get; private set; }
 
+    /// <summary>Dernier message de liaison identifiants local ↔ cloud.</summary>
+    public string? CloudIdentityMessage { get; private set; }
+
+    public bool IsCloudIdentityLinked { get; private set; }
+
     public bool IsAuthenticated => CurrentUser is not null;
 
     public void SetUser(LoginResponse user) => CurrentUser = user;
 
-    public void Clear() => CurrentUser = null;
+    public void SetCloudIdentityStatus(bool linked, string? message)
+    {
+        IsCloudIdentityLinked = linked;
+        CloudIdentityMessage = message;
+    }
+
+    public void Clear()
+    {
+        CurrentUser = null;
+        CloudIdentityMessage = null;
+        IsCloudIdentityLinked = false;
+    }
 
     public bool HasPermission(string code) =>
         CurrentUser?.Permissions.Contains("*") == true ||

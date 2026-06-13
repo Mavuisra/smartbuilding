@@ -44,6 +44,8 @@ public partial class IncidentListItem : ObservableObject
     public string TypeLabel { get; init; } = string.Empty;
     public string Title { get; init; } = string.Empty;
     public string Location { get; init; } = string.Empty;
+    public Guid? EquipmentId { get; init; }
+    public string EquipmentLabel { get; init; } = "—";
     public string Building { get; init; } = "—";
     public string SeverityLabel { get; init; } = string.Empty;
     public string SeverityBadgeBackground { get; init; } = "#DCFCE7";

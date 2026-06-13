@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.Input;
 using SmartBuilding.Application.Interfaces;
 using SmartBuilding.Desktop.WPF.Services;
 using SmartBuilding.Infrastructure.Services;
+using SmartBuilding.Infrastructure.Sync;
 using SmartBuilding.Shared.DTOs.Auth;
 
 namespace SmartBuilding.Desktop.WPF.ViewModels;
@@ -11,6 +12,8 @@ namespace SmartBuilding.Desktop.WPF.ViewModels;
 public partial class LoginViewModel : BaseViewModel
 {
     private readonly IAuthService _authService;
+    private readonly ISyncService _syncService;
+    private readonly CloudIdentityService _cloudIdentity;
     private readonly SessionService _session;
     private readonly Action _onLoginSuccess;
 
@@ -22,13 +25,21 @@ public partial class LoginViewModel : BaseViewModel
     [ObservableProperty] private string? _errorDialogMessage;
     [ObservableProperty] private string _loginProgressText = "Connexion en cours…";
 
+    public AppBrandingState Branding { get; }
+
     public LoginViewModel(
         IAuthService authService,
+        ISyncService syncService,
+        CloudIdentityService cloudIdentity,
         SessionService session,
+        AppBrandingState branding,
         Action onLoginSuccess)
     {
         _authService = authService;
+        _syncService = syncService;
+        _cloudIdentity = cloudIdentity;
         _session = session;
+        Branding = branding;
         _onLoginSuccess = onLoginSuccess;
         Username = LoadRememberedUsername() ?? "admin";
     }
@@ -68,12 +79,14 @@ public partial class LoginViewModel : BaseViewModel
                 return;
             }
 
-            LoginProgressText = "Ouverture de l'application…";
-
             if (RememberMe)
                 SaveRememberedUsername(Username.Trim());
 
             _session.SetUser(result);
+
+            await PublishAndSyncToCloudAsync(Username.Trim(), Password);
+
+            LoginProgressText = "Ouverture de l'application…";
 
             var invoke = System.Windows.Application.Current?.Dispatcher;
             if (invoke is not null && !invoke.CheckAccess())
@@ -128,6 +141,44 @@ public partial class LoginViewModel : BaseViewModel
             return File.Exists(path) ? File.ReadAllText(path).Trim() : null;
         }
         catch { return null; }
+    }
+
+    private async Task PublishAndSyncToCloudAsync(string username, string password)
+    {
+        try
+        {
+            if (CloudIdentityStore.IsAlreadyLinkedForUser(username))
+            {
+                var linked = CloudIdentityStore.TryGetForUser(username, out var state) ? state : null;
+                _session.SetCloudIdentityStatus(
+                    true,
+                    linked?.Message ?? "Compte cloud déjà configuré — synchronisation en arrière-plan.");
+                return;
+            }
+
+            LoginProgressText = "Connexion au cloud (première fois)…";
+            var identity = await _cloudIdentity.EnsureCloudLoginAsync(username, password);
+            _session.SetCloudIdentityStatus(identity.Success, identity.Message);
+
+            if (!identity.Success)
+                return;
+
+            CloudIdentityStore.MarkLinked(username, identity.Message);
+
+            LoginProgressText = "Synchronisation initiale des données…";
+            await _syncService.SyncAsync(manual: false);
+
+            if (await _syncService.IsCloudStoreEmptyAsync())
+            {
+                LoginProgressText = "Publication complète des données locales…";
+                await _syncService.MarkAllLocalDataForPushAsync();
+                await _syncService.SyncAsync(manual: false);
+            }
+        }
+        catch (Exception ex)
+        {
+            _session.SetCloudIdentityStatus(false, ex.Message);
+        }
     }
 
     private static void SaveRememberedUsername(string username)

@@ -229,7 +229,7 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
       expiresAt: json.data.expiresAt,
     }));
     const next = new URLSearchParams(window.location.search).get('next');
-    window.location.href = next && next.startsWith('/') ? next : '/';
+    window.location.href = next && next.startsWith('/') ? next : '/dashboard/';
   } catch (ex) {
     err.textContent = ex?.message || 'Connexion impossible';
     err.classList.remove('d-none');

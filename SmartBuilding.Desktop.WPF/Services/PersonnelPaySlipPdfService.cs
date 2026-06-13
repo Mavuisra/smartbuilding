@@ -32,7 +32,7 @@ public class PersonnelPaySlipPdfService
 
         var culture = CultureInfo.GetCultureInfo("fr-FR");
         var company = string.IsNullOrWhiteSpace(companyName)
-            ? building?.Name ?? BuildingInfoDefaults.CompanyName
+            ? PdfThemeHelper.ResolveCompanyName()
             : companyName.Trim();
 
         _navy = AppConfigurationService.Instance?.Current.PdfHeaderHex ?? "#1B365D";
@@ -91,8 +91,8 @@ public class PersonnelPaySlipPdfService
             {
                 row.RelativeItem().Column(left =>
                 {
-                    left.Item().Text("SBMS").Bold().FontSize(20).FontColor(_navy);
-                    left.Item().Text(companyName).FontSize(8).FontColor("#64748B");
+                    left.Item().Text(companyName).Bold().FontSize(16).FontColor(_navy);
+                    left.Item().Text("Ressources humaines").FontSize(8).FontColor("#64748B");
                 });
                 row.RelativeItem(2).AlignCenter().Column(center =>
                 {
@@ -240,7 +240,7 @@ public class PersonnelPaySlipPdfService
             col.Item().PaddingTop(10).AlignCenter().Text(t =>
             {
                 t.DefaultTextStyle(x => x.FontSize(7).FontColor("#94A3B8"));
-                t.Span("Document généré automatiquement par SBMS — ");
+                t.Span($"Document généré automatiquement par {companyName} — ");
                 t.Span(DateTime.Now.ToString("dd/MM/yyyy HH:mm", culture)).Italic();
             });
         });

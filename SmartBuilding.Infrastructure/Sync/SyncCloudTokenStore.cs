@@ -78,13 +78,19 @@ public static class SyncCloudTokenStore
                 Persist(userToken);
                 return userToken;
             }
+
+            // Identifiants explicites : ne pas substituer un autre compte cloud.
+            return null;
         }
 
-        Clear();
-        var adminToken = await CloudApiAuth.LoginAsync(baseUrl, cancellationToken).ConfigureAwait(false);
-        if (!string.IsNullOrWhiteSpace(adminToken))
-            Persist(adminToken);
+        var cached = Load();
+        if (!string.IsNullOrWhiteSpace(cached))
+            return cached;
 
-        return adminToken;
+        var bootstrapToken = await CloudApiAuth.LoginAsync(baseUrl, cancellationToken).ConfigureAwait(false);
+        if (!string.IsNullOrWhiteSpace(bootstrapToken))
+            Persist(bootstrapToken);
+
+        return bootstrapToken;
     }
 }

@@ -21,6 +21,8 @@ public class SyncService : ISyncService
     private readonly INetworkService _network;
     private readonly IConfiguration _configuration;
     private readonly ILogger<SyncService> _logger;
+    private readonly ISyncNotifier _notifier;
+    private readonly IDocumentCloudUploadService _documentUpload;
 
     private DateTime? _lastSyncAt;
 
@@ -31,18 +33,74 @@ public class SyncService : ISyncService
         IDbContextFactory<SmartBuildingDbContext> contextFactory,
         INetworkService network,
         IConfiguration configuration,
-        ILogger<SyncService> logger)
+        ILogger<SyncService> logger,
+        ISyncNotifier notifier,
+        IDocumentCloudUploadService documentUpload)
     {
         _contextFactory = contextFactory;
         _network = network;
         _configuration = configuration;
         _logger = logger;
+        _notifier = notifier;
+        _documentUpload = documentUpload;
     }
 
     public Task<bool> IsOnlineAsync(CancellationToken cancellationToken = default) =>
         _network.CanReachApiAsync(
             _configuration["Api:BaseUrl"] ?? "https://smartbuilding-0kbk.onrender.com",
             cancellationToken);
+
+    public async Task<bool> IsCloudStoreEmptyAsync(CancellationToken cancellationToken = default)
+    {
+        if (!await IsOnlineAsync(cancellationToken))
+            return false;
+
+        var baseUrl = GetApiBaseUrl();
+        var token = SyncCloudTokenStore.Load();
+        if (string.IsNullOrWhiteSpace(token))
+            token = await SyncCloudTokenStore.AcquireAsync(_configuration, cancellationToken: cancellationToken);
+        if (string.IsNullOrWhiteSpace(token))
+            return false;
+
+        using var api = new CloudApiClient(baseUrl, token);
+        var (statusCode, body) = await GetRawWithAuthRetryAsync(api, baseUrl, "api/sync/status/", cancellationToken);
+        if (statusCode is < 200 or >= 300 || string.IsNullOrWhiteSpace(body))
+            return false;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            if (!doc.RootElement.TryGetProperty("data", out var data))
+                return false;
+            if (data.TryGetProperty("syncStoreTotal", out var totalEl) && totalEl.TryGetInt32(out var total))
+                return total <= 0;
+            if (data.TryGetProperty("hasBusinessData", out var hasBiz) && hasBiz.ValueKind == JsonValueKind.False)
+                return true;
+            if (data.TryGetProperty("pipelineStatus", out var statusEl)
+                && statusEl.GetString() is "empty" or "sync_partial")
+                return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Lecture sync/status impossible — republish local ignoré.");
+        }
+
+        return false;
+    }
+
+    public async Task MarkAllLocalDataForPushAsync(CancellationToken cancellationToken = default)
+    {
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        foreach (var entityType in SyncEntityRegistry.SyncableTypes)
+        {
+            var adapter = SyncEntityRegistry.TryGet(entityType);
+            if (adapter is null)
+                continue;
+            await adapter.MarkAllUnsyncedAsync(context, cancellationToken);
+        }
+
+        await context.SaveChangesAsync(cancellationToken);
+    }
 
     public async Task EnsureMetadataLoadedAsync(CancellationToken cancellationToken = default)
     {
@@ -73,10 +131,6 @@ public class SyncService : ISyncService
         if (IsSyncing)
             return new SyncResult(false, 0, 0, 0, "Synchronisation déjà en cours.");
 
-        var storedToken = SyncCloudTokenStore.Load();
-        if (!manual && string.IsNullOrWhiteSpace(storedToken))
-            return new SyncResult(false, 0, 0, 0, null);
-
         if (!await IsOnlineAsync(cancellationToken))
             return new SyncResult(false, 0, 0, 0, "Hors ligne — synchronisation reportée.");
 
@@ -99,22 +153,24 @@ public class SyncService : ISyncService
             var lastSync = _lastSyncAt ?? DateTime.MinValue;
             var baseUrl = GetApiBaseUrl();
 
-            var token = storedToken;
-            if (string.IsNullOrWhiteSpace(token) && manual)
+            var token = SyncCloudTokenStore.Load();
+            if (string.IsNullOrWhiteSpace(token))
                 token = await SyncCloudTokenStore.AcquireAsync(_configuration, cancellationToken: cancellationToken);
 
             if (string.IsNullOrWhiteSpace(token))
             {
-                return new SyncResult(
+                var noToken = new SyncResult(
                     false, 0, 0, 0,
-                    manual
-                        ? "Synchronisation cloud indisponible — l'application fonctionne en mode local."
-                        : null);
+                    "Synchronisation cloud indisponible — vérifiez l'URL API et les identifiants.");
+                _notifier.Notify(noToken);
+                return noToken;
             }
 
             using var api = new CloudApiClient(baseUrl, token);
             var deviceLabel = DesktopSyncDevice.GetDeviceLabel();
             log.Direction = manual ? $"Manual ({deviceLabel})" : $"Auto ({deviceLabel})";
+
+            await SyncDependencyPusher.PrepareRentPaymentChainAsync(context, cancellationToken);
 
             // Phase 1 — Push : envoyer toutes les modifications locales (offline first).
             foreach (var entityType in SyncEntityRegistry.SyncableTypes)
@@ -126,6 +182,29 @@ public class SyncService : ISyncService
                     failures.Add($"{entityType}: adaptateur desktop manquant");
                     _logger.LogWarning("Adaptateur sync manquant pour {EntityType}", entityType);
                     continue;
+                }
+
+                if (entityType == "RentPayments")
+                {
+                    await SyncDependencyPusher.PrepareRentPaymentChainAsync(context, cancellationToken);
+                    foreach (var depType in SyncDependencyPusher.RentPaymentChain)
+                    {
+                        var depAdapter = SyncEntityRegistry.TryGet(depType);
+                        if (depAdapter is null)
+                            continue;
+
+                        var depPushed = await PushAllPendingAsync(
+                            api, baseUrl, context, depAdapter, depType, cancellationToken);
+                        if (depPushed < 0)
+                        {
+                            hadFailure = true;
+                            failures.Add(LastPushError ?? $"{depType}: échec envoi des dépendances loyer");
+                        }
+                        else
+                        {
+                            pushed += depPushed;
+                        }
+                    }
                 }
 
                 var typePushed = await PushAllPendingAsync(
@@ -148,6 +227,17 @@ public class SyncService : ISyncService
             }
 
             await context.SaveChangesAsync(cancellationToken);
+
+            try
+            {
+                var docsUploaded = await _documentUpload.UploadAllPendingAsync(cancellationToken);
+                if (docsUploaded > 0)
+                    _logger.LogInformation("Documents cloud : {Count} fichier(s) envoyé(s).", docsUploaded);
+            }
+            catch (Exception docEx)
+            {
+                _logger.LogDebug(docEx, "Upload documents cloud ignoré");
+            }
 
             // Phase 2 — Pull : récupérer les changements des autres postes via PostgreSQL.
             foreach (var entityType in SyncEntityRegistry.SyncableTypes)
@@ -199,7 +289,9 @@ public class SyncService : ISyncService
                 _logger.LogInformation(
                     "Sync OK: pushed={Pushed}, pulled={Pulled}, pending=0",
                     pushed, pulled);
-                return new SyncResult(true, pushed, pulled, conflicts, null);
+                var ok = new SyncResult(true, pushed, pulled, conflicts, null);
+                _notifier.Notify(ok);
+                return ok;
             }
 
             var message = failures.Count > 0
@@ -209,14 +301,18 @@ public class SyncService : ISyncService
                 message += $" — {remainingPending} enregistrement(s) encore en attente.";
             log.ErrorMessage = message;
             _logger.LogWarning(message);
-            return new SyncResult(pushed > 0 && remainingPending == 0, pushed, pulled, conflicts, message);
+            var partial = new SyncResult(pushed > 0 && remainingPending == 0, pushed, pulled, conflicts, message);
+            _notifier.Notify(partial);
+            return partial;
         }
         catch (Exception ex)
         {
             log.Success = false;
             log.ErrorMessage = ex.Message;
             _logger.LogError(ex, "Échec synchronisation");
-            return new SyncResult(false, pushed, pulled, conflicts, ex.Message);
+            var failed = new SyncResult(false, pushed, pulled, conflicts, ex.Message);
+            _notifier.Notify(failed);
+            return failed;
         }
         finally
         {
@@ -343,7 +439,7 @@ public class SyncService : ISyncService
         };
 
         var pushResult = await PostWithAuthRetryAsync(
-            api, baseUrl, "api/sync/push", pushRequest, cancellationToken);
+            api, baseUrl, "api/sync/push/", pushRequest, cancellationToken);
 
         if (!pushResult.IsSuccess)
         {
@@ -445,6 +541,26 @@ public class SyncService : ISyncService
         api.SetBearerToken(token);
         var retry = await api.GetAsync(path, cancellationToken);
         return (retry.StatusCode, Deserialize<T>(retry.Body));
+    }
+
+    private async Task<(int StatusCode, string Body)> GetRawWithAuthRetryAsync(
+        CloudApiClient api,
+        string baseUrl,
+        string path,
+        CancellationToken cancellationToken)
+    {
+        var first = await api.GetAsync(path, cancellationToken);
+        if (first.StatusCode is not 401 and not 403)
+            return (first.StatusCode, first.Body);
+
+        SyncCloudTokenStore.Clear();
+        var token = await SyncCloudTokenStore.AcquireAsync(_configuration, cancellationToken: cancellationToken);
+        if (token is null)
+            return (first.StatusCode, first.Body);
+
+        api.SetBearerToken(token);
+        var retry = await api.GetAsync(path, cancellationToken);
+        return (retry.StatusCode, retry.Body);
     }
 
     private static T? Deserialize<T>(string json)

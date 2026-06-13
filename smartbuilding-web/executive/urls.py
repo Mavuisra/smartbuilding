@@ -5,10 +5,14 @@ from executive import views
 
 # Alias historiques → slugs alignés desktop
 _LEGACY_REDIRECTS = [
-    ("finance/", "finances/"),
-    ("contrats/", "locations-list/"),
-    ("presence/", "personnel/"),
-    ("maintenance/", "technique/"),
+    ("finance/", "rapports/"),
+    ("finances/", "rapports/"),
+    ("contrats/", "rapports/"),
+    ("presence/", "rapports/"),
+    ("personnel/", "rapports/"),
+    ("maintenance/", "rapports/"),
+    ("technique/", "rapports/"),
+    ("locations/", "rapports/"),
     ("activites-logs/", "journal/"),
 ]
 

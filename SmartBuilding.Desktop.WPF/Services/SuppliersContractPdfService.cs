@@ -15,6 +15,7 @@ public class SuppliersContractPdfService
 
     private readonly string _navy = PdfThemeHelper.ResolveHeaderColor();
     private readonly string _green = PdfThemeHelper.ResolveAccentColor();
+    private readonly string _company = PdfThemeHelper.ResolveCompanyName();
 
     static SuppliersContractPdfService()
     {
@@ -96,7 +97,7 @@ public class SuppliersContractPdfService
 
                     root.Item().PaddingTop(16).Element(c => SectionBox(c, "SIGNATURE & CACHET", col =>
                     {
-                        col.Item().Text("Document généré par SBMS Immobilier SARL").FontSize(8).FontColor("#64748B");
+                        col.Item().Text($"Document généré par {_company}").FontSize(8).FontColor("#64748B");
                         col.Item().PaddingTop(12).Text("_________________________").FontSize(10);
                         col.Item().Text("Signature autorisée").SemiBold().FontSize(8);
                         col.Item().Text($"Fait le {DateTime.Now.ToString("dd/MM/yyyy HH:mm", culture)}").FontSize(7).FontColor("#64748B");
@@ -114,8 +115,8 @@ public class SuppliersContractPdfService
         {
             row.RelativeItem().Column(col =>
             {
-                col.Item().Text("SBMS").Bold().FontSize(20).FontColor(_navy);
-                col.Item().Text("Smart Building Management System").FontSize(8).FontColor("#64748B");
+                col.Item().Text(_company).Bold().FontSize(16).FontColor(_navy);
+                col.Item().Text("Gestion fournisseurs").FontSize(8).FontColor("#64748B");
             });
 
             row.RelativeItem(2).Column(col =>

@@ -6,14 +6,16 @@ public static class SyncConstants
     public const int MaxConcurrentUsers = 4;
     public const string ConflictStrategy = "LastWriteWins";
 
+    /// <summary>Ordre respectant les dépendances FK (parents avant enfants).</summary>
     public static readonly IReadOnlyList<string> EntityTypes =
     [
         "Users", "Employees", "Attendances", "SalaryPayments", "DisciplinaryNotes",
         "Buildings", "BuildingInfos", "Landlords", "LandlordActivities",
         "PropertyFloors", "PropertyApartments", "PropertyRooms",
-        "RentPayments", "TenantActivities", "LeaseGuarantees", "TenantDependents",
+        "Premises", "Tenants", "TenantDependents",
+        "LeaseContracts",
+        "RentPayments", "TenantActivities", "LeaseGuarantees",
         "Equipment", "MaintenanceRecords", "RepairRecords", "TechnicalAlerts",
-        "Premises", "Tenants", "LeaseContracts",
         "FinancialTransactions", "Suppliers", "SupplierContracts", "SupplierPayments",
         "Incidents", "IncidentInterventions",
         "ConsumptionRecords", "Visitors", "VisitorAppointments",

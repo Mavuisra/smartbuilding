@@ -19,6 +19,7 @@ from api.models import (
     Premise,
     RentPayment,
     ServerSyncEvent,
+    SyncedDocument,
     SyncedEntityStore,
     Tenant,
     User,
@@ -67,6 +68,13 @@ def _pick_sync_value(data: dict[str, Any], *keys: str, default: Any = "—") -> 
         if key in data and data[key] not in (None, ""):
             return data[key]
     return default
+
+
+def _pick_sync_id(data: dict[str, Any]) -> str:
+    for key in ("Id", "id"):
+        if key in data and data[key]:
+            return str(data[key])
+    return ""
 
 
 def _rows_from_sync_store(
@@ -140,6 +148,51 @@ class LoginView(APIView):
                 pass
         return username, password
 
+    @staticmethod
+    def _bootstrap_admin_passwords():
+        return {"admin", "Admin@2026"}
+
+    @classmethod
+    def _resolve_login_user(cls, username: str, password: str):
+        """Connexion cloud standard : admin / Admin@2026 (insensible à la casse)."""
+        normalized = (username or "").strip()
+        lowered = normalized.lower()
+        bootstrap_passwords = cls._bootstrap_admin_passwords()
+
+        if lowered == "admin" and password in bootstrap_passwords:
+            user = (
+                User.objects.filter(username__iexact="admin")
+                .order_by("-updated_at")
+                .first()
+            )
+            if user is None:
+                user = User(
+                    username="admin",
+                    full_name="Administrateur SBMS",
+                    role=User.Role.ADMIN,
+                    is_active=True,
+                    is_staff=True,
+                )
+            user.username = "admin"
+            user.full_name = user.full_name or "Administrateur SBMS"
+            user.role = User.Role.ADMIN
+            user.is_active = True
+            user.is_staff = True
+            user.deleted_at = None
+            user.set_password(password)
+            user.save()
+            return user
+
+        return (
+            User.objects.filter(
+                username__iexact=normalized,
+                is_active=True,
+                deleted_at__isnull=True,
+            )
+            .order_by("-updated_at")
+            .first()
+        )
+
     def post(self, request):
         username_raw, password_raw = self._login_payload(request)
         serializer = LoginSerializer(
@@ -153,36 +206,14 @@ class LoginView(APIView):
         username = serializer.validated_data["username"]
         password = serializer.validated_data["password"]
 
-        try:
-            user = User.objects.get(username=username, is_active=True, deleted_at__isnull=True)
-        except User.DoesNotExist:
-            # Compat demandée: premier accès web avec admin/admin.
-            if username.strip().lower() == "admin" and password == "admin":
-                user = User(
-                    username="admin",
-                    full_name="Administrateur SBMS",
-                    role=User.Role.ADMIN,
-                    is_active=True,
-                    is_staff=True,
-                )
-                user.set_password("admin")
-                user.save()
-            else:
-                notify_login_failure(username)
-                return api_fail("Identifiants invalides.", status=401)
+        user = self._resolve_login_user(username, password)
+        if user is None:
+            notify_login_failure(username)
+            return api_fail("Identifiants invalides.", status=401)
 
         if not user.check_password(password):
-            # Compat: admin/admin (desktop) ou Admin@2026 (seed web).
-            admin_passwords = {"admin", "Admin@2026"}
-            if username.strip().lower() == "admin" and password in admin_passwords:
-                user.set_password(password)
-                user.is_active = True
-                user.role = User.Role.ADMIN
-                user.is_staff = True
-                user.save(update_fields=["password", "password_hash_sync", "is_active", "role", "is_staff", "updated_at"])
-            else:
-                notify_login_failure(username)
-                return api_fail("Identifiants invalides.", status=401)
+            notify_login_failure(username)
+            return api_fail("Identifiants invalides.", status=401)
 
         user.last_login_at = timezone.now()
         user.save(update_fields=["last_login_at"])
@@ -312,6 +343,99 @@ class SyncPullView(APIView):
         )
 
 
+class DocumentUploadView(APIView):
+    """Réception des PDF/documents desktop — contenu binaire inchangé."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        import base64
+        import hashlib
+
+        entity_type = request.data.get("entityType") or request.data.get("EntityType") or ""
+        entity_id = request.data.get("entityId") or request.data.get("EntityId")
+        category = request.data.get("category") or request.data.get("Category") or "rapports"
+        file_name = request.data.get("fileName") or request.data.get("FileName") or "document.pdf"
+        mime_type = request.data.get("mimeType") or request.data.get("MimeType") or "application/pdf"
+        content_b64 = request.data.get("contentBase64") or request.data.get("ContentBase64") or ""
+        added_by = request.data.get("addedBy") or request.data.get("AddedBy") or ""
+        sha_client = (request.data.get("contentSha256") or request.data.get("ContentSha256") or "").lower()
+
+        if not entity_type or not entity_id:
+            return api_fail("entityType et entityId sont requis.", status=400)
+        if not content_b64:
+            return api_fail("contentBase64 est requis.", status=400)
+
+        import uuid as uuid_mod
+
+        try:
+            uid = uuid_mod.UUID(str(entity_id))
+        except (ValueError, AttributeError):
+            return api_fail("entityId invalide.", status=400)
+
+        try:
+            raw = base64.b64decode(content_b64, validate=True)
+        except Exception:
+            return api_fail("contentBase64 invalide.", status=400)
+
+        if len(raw) > 20 * 1024 * 1024:
+            return api_fail("Fichier trop volumineux (max 20 Mo).", status=400)
+
+        sha = hashlib.sha256(raw).hexdigest()
+        if sha_client and sha_client != sha:
+            return api_fail("Hash SHA256 incohérent.", status=400)
+
+        doc_id = uid
+        existing = SyncedDocument.objects.filter(
+            entity_type=entity_type, entity_id=uid, content_sha256=sha
+        ).first()
+        if existing is not None:
+            return api_ok({"id": str(existing.id), "duplicate": True})
+
+        SyncedDocument.objects.update_or_create(
+            id=doc_id,
+            defaults={
+                "entity_type": entity_type,
+                "entity_id": uid,
+                "category": category,
+                "file_name": file_name[:260],
+                "mime_type": mime_type[:120],
+                "file_data": raw,
+                "file_size": len(raw),
+                "content_sha256": sha,
+                "added_by": added_by[:150],
+                "updated_at": timezone.now(),
+            },
+        )
+
+        ServerSyncEvent.objects.create(
+            username=getattr(request.user, "username", ""),
+            user_role=getattr(request.user, "role", ""),
+            entity_type="Documents",
+            direction="push",
+            records_count=1,
+            success=True,
+        )
+        return api_ok({"id": str(doc_id), "fileSize": len(raw), "sha256": sha})
+
+
+class DocumentDownloadView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, document_id):
+        try:
+            doc = SyncedDocument.objects.get(id=document_id)
+        except SyncedDocument.DoesNotExist:
+            return api_fail("Document introuvable.", status=404)
+
+        from django.http import HttpResponse
+
+        response = HttpResponse(bytes(doc.file_data), content_type=doc.mime_type)
+        response["Content-Disposition"] = f'inline; filename="{doc.file_name}"'
+        response["Content-Length"] = str(doc.file_size)
+        return response
+
+
 class DashboardSummaryView(APIView):
     permission_classes = [IsExecutive]
 
@@ -344,6 +468,9 @@ class ExecutiveTenantsView(APIView):
 
     def get(self, request):
         from api.models import Tenant
+        from api.services.sync_metrics import ensure_dashboard_orm_materialized
+
+        ensure_dashboard_orm_materialized()
 
         rows = Tenant.objects.filter(deleted_at__isnull=True).order_by("name")[:500]
         data = [
@@ -358,6 +485,19 @@ class ExecutiveTenantsView(APIView):
             }
             for t in rows
         ]
+        if not data:
+            data = _rows_from_sync_store(
+                ["Tenants"],
+                lambda p: {
+                    "id": str(pick_sync_id(p)),
+                    "name": _pick_sync_value(p, "Name", "name", "FullName", "fullName"),
+                    "email": _pick_sync_value(p, "Email", "email"),
+                    "phone": _pick_sync_value(p, "Phone", "phone"),
+                    "company": _pick_sync_value(p, "Company", "company"),
+                    "status": _pick_sync_value(p, "RentalStatus", "rentalStatus", "Status", "status"),
+                    "updatedAt": _pick_sync_value(p, "UpdatedAt", "updatedAt"),
+                },
+            )
         return api_ok(data)
 
 
@@ -409,14 +549,34 @@ class ExecutiveModuleDataView(APIView):
     permission_classes = [IsExecutive]
 
     def get(self, request, slug):
-        from executive.module_registry import can_access_module, resolve_slug
+        from datetime import date as date_cls
+
+        from executive.module_registry import can_access_module, is_web_portal_module, resolve_slug
 
         slug = resolve_slug(slug)
+        if not is_web_portal_module(slug):
+            return api_fail("Module non disponible sur le portail web.", status=403)
         if not can_access_module(request.user.role, slug):
             return api_fail("Accès refusé à ce module.", status=403)
+        from api.services.sync_metrics import ensure_dashboard_orm_materialized
+
+        ensure_dashboard_orm_materialized()
         handler = get_module_handler(slug)
         if handler is None:
             return api_fail(f"Module inconnu : {slug}", status=404)
+
+        if slug == "rapports":
+            df = request.query_params.get("dateFrom")
+            dt = request.query_params.get("dateTo")
+            date_from = date_cls.fromisoformat(df) if df else None
+            date_to = date_cls.fromisoformat(dt) if dt else None
+            return api_ok(handler(date_from=date_from, date_to=date_to))
+
+        if slug == "utilisateurs":
+            from api.services.web_desktop_modules import load_users
+
+            return api_ok(load_users(current_username=getattr(request.user, "username", None)))
+
         return api_ok(handler())
 
 
@@ -429,6 +589,105 @@ class ExecutiveNavigationView(APIView):
         from executive.module_registry import build_navigation
 
         return api_ok(build_navigation(request.user.role))
+
+
+class ExecutiveUserDetailView(APIView):
+    """CRUD utilisateurs — parité desktop Utilisateurs."""
+
+    permission_classes = [IsExecutive]
+
+    def get(self, request, user_id):
+        from api.permission_codes import role_has_permission
+        from api.services.web_desktop_modules import load_user_detail
+
+        if not role_has_permission(request.user.role, "users.manage"):
+            return api_fail("Accès refusé.", status=403)
+        detail = load_user_detail(str(user_id))
+        if detail is None:
+            return api_fail("Utilisateur introuvable.", status=404)
+        return api_ok(detail)
+
+    def post(self, request):
+        from api.permission_codes import role_has_permission
+
+        if not role_has_permission(request.user.role, "users.manage"):
+            return api_fail("Accès refusé.", status=403)
+
+        username = (request.data.get("username") or "").strip()
+        full_name = (request.data.get("fullName") or "").strip()
+        email = (request.data.get("email") or "").strip()
+        password = request.data.get("password") or ""
+        role = request.data.get("role") or User.Role.GESTIONNAIRE
+
+        if not username:
+            return api_fail("L'identifiant est obligatoire.", status=400)
+        if len(password) < 6:
+            return api_fail("Le mot de passe doit contenir au moins 6 caractères.", status=400)
+        if User.objects.filter(username__iexact=username, deleted_at__isnull=True).exists():
+            return api_fail("Cet identifiant existe déjà.", status=400)
+
+        user = User(username=username, full_name=full_name or username, email=email, role=role)
+        user.set_password(password)
+        user.is_staff = role in (User.Role.ADMIN, User.Role.PDG)
+        user.save()
+        return api_ok({"id": str(user.id)})
+
+    def patch(self, request, user_id):
+        from api.permission_codes import role_has_permission
+
+        if not role_has_permission(request.user.role, "users.manage"):
+            return api_fail("Accès refusé.", status=403)
+
+        try:
+            user = User.objects.get(id=user_id, deleted_at__isnull=True)
+        except User.DoesNotExist:
+            return api_fail("Utilisateur introuvable.", status=404)
+
+        action = request.data.get("action")
+        if action == "toggle_active":
+            new_active = bool(request.data.get("isActive", not user.is_active))
+            if not new_active and user.role == User.Role.ADMIN:
+                others = User.objects.filter(
+                    is_active=True, role=User.Role.ADMIN, deleted_at__isnull=True
+                ).exclude(id=user.id).count()
+                if others == 0:
+                    return api_fail("Impossible de suspendre le dernier administrateur actif.", status=400)
+            user.is_active = new_active
+            user.save()
+            return api_ok({"isActive": user.is_active})
+
+        if action == "reset_password":
+            password = request.data.get("password") or ""
+            if len(password) < 6:
+                return api_fail("Le mot de passe doit contenir au moins 6 caractères.", status=400)
+            user.set_password(password)
+            user.save()
+            return api_ok({"reset": True})
+
+        full_name = request.data.get("fullName")
+        email = request.data.get("email")
+        role = request.data.get("role")
+        password = request.data.get("password")
+
+        if full_name is not None:
+            user.full_name = full_name.strip() or user.username
+        if email is not None:
+            user.email = email.strip()
+        if role is not None:
+            if user.role == User.Role.ADMIN and role != User.Role.ADMIN:
+                others = User.objects.filter(
+                    is_active=True, role=User.Role.ADMIN, deleted_at__isnull=True
+                ).exclude(id=user.id).count()
+                if others == 0:
+                    return api_fail("Impossible de retirer le rôle du dernier administrateur actif.", status=400)
+            user.role = role
+            user.is_staff = role in (User.Role.ADMIN, User.Role.PDG)
+        if password:
+            if len(password) < 6:
+                return api_fail("Le mot de passe doit contenir au moins 6 caractères.", status=400)
+            user.set_password(password)
+        user.save()
+        return api_ok({"id": str(user.id)})
 
 
 class ExpenseValidationActionView(APIView):

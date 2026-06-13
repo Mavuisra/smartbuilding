@@ -46,7 +46,7 @@ def get_module_handler(slug: str):
 
     slug = resolve_slug(slug.replace("_", "-"))
     handlers = {
-        "dashboard": None,
+        "dashboard": dashboard,
         "personnel": personnel,
         "presence": personnel,
         "locations": locations_list,
@@ -494,28 +494,16 @@ def finances():
     )
 
 
+def dashboard():
+    from api.services.web_desktop_modules import load_dashboard_page
+
+    return load_dashboard_page()
+
+
 def documents():
-    rows = [
-        {
-            "Type": "Contrat location",
-            "Référence": c.contract_number or str(c.id)[:8],
-            "Statut": c.status or "—",
-            "Dernière maj": _iso(c.updated_at),
-        }
-        for c in LeaseContract.objects.filter(deleted_at__isnull=True).order_by("-updated_at")[:200]
-    ]
-    if not rows:
-        rows = _rows_from_sync_store(
-            ["LeaseContracts", "TenantActivities", "LeaseGuarantees"],
-            lambda d: {
-                "Type": "Document sync",
-                "Référence": _pick_sync_value(d, "ContractNumber", "contractNumber"),
-                "Statut": _pick_sync_value(d, "Status", "status"),
-                "Dernière maj": _pick_sync_value(d, "UpdatedAt", "updatedAt"),
-            },
-            limit=200,
-        )
-    return _module_payload("Documents", rows, [{"label": "Documents suivis", "value": len(rows)}])
+    from api.services.web_desktop_modules import load_documents_page
+
+    return load_documents_page()
 
 
 def technique():
@@ -721,77 +709,33 @@ def validations():
 
 
 def activities():
-    rows = [
-        {
-            "Utilisateur": r.username or "Système",
-            "Rôle": r.user_role or "—",
-            "Type": r.entity_type,
-            "Direction": r.direction,
-            "Succès": "Oui" if r.success else "Non",
-            "Date": _iso(r.created_at),
-        }
-        for r in ServerSyncEvent.objects.all().order_by("-created_at")[:300]
-    ]
-    return _module_payload("Journal d'activité", rows, [{"label": "Événements", "value": ServerSyncEvent.objects.count()}])
+    from api.services.web_desktop_modules import load_activity_log
+
+    return load_activity_log()
 
 
 def users():
-    rows = [
-        {
-            "Utilisateur": u.username,
-            "Nom": u.full_name or "—",
-            "Email": u.email or "—",
-            "Rôle": u.role,
-            "Actif": "Oui" if u.is_active else "Non",
-            "Dernière connexion": _iso(u.last_login_at),
-        }
-        for u in User.objects.filter(deleted_at__isnull=True).order_by("username")[:300]
-    ]
-    return _module_payload("Utilisateurs", rows, [{"label": "Utilisateurs", "value": User.objects.filter(deleted_at__isnull=True).count()}])
+    from api.services.web_desktop_modules import load_users
+
+    return load_users()
 
 
-def reports():
-    summary = get_executive_summary()
-    rows = [
-        {"Rapport": "Situation financière", "Contenu": "Recettes, dépenses, solde", "Valeur clé": _money(summary["netBalance"])},
-        {"Rapport": "Occupation", "Contenu": "Locaux occupés/libres", "Valeur clé": f"{summary['occupancyRate']} %"},
-        {"Rapport": "Incidents", "Contenu": "Incidents ouverts", "Valeur clé": summary["openIncidents"]},
-        {"Rapport": "Inventaire", "Contenu": "Articles en stock", "Valeur clé": InventoryItem.objects.filter(deleted_at__isnull=True).count()},
-    ]
-    return _module_payload("Rapports", rows, summary["quickStats"])
+def reports(date_from=None, date_to=None):
+    from api.services.web_desktop_modules import load_rapports
+
+    return load_rapports(date_from=date_from, date_to=date_to)
 
 
 def sync_module():
-    health = get_sync_health()
-    rows = [
-        {"Mesure": "Événements", "Valeur": health["totalEvents"]},
-        {"Mesure": "Réussis", "Valeur": health["successfulEvents"]},
-        {"Mesure": "Échoués", "Valeur": health["failedEvents"]},
-        {"Mesure": "Taux succès", "Valeur": f"{health['successRate']} %"},
-        {"Mesure": "Dernière sync", "Valeur": health["lastSyncAt"] or "—"},
-    ]
-    return _module_payload("Synchronisation", rows, [{"label": "Taux succès", "value": f"{health['successRate']} %"}])
+    from api.services.web_desktop_modules import load_sync_page
+
+    return load_sync_page()
 
 
 def settings_module():
-    from api.services.database_reset import database_info
+    from api.services.web_desktop_modules import load_settings_page
 
-    info = database_info()
-    rows = [
-        {"Paramètre": "Moteur", "Valeur": info.get("engineLabel", "—")},
-        {"Paramètre": "Hébergement", "Valeur": "Render (production)" if info.get("isRender") else "Local"},
-        {"Paramètre": "Bâtiments synchronisés", "Valeur": Building.objects.filter(deleted_at__isnull=True).count()},
-        {"Paramètre": "Entités brutes sync", "Valeur": SyncedEntityStore.objects.count()},
-        {"Paramètre": "Utilisateurs actifs", "Valeur": User.objects.filter(deleted_at__isnull=True, is_active=True).count()},
-    ]
-    return _module_payload(
-        "Paramètres",
-        rows,
-        [
-            {"label": "Moteur BDD", "value": info.get("engineLabel", "—")},
-            {"label": "Environnement", "value": "Production" if info.get("isRender") else "Développement"},
-        ],
-    )
+    return load_settings_page()
 
 
 def audit():

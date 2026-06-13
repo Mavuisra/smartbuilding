@@ -100,6 +100,7 @@ public static class DatabaseSchemaUpgrader
             await EnsureColumnAsync(connection, "ConsumptionRecords", "VariationPercent", "REAL NOT NULL DEFAULT 0", cancellationToken);
             await EnsureColumnAsync(connection, "ConsumptionRecords", "Currency", "TEXT NOT NULL DEFAULT 'FC'", cancellationToken);
             await EnsureColumnAsync(connection, "ConsumptionRecords", "IsAnomaly", "INTEGER NOT NULL DEFAULT 0", cancellationToken);
+            await EnsureColumnAsync(connection, "ConsumptionRecords", "CustomTypeLabel", "TEXT NULL", cancellationToken);
 
             await EnsureColumnAsync(connection, "Incidents", "Code", "TEXT NOT NULL DEFAULT ''", cancellationToken);
             await EnsureColumnAsync(connection, "Incidents", "IncidentType", "TEXT NOT NULL DEFAULT ''", cancellationToken);
