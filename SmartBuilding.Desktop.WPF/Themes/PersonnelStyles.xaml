@@ -42,6 +42,7 @@
         <Setter Property="Height" Value="40"/>
         <Setter Property="MinWidth" Value="128"/>
         <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Foreground" Value="#0F172A"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
         <Setter Property="Padding" Value="10,8"/>
         <Setter Property="Margin" Value="0,0,8,0"/>

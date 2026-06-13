@@ -308,7 +308,7 @@ public partial class IncidentsViewModel
     private void ExportCsv()
     {
         if (IncidentsExportService.ExportCsv(_allIncidents))
-            StatusMessage = "Export Excel enregistré.";
+            StatusMessage = "Export PDF enregistré.";
         else
             StatusMessage = "Export annulé.";
     }

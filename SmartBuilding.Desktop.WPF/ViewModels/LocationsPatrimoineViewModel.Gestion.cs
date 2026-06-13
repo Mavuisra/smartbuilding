@@ -124,14 +124,14 @@ public partial class LocationsPatrimoineViewModel
             return;
 
         SelectedGestionUnit = row;
-        SelectedPatrimoineTab = 2;
+        SelectedPatrimoineTab = 1;
         ExpandUnitInStructureEditor(row.ApartmentId);
     }
 
     [RelayCommand]
     private void AddGestionUnitInStructure()
     {
-        SelectedPatrimoineTab = 2;
+        SelectedPatrimoineTab = 1;
         if (PropertyFloors.Count == 0)
             AddDefaultPropertyFloor();
         var floor = PropertyFloors.Last();

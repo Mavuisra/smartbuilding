@@ -8,6 +8,7 @@ using LiveChartsCore;
 using LiveChartsCore.SkiaSharpView;
 using LiveChartsCore.SkiaSharpView.Painting;
 using SkiaSharp;
+using SmartBuilding.Desktop.WPF.Helpers;
 using SmartBuilding.Desktop.WPF.Models;
 using SmartBuilding.Desktop.WPF.Services;
 
@@ -117,7 +118,6 @@ public partial class DocumentsViewModel : BaseViewModel
 
             TypeFilters.Clear();
             foreach (var t in data.TypeFilters) TypeFilters.Add(t);
-            FilterType = AllTypes;
 
             CategoryFilters.Clear();
             CategoryFilters.Add(AllCategories);
@@ -126,7 +126,11 @@ public partial class DocumentsViewModel : BaseViewModel
 
             BuildingFilters.Clear();
             foreach (var b in data.BuildingFilters) BuildingFilters.Add(b);
-            FilterBuilding = AllBuildings;
+
+            FilterType = PageFilterHelper.RestoreSelection(FilterType, TypeFilters, AllTypes);
+            FilterCategory = PageFilterHelper.RestoreSelection(FilterCategory, CategoryFilters, AllCategories);
+            FilterBuilding = PageFilterHelper.RestoreSelection(FilterBuilding, BuildingFilters, AllBuildings);
+            FilterDate = PageFilterHelper.RestoreSelection(FilterDate, DateFilters, "Toute date");
 
             BuildSparklines(data);
             ApplyFilters();
@@ -406,13 +410,13 @@ public partial class DocumentsViewModel : BaseViewModel
             _ => filtered.Where(d => d.CategoryId == SelectedCategoryId && !d.IsArchived && !d.IsDeleted)
         };
 
-        if (FilterType != AllTypes)
+        if (!PageFilterHelper.IsAll(FilterType, AllTypes))
             filtered = filtered.Where(d => d.FileType.Equals(FilterType, StringComparison.OrdinalIgnoreCase));
 
-        if (FilterCategory != AllCategories)
+        if (!PageFilterHelper.IsAll(FilterCategory, AllCategories))
             filtered = filtered.Where(d => d.CategoryLabel.Equals(FilterCategory, StringComparison.OrdinalIgnoreCase));
 
-        if (FilterBuilding != AllBuildings)
+        if (!PageFilterHelper.IsAll(FilterBuilding, AllBuildings))
             filtered = filtered.Where(d => d.Building.Equals(FilterBuilding, StringComparison.OrdinalIgnoreCase));
 
         if (FilterDate == "Aujourd'hui")
@@ -474,7 +478,7 @@ public partial class DocumentsViewModel : BaseViewModel
 
     private string GetUploadBuilding()
     {
-        if (FilterBuilding != AllBuildings)
+        if (!PageFilterHelper.IsAll(FilterBuilding, AllBuildings))
             return FilterBuilding;
         return BuildingFilters.Count > 1 ? BuildingFilters[1] : "—";
     }

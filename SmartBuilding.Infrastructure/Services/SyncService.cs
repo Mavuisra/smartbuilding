@@ -88,6 +88,230 @@ public class SyncService : ISyncService
         return false;
     }
 
+    public async Task<bool> NeedsInitialCloudPullAsync(CancellationToken cancellationToken = default)
+    {
+        if (InitialSyncStore.IsCompleted())
+            return false;
+
+        if (!await IsOnlineAsync(cancellationToken))
+            return false;
+
+        if (await IsCloudStoreEmptyAsync(cancellationToken))
+            return false;
+
+        return await IsLocalBusinessDataEmptyAsync(cancellationToken);
+    }
+
+    public async Task<SyncResult> PerformInitialCloudPullAsync(CancellationToken cancellationToken = default)
+    {
+        if (!await SyncGate.WaitAsync(0, cancellationToken))
+            return new SyncResult(false, 0, 0, 0, "Synchronisation déjà en cours.");
+
+        try
+        {
+            return await CloudPullCoreAsync(
+                pullSince: DateTime.MinValue,
+                directionLabel: $"InitialPull ({DesktopSyncDevice.GetDeviceLabel()})",
+                cancellationToken);
+        }
+        finally
+        {
+            SyncGate.Release();
+        }
+    }
+
+    public async Task<SyncResult> PerformCloudToLocalPullAsync(
+        bool fullPull = true,
+        CancellationToken cancellationToken = default)
+    {
+        if (!await SyncGate.WaitAsync(0, cancellationToken))
+            return new SyncResult(false, 0, 0, 0, "Synchronisation déjà en cours.");
+
+        try
+        {
+            await EnsureMetadataLoadedAsync(cancellationToken);
+            var pullSince = fullPull
+                ? DateTime.MinValue
+                : _lastSyncAt ?? DateTime.MinValue;
+            var mode = fullPull ? "Complète" : "Incrémentale";
+            return await CloudPullCoreAsync(
+                pullSince,
+                $"CloudPull-{mode} ({DesktopSyncDevice.GetDeviceLabel()})",
+                cancellationToken);
+        }
+        finally
+        {
+            SyncGate.Release();
+        }
+    }
+
+    public IReadOnlyList<SyncConflictDetail> GetLastPullConflicts() => SyncPullConflictStore.Load();
+
+    private async Task<bool> IsLocalBusinessDataEmptyAsync(CancellationToken cancellationToken)
+    {
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+
+        var hadSuccessfulPull = await context.SyncLogs
+            .AsNoTracking()
+            .AnyAsync(x => x.Success && x.RecordsPulled > 0, cancellationToken);
+        if (hadSuccessfulPull)
+            return false;
+
+        var tenantCount = await context.Tenants.IgnoreQueryFilters().CountAsync(cancellationToken);
+        var contractCount = await context.LeaseContracts.IgnoreQueryFilters().CountAsync(cancellationToken);
+        var premiseCount = await context.Premises.IgnoreQueryFilters().CountAsync(cancellationToken);
+        var transactionCount = await context.FinancialTransactions.IgnoreQueryFilters().CountAsync(cancellationToken);
+
+        return tenantCount == 0
+               && contractCount == 0
+               && premiseCount == 0
+               && transactionCount == 0;
+    }
+
+    private async Task<SyncResult> CloudPullCoreAsync(
+        DateTime pullSince,
+        string directionLabel,
+        CancellationToken cancellationToken)
+    {
+        if (IsSyncing)
+            return new SyncResult(false, 0, 0, 0, "Synchronisation déjà en cours.");
+
+        if (!await IsOnlineAsync(cancellationToken))
+            return new SyncResult(false, 0, 0, 0, "Hors ligne — téléchargement cloud impossible.");
+
+        IsSyncing = true;
+        var log = new SyncLog
+        {
+            StartedAt = DateTime.UtcNow,
+            Direction = directionLabel,
+            IsSynced = true
+        };
+        var pulled = 0;
+        var conflicts = 0;
+        var failures = new List<string>();
+        var conflictDetails = new List<SyncConflictDetail>();
+
+        using (await DbContextAccessLock.AcquireAsync(cancellationToken))
+        await using (var context = await _contextFactory.CreateDbContextAsync(cancellationToken))
+        {
+            try
+            {
+                await DatabaseSchemaUpgrader.UpgradeAsync(context, cancellationToken);
+
+                var baseUrl = GetApiBaseUrl();
+                var token = SyncCloudTokenStore.Load();
+                if (string.IsNullOrWhiteSpace(token))
+                    token = await SyncCloudTokenStore.AcquireAsync(_configuration, cancellationToken: cancellationToken);
+
+                if (string.IsNullOrWhiteSpace(token))
+                {
+                    var noToken = new SyncResult(
+                        false, 0, 0, 0,
+                        "Synchronisation cloud indisponible — vérifiez l'URL API et les identifiants.");
+                    _notifier.Notify(noToken);
+                    return noToken;
+                }
+
+                using var api = new CloudApiClient(baseUrl, token);
+
+                foreach (var entityType in SyncEntityRegistry.SyncableTypes)
+                {
+                    var adapter = SyncEntityRegistry.TryGet(entityType);
+                    if (adapter is null)
+                        continue;
+
+                    try
+                    {
+                        var pullResult = await PullEntityTypeAsync(
+                            api,
+                            baseUrl,
+                            context,
+                            entityType,
+                            pullSince,
+                            cancellationToken,
+                            failures,
+                            conflictDetails);
+                        pulled += pullResult.Pulled;
+                        conflicts += pullResult.Conflicts;
+                    }
+                    catch (Exception pullEx)
+                    {
+                        failures.Add($"{entityType} pull: {pullEx.Message}");
+                        _logger.LogWarning(pullEx, "Pull cloud ignoré pour {EntityType}", entityType);
+                    }
+                }
+
+                await context.SaveChangesAsync(cancellationToken);
+                await DatabaseSeeder.EnsureReservedAdminAccountsAsync(context, cancellationToken);
+
+                SyncPullConflictStore.Save(conflictDetails);
+
+                log.RecordsPulled = pulled;
+                log.ConflictsResolved = conflicts;
+                log.Success = failures.Count == 0;
+
+                if (pulled == 0 && failures.Count == 0 && !await IsCloudStoreEmptyAsync(cancellationToken))
+                {
+                    if (await IsLocalBusinessDataEmptyAsync(cancellationToken))
+                    {
+                        failures.Add(
+                            "Aucun enregistrement téléchargé alors que le cloud contient des données — " +
+                            "vérifiez les identifiants cloud ou relancez la connexion.");
+                        log.Success = false;
+                    }
+                }
+
+                if (conflicts > 0)
+                    log.ErrorMessage = $"{conflicts} conflit(s) résolu(s) automatiquement (Last Write Wins).";
+
+                if (log.Success && pulled > 0)
+                {
+                    _lastSyncAt = DateTime.UtcNow;
+                    _logger.LogInformation("Pull cloud OK: pulled={Pulled}, conflicts={Conflicts}", pulled, conflicts);
+                    var ok = new SyncResult(true, 0, pulled, conflicts, null, conflictDetails);
+                    _notifier.Notify(ok);
+                    return ok;
+                }
+
+                if (log.Success && pulled == 0 && failures.Count == 0)
+                {
+                    _logger.LogInformation("Pull cloud OK: cloud déjà à jour (0 nouveau enregistrement).");
+                    var upToDate = new SyncResult(true, 0, 0, conflicts, null, conflictDetails);
+                    _notifier.Notify(upToDate);
+                    return upToDate;
+                }
+
+                var message = failures.Count > 0
+                    ? string.Join(" | ", failures.Take(6))
+                    : $"{conflicts} conflit(s) — données locales plus récentes conservées.";
+                log.ErrorMessage = message;
+                _logger.LogWarning("Pull cloud incomplet: {Message}", message);
+                var partial = new SyncResult(pulled > 0, 0, pulled, conflicts, message, conflictDetails);
+                _notifier.Notify(partial);
+                return partial;
+            }
+            catch (Exception ex)
+            {
+                log.Success = false;
+                log.ErrorMessage = ex.Message;
+                _logger.LogError(ex, "Échec téléchargement cloud → local");
+                var failed = new SyncResult(false, 0, pulled, conflicts, ex.Message, conflictDetails);
+                _notifier.Notify(failed);
+                return failed;
+            }
+            finally
+            {
+                log.CompletedAt = DateTime.UtcNow;
+                context.SyncLogs.Add(log);
+                await context.SaveChangesAsync(cancellationToken);
+                IsSyncing = false;
+
+                if (log.Success)
+                    _lastSyncAt = log.CompletedAt;
+            }
+        }
+    }
+
     public async Task MarkAllLocalDataForPushAsync(CancellationToken cancellationToken = default)
     {
         await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
@@ -102,6 +326,166 @@ public class SyncService : ISyncService
         await context.SaveChangesAsync(cancellationToken);
     }
 
+    private async Task<SyncResult> PushCoreAsync(CancellationToken cancellationToken)
+    {
+        if (IsSyncing)
+            return new SyncResult(false, 0, 0, 0, "Synchronisation déjà en cours.");
+
+        if (!await IsOnlineAsync(cancellationToken))
+            return new SyncResult(false, 0, 0, 0, "Hors ligne — envoi cloud reporté.");
+
+        IsSyncing = true;
+        var log = new SyncLog
+        {
+            StartedAt = DateTime.UtcNow,
+            Direction = $"Push ({DesktopSyncDevice.GetDeviceLabel()})",
+            IsSynced = true
+        };
+        var pushed = 0;
+        var hadFailure = false;
+        var failures = new List<string>();
+
+        using (await DbContextAccessLock.AcquireAsync(cancellationToken))
+        await using (var context = await _contextFactory.CreateDbContextAsync(cancellationToken))
+        {
+            try
+            {
+                await DatabaseSchemaUpgrader.UpgradeAsync(context, cancellationToken);
+
+                var baseUrl = GetApiBaseUrl();
+                var token = SyncCloudTokenStore.Load();
+                if (string.IsNullOrWhiteSpace(token))
+                    token = await SyncCloudTokenStore.AcquireAsync(_configuration, cancellationToken: cancellationToken);
+
+                if (string.IsNullOrWhiteSpace(token))
+                {
+                    var noToken = new SyncResult(
+                        false, 0, 0, 0,
+                        "Synchronisation cloud indisponible — vérifiez l'URL API et les identifiants.");
+                    _notifier.Notify(noToken);
+                    return noToken;
+                }
+
+                using var api = new CloudApiClient(baseUrl, token);
+                var (typePushed, pushFailed) = await PushAllPendingEntityTypesAsync(
+                    api, baseUrl, context, failures, cancellationToken);
+                pushed = typePushed;
+                hadFailure = pushFailed;
+
+                await context.SaveChangesAsync(cancellationToken);
+
+                try
+                {
+                    var docsUploaded = await _documentUpload.UploadAllPendingAsync(cancellationToken);
+                    if (docsUploaded > 0)
+                        _logger.LogInformation("Documents cloud : {Count} fichier(s) envoyé(s).", docsUploaded);
+                }
+                catch (Exception docEx)
+                {
+                    _logger.LogDebug(docEx, "Upload documents cloud ignoré");
+                }
+
+                var remainingPending = await SyncCoordinator.CountAllUnsyncedAsync(context, cancellationToken);
+                log.RecordsPushed = pushed;
+                log.Success = !hadFailure && remainingPending == 0;
+
+                if (log.Success)
+                {
+                    var ok = new SyncResult(true, pushed, 0, 0, null);
+                    _notifier.Notify(ok);
+                    return ok;
+                }
+
+                var message = failures.Count > 0
+                    ? string.Join(" | ", failures.Take(6))
+                    : "Envoi cloud incomplet.";
+                if (remainingPending > 0)
+                    message += $" — {remainingPending} enregistrement(s) encore en attente.";
+                log.ErrorMessage = message;
+                var partial = new SyncResult(pushed > 0, pushed, 0, 0, message);
+                _notifier.Notify(partial);
+                return partial;
+            }
+            catch (Exception ex)
+            {
+                log.Success = false;
+                log.ErrorMessage = ex.Message;
+                _logger.LogError(ex, "Échec envoi local → cloud");
+                var failed = new SyncResult(false, pushed, 0, 0, ex.Message);
+                _notifier.Notify(failed);
+                return failed;
+            }
+            finally
+            {
+                log.CompletedAt = DateTime.UtcNow;
+                context.SyncLogs.Add(log);
+                await context.SaveChangesAsync(cancellationToken);
+                IsSyncing = false;
+            }
+        }
+    }
+
+    private async Task<(int Pushed, bool HadFailure)> PushAllPendingEntityTypesAsync(
+        CloudApiClient api,
+        string baseUrl,
+        SmartBuildingDbContext context,
+        List<string> failures,
+        CancellationToken cancellationToken)
+    {
+        var pushed = 0;
+        var hadFailure = false;
+        await SyncDependencyPusher.PrepareRentPaymentChainAsync(context, cancellationToken);
+
+        foreach (var entityType in SyncEntityRegistry.SyncableTypes)
+        {
+            var adapter = SyncEntityRegistry.TryGet(entityType);
+            if (adapter is null)
+            {
+                hadFailure = true;
+                failures.Add($"{entityType}: adaptateur desktop manquant");
+                continue;
+            }
+
+            if (entityType == "RentPayments")
+            {
+                await SyncDependencyPusher.PrepareRentPaymentChainAsync(context, cancellationToken);
+                foreach (var depType in SyncDependencyPusher.RentPaymentChain)
+                {
+                    var depAdapter = SyncEntityRegistry.TryGet(depType);
+                    if (depAdapter is null)
+                        continue;
+
+                    var depPushed = await PushAllPendingAsync(
+                        api, baseUrl, context, depAdapter, depType, cancellationToken);
+                    if (depPushed < 0)
+                    {
+                        hadFailure = true;
+                        failures.Add(LastPushError ?? $"{depType}: échec envoi des dépendances loyer");
+                    }
+                    else
+                    {
+                        pushed += depPushed;
+                    }
+                }
+            }
+
+            var typePushed = await PushAllPendingAsync(
+                api, baseUrl, context, adapter, entityType, cancellationToken);
+
+            if (typePushed < 0)
+            {
+                hadFailure = true;
+                failures.Add(LastPushError ?? $"{entityType}: échec envoi vers le cloud");
+            }
+            else
+            {
+                pushed += typePushed;
+            }
+        }
+
+        return (pushed, hadFailure);
+    }
+
     public async Task EnsureMetadataLoadedAsync(CancellationToken cancellationToken = default)
     {
         if (_lastSyncAt.HasValue)
@@ -109,6 +493,21 @@ public class SyncService : ISyncService
 
         await using var readContext = await _contextFactory.CreateDbContextAsync(cancellationToken);
         _lastSyncAt = await SyncCoordinator.GetLastSuccessfulSyncAtAsync(readContext, cancellationToken);
+    }
+
+    public async Task<SyncResult> PushLocalChangesAsync(CancellationToken cancellationToken = default)
+    {
+        if (!await SyncGate.WaitAsync(0, cancellationToken))
+            return new SyncResult(false, 0, 0, 0, "Synchronisation déjà en cours.");
+
+        try
+        {
+            return await PushCoreAsync(cancellationToken);
+        }
+        finally
+        {
+            SyncGate.Release();
+        }
     }
 
     public async Task<SyncResult> SyncAsync(bool manual = false, CancellationToken cancellationToken = default)
@@ -170,61 +569,10 @@ public class SyncService : ISyncService
             var deviceLabel = DesktopSyncDevice.GetDeviceLabel();
             log.Direction = manual ? $"Manual ({deviceLabel})" : $"Auto ({deviceLabel})";
 
-            await SyncDependencyPusher.PrepareRentPaymentChainAsync(context, cancellationToken);
-
-            // Phase 1 — Push : envoyer toutes les modifications locales (offline first).
-            foreach (var entityType in SyncEntityRegistry.SyncableTypes)
-            {
-                var adapter = SyncEntityRegistry.TryGet(entityType);
-                if (adapter is null)
-                {
-                    hadFailure = true;
-                    failures.Add($"{entityType}: adaptateur desktop manquant");
-                    _logger.LogWarning("Adaptateur sync manquant pour {EntityType}", entityType);
-                    continue;
-                }
-
-                if (entityType == "RentPayments")
-                {
-                    await SyncDependencyPusher.PrepareRentPaymentChainAsync(context, cancellationToken);
-                    foreach (var depType in SyncDependencyPusher.RentPaymentChain)
-                    {
-                        var depAdapter = SyncEntityRegistry.TryGet(depType);
-                        if (depAdapter is null)
-                            continue;
-
-                        var depPushed = await PushAllPendingAsync(
-                            api, baseUrl, context, depAdapter, depType, cancellationToken);
-                        if (depPushed < 0)
-                        {
-                            hadFailure = true;
-                            failures.Add(LastPushError ?? $"{depType}: échec envoi des dépendances loyer");
-                        }
-                        else
-                        {
-                            pushed += depPushed;
-                        }
-                    }
-                }
-
-                var typePushed = await PushAllPendingAsync(
-                    api,
-                    baseUrl,
-                    context,
-                    adapter,
-                    entityType,
-                    cancellationToken);
-
-                if (typePushed < 0)
-                {
-                    hadFailure = true;
-                    failures.Add(LastPushError ?? $"{entityType}: échec envoi vers le cloud");
-                }
-                else
-                {
-                    pushed += typePushed;
-                }
-            }
+            var pushResult = await PushAllPendingEntityTypesAsync(
+                api, baseUrl, context, failures, cancellationToken);
+            pushed = pushResult.Pushed;
+            hadFailure = pushResult.HadFailure;
 
             await context.SaveChangesAsync(cancellationToken);
 
@@ -336,7 +684,8 @@ public class SyncService : ISyncService
         string entityType,
         DateTime lastSync,
         CancellationToken cancellationToken,
-        List<string> failures)
+        List<string> failures,
+        IList<SyncConflictDetail>? conflictDetails = null)
     {
         var pulled = 0;
         var conflicts = 0;
@@ -345,23 +694,36 @@ public class SyncService : ISyncService
         while (true)
         {
             var pullPath =
-                $"api/sync/pull?entityType={Uri.EscapeDataString(entityType)}&since={pullSince:O}";
+                $"api/sync/pull?entityType={Uri.EscapeDataString(entityType)}&since={Uri.EscapeDataString(pullSince.ToUniversalTime().ToString("o"))}";
             var pullResult = await GetWithAuthRetryAsync<SyncPullResponse>(
                 api, baseUrl, pullPath, cancellationToken);
 
             if (pullResult.StatusCode is 401 or 403)
+            {
+                failures.Add($"{entityType} pull: HTTP {pullResult.StatusCode} (authentification cloud)");
+                break;
+            }
+
+            if (pullResult.StatusCode is < 200 or >= 300)
             {
                 failures.Add($"{entityType} pull: HTTP {pullResult.StatusCode}");
                 break;
             }
 
             var entities = pullResult.Data?.Entities;
-            if (entities is null || entities.Count == 0)
+            if (entities is null)
+            {
+                failures.Add($"{entityType} pull: réponse cloud illisible");
+                break;
+            }
+
+            if (entities.Count == 0)
                 break;
 
-            conflicts += await SyncCoordinator.ApplyPullAsync(
-                context, entityType, entities, cancellationToken);
-            pulled += entities.Count;
+            var batchConflicts = await SyncCoordinator.ApplyPullAsync(
+                context, entityType, entities, cancellationToken, conflictDetails);
+            conflicts += batchConflicts.Conflicts;
+            pulled += batchConflicts.Applied;
 
             if (entities.Count < 200)
                 break;

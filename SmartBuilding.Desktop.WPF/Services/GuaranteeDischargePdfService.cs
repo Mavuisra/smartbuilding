@@ -18,10 +18,7 @@ public class GuaranteeDischargePdfService
     private string _navy = "#1B365D";
     private string _green = "#16A34A";
 
-    static GuaranteeDischargePdfService()
-    {
-        QuestPDF.Settings.License = LicenseType.Community;
-    }
+    static GuaranteeDischargePdfService() => PdfThemeHelper.EnsureLicense();
 
     public string Generate(
         LeaseGuarantee guarantee,
@@ -39,8 +36,8 @@ public class GuaranteeDischargePdfService
         var companyAddress = FormatAddress(building);
         var dischargeNo = $"DCH-{refundDate:yyyyMMdd}-{guarantee.Id.ToString("N")[..8].ToUpperInvariant()}";
 
-        _navy = AppConfigurationService.Instance?.Current.PdfHeaderHex ?? "#1B365D";
-        _green = AppConfigurationService.Instance?.Current.PdfAccentHex ?? "#16A34A";
+        _navy = PdfThemeHelper.ResolveHeaderColor();
+        _green = PdfThemeHelper.ResolveAccentColor();
 
         var folder = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),

@@ -131,6 +131,12 @@ public partial class SuppliersViewModel : BaseViewModel
             foreach (var b in _allSuppliers.Select(s => s.Building).Where(x => x != "—").Distinct().OrderBy(x => x))
                 BuildingFilters.Add(b);
 
+            FilterCategory = PageFilterHelper.RestoreSelection(FilterCategory, CategoryFilters, AllCategories);
+            FilterServiceType = PageFilterHelper.RestoreSelection(FilterServiceType, ServiceTypeFilters, AllServiceTypes);
+            FilterBuilding = PageFilterHelper.RestoreSelection(FilterBuilding, BuildingFilters, AllBuildings);
+            FilterStatus = PageFilterHelper.RestoreSelection(FilterStatus, StatusFilters, AllStatuses);
+            FilterContract = PageFilterHelper.RestoreSelection(FilterContract, ContractFilters, AllContracts);
+
             BuildCharts(data);
             CurrentPage = 1;
             ApplyFilters();
@@ -279,11 +285,11 @@ public partial class SuppliersViewModel : BaseViewModel
         var query = $"{SearchQuery} {TableSearchQuery}".Trim();
 
         var filtered = _allSuppliers.Where(s =>
-            (FilterCategory == AllCategories || s.Category == FilterCategory) &&
-            (FilterStatus == AllStatuses || s.StatusLabel == FilterStatus) &&
-            (FilterServiceType == AllServiceTypes || s.ServiceType == FilterServiceType) &&
-            (FilterBuilding == AllBuildings || s.Building == FilterBuilding) &&
-            (FilterContract == AllContracts
+            PageFilterHelper.Matches(FilterCategory, AllCategories, s.Category) &&
+            PageFilterHelper.Matches(FilterStatus, AllStatuses, s.StatusLabel) &&
+            PageFilterHelper.Matches(FilterServiceType, AllServiceTypes, s.ServiceType) &&
+            PageFilterHelper.Matches(FilterBuilding, AllBuildings, s.Building) &&
+            (PageFilterHelper.IsAll(FilterContract, AllContracts)
                 || (FilterContract == "Contrat actif" && s.ContractDisplay != "—")
                 || (FilterContract == "Sans contrat" && s.ContractDisplay == "—")
                 || (FilterContract == "Expire bientôt" && s.ContractStatus == "Actif"

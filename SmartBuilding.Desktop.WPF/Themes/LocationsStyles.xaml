@@ -178,9 +178,14 @@
     <SolidColorBrush x:Key="PatrimoineGelLightBrush" Color="#E8F9EF"/>
     <SolidColorBrush x:Key="PatrimoineGelSoftBrush" Color="#F4FCF7"/>
     <SolidColorBrush x:Key="PatrimoineGelHoverBrush" Color="#EDFAF2"/>
-    <SolidColorBrush x:Key="PatrimoineGelSelectedBrush" Color="#E0F5E8"/>
-    <SolidColorBrush x:Key="PatrimoineGelTextBrush" Color="#3D6B52"/>
-    <SolidColorBrush x:Key="PatrimoineGelMutedBrush" Color="#6B9080"/>
+    <SolidColorBrush x:Key="PatrimoineGelSelectedBrush" Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="PatrimoineGelSelectedAccentBrush" Color="#4cc26b"/>
+    <SolidColorBrush x:Key="PatrimoineGelTextBrush" Color="#1B4332"/>
+    <SolidColorBrush x:Key="PatrimoineGelMutedBrush" Color="#475569"/>
+    <SolidColorBrush x:Key="PatrimoineGelRowTextBrush" Color="#0F172A"/>
+    <SolidColorBrush x:Key="PatrimoineGelDangerBrush" Color="#DC2626"/>
+    <SolidColorBrush x:Key="PatrimoineGelDangerBgBrush" Color="#FEF2F2"/>
+    <SolidColorBrush x:Key="PatrimoineGelDangerBorderBrush" Color="#F87171"/>
 
     <Style x:Key="PatrimoineGestionColumnHeader" TargetType="DataGridColumnHeader">
         <Setter Property="Background" Value="{StaticResource PatrimoineGelLightBrush}"/>
@@ -201,10 +206,22 @@
         <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
         <Setter Property="Padding" Value="12,0"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="Foreground" Value="{StaticResource PatrimoineGelRowTextBrush}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="DataGridCell">
+                    <Border Background="{TemplateBinding Background}"
+                            Padding="{TemplateBinding Padding}"
+                            TextElement.Foreground="{StaticResource PatrimoineGelRowTextBrush}">
+                        <ContentPresenter VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
         <Style.Triggers>
             <Trigger Property="IsSelected" Value="True">
                 <Setter Property="Background" Value="Transparent"/>
-                <Setter Property="Foreground" Value="#111827"/>
+                <Setter Property="Foreground" Value="{StaticResource PatrimoineGelRowTextBrush}"/>
             </Trigger>
         </Style.Triggers>
     </Style>
@@ -213,8 +230,9 @@
         <Setter Property="MinHeight" Value="60"/>
         <Setter Property="Background" Value="White"/>
         <Setter Property="BorderThickness" Value="0,0,0,1"/>
-        <Setter Property="BorderBrush" Value="#F1F5F4"/>
+        <Setter Property="BorderBrush" Value="#E2E8F0"/>
         <Setter Property="SnapsToDevicePixels" Value="True"/>
+        <Setter Property="TextElement.Foreground" Value="{StaticResource PatrimoineGelRowTextBrush}"/>
         <Style.Triggers>
             <Trigger Property="AlternationIndex" Value="1">
                 <Setter Property="Background" Value="#FAFCFB"/>
@@ -229,7 +247,9 @@
             </MultiTrigger>
             <Trigger Property="IsSelected" Value="True">
                 <Setter Property="Background" Value="{StaticResource PatrimoineGelSelectedBrush}"/>
-                <Setter Property="BorderBrush" Value="#D4EDDC"/>
+                <Setter Property="BorderBrush" Value="{StaticResource PatrimoineGelSelectedAccentBrush}"/>
+                <Setter Property="BorderThickness" Value="4,0,0,1"/>
+                <Setter Property="TextElement.Foreground" Value="{StaticResource PatrimoineGelRowTextBrush}"/>
             </Trigger>
         </Style.Triggers>
     </Style>
@@ -268,6 +288,41 @@
     <Style x:Key="PatrimoineGelPrimaryButton" TargetType="Button" BasedOn="{StaticResource LocationsPrimaryButton}">
         <Setter Property="Background" Value="{StaticResource PatrimoineGelBrush}"/>
         <Setter Property="BorderBrush" Value="{StaticResource PatrimoineGelBrush}"/>
+        <Setter Property="Foreground" Value="White"/>
+    </Style>
+
+    <Style x:Key="PatrimoineGelDangerButton" TargetType="Button">
+        <Setter Property="Background" Value="{StaticResource PatrimoineGelDangerBgBrush}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource PatrimoineGelDangerBorderBrush}"/>
+        <Setter Property="BorderThickness" Value="1.5"/>
+        <Setter Property="Foreground" Value="{StaticResource PatrimoineGelDangerBrush}"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Padding" Value="16,10"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="bd" Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="10" Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="bd" Property="Background" Value="#FEE2E2"/>
+                            <Setter TargetName="bd" Property="BorderBrush" Value="#EF4444"/>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="bd" Property="Background" Value="#FECACA"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="bd" Property="Opacity" Value="0.5"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
 
     <!-- Libellés et cartes partagés (LocationsView, LocationRentFormView, etc.) -->

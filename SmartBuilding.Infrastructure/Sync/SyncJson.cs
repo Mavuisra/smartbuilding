@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 
 namespace SmartBuilding.Infrastructure.Sync;
 
-internal static class SyncJson
+public static class SyncJson
 {
     public static readonly JsonSerializerOptions Options = new()
     {

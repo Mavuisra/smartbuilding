@@ -18,7 +18,7 @@ public static class SyncEntityRegistry
 {
     private static readonly IReadOnlyList<IEntitySyncAdapter> Adapters =
     [
-        new EntitySyncAdapter<User>("Users", ctx => ctx.Users),
+        new UserEntitySyncAdapter(),
         new EntitySyncAdapter<Employee>("Employees", ctx => ctx.Employees),
         new EntitySyncAdapter<Attendance>("Attendances", ctx => ctx.Attendances),
         new EntitySyncAdapter<SalaryPayment>("SalaryPayments", ctx => ctx.SalaryPayments),
@@ -68,4 +68,22 @@ public static class SyncEntityRegistry
 
     public static IEntitySyncAdapter GetRequired(string entityType) =>
         TryGet(entityType) ?? throw new InvalidOperationException($"Type de sync inconnu : {entityType}");
+
+    private static readonly HashSet<Type> SyncableClrTypes =
+    [
+        typeof(User), typeof(Employee), typeof(Attendance), typeof(SalaryPayment), typeof(DisciplinaryNote),
+        typeof(BuildingInfo), typeof(Landlord), typeof(LandlordActivity),
+        typeof(PropertyFloor), typeof(PropertyApartment), typeof(PropertyRoom),
+        typeof(Equipment), typeof(MaintenanceRecord), typeof(RepairRecord), typeof(TechnicalAlert),
+        typeof(Premise), typeof(Tenant), typeof(TenantDependent), typeof(Building),
+        typeof(LeaseContract), typeof(RentPayment), typeof(TenantActivity), typeof(LeaseGuarantee),
+        typeof(FinancialTransaction), typeof(Supplier), typeof(SupplierContract), typeof(SupplierPayment),
+        typeof(Incident), typeof(IncidentIntervention), typeof(ConsumptionRecord),
+        typeof(Visitor), typeof(VisitorAppointment),
+        typeof(InventoryItem), typeof(InventoryMaintenanceRecord)
+    ];
+
+    /// <summary>True si l'entité fait partie du pipeline de synchronisation cloud.</summary>
+    public static bool IsSyncableEntity(object entity) =>
+        entity is Domain.Common.BaseEntity && SyncableClrTypes.Contains(entity.GetType());
 }

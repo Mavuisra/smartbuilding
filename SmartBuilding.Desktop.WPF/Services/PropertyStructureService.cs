@@ -89,9 +89,7 @@ public sealed class PropertyStructureService
     {
         using (await DbContextAccessLock.AcquireAsync(cancellationToken))
         {
-        var displayName = string.IsNullOrWhiteSpace(buildingDisplayName)
-            ? BuildingInfoDefaults.CompanyName
-            : buildingDisplayName.Trim();
+        var displayName = BuildingInfoDefaults.ManagedBuildingName;
 
         var buildingInfo = await _db.BuildingInfos.FirstOrDefaultAsync(cancellationToken);
         if (buildingInfo is null)
@@ -324,7 +322,8 @@ public sealed class PropertyStructureService
     public async Task<IReadOnlyList<PatrimoineUnitRow>> GetManagementUnitsAsync(CancellationToken cancellationToken = default)
     {
         var buildingInfo = await _db.BuildingInfos.AsNoTracking().FirstOrDefaultAsync(cancellationToken);
-        var buildingName = buildingInfo?.BuildingDisplayName ?? buildingInfo?.Name ?? "Bâtiment";
+        var buildingName = buildingInfo?.BuildingDisplayName
+            ?? BuildingInfoDefaults.ManagedBuildingName;
 
         var floors = await LoadAsync(cancellationToken);
         var premiseByApartment = await _db.Premises.AsNoTracking()

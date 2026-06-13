@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
+using System.Windows;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -168,9 +169,59 @@ public partial class SynchronizationViewModel : BaseViewModel, IDisposable
     private Task ForceFullSyncAsync() => SyncNowAsync();
 
     [RelayCommand]
+    private async Task PullFromCloudAsync()
+    {
+        if (!await _syncService.IsOnlineAsync())
+        {
+            StatusMessage = "Hors ligne — impossible de télécharger depuis le cloud.";
+            return;
+        }
+
+        if (PendingCount > 0)
+        {
+            var confirm = MessageBox.Show(
+                $"Vous avez {PendingCount} modification(s) locale(s) non encore envoyées au cloud.\n\n" +
+                "Le téléchargement depuis PostgreSQL appliquera la stratégie « Last Write Wins » : " +
+                "les versions cloud plus récentes remplaceront le local, les versions locales plus récentes seront conservées.\n\n" +
+                "Continuer le téléchargement cloud → local ?",
+                "Télécharger depuis le cloud",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+            if (confirm != MessageBoxResult.Yes)
+                return;
+        }
+
+        IsBusy = true;
+        IsAutoSyncRunning = true;
+        StatusMessage = "Téléchargement PostgreSQL → MySQL local en cours…";
+        try
+        {
+            var result = await _syncService.PerformCloudToLocalPullAsync(fullPull: true);
+            if (result.Success)
+            {
+                StatusMessage = result.Conflicts > 0
+                    ? $"Téléchargement terminé : {result.Pulled} reçu(s), {result.Conflicts} conflit(s) résolu(s) (Last Write Wins)."
+                    : $"Téléchargement terminé : {result.Pulled} enregistrement(s) reçu(s) depuis le cloud.";
+            }
+            else
+            {
+                StatusMessage = result.Error ?? "Échec du téléchargement cloud → local.";
+            }
+
+            await RefreshPageAsync(showBusy: false);
+        }
+        finally
+        {
+            IsAutoSyncRunning = false;
+            IsBusy = false;
+        }
+    }
+
+    [RelayCommand]
     private async Task ResetConflictsAsync()
     {
-        StatusMessage = "Les conflits sont résolus automatiquement (Last Write Wins).";
+        SyncPullConflictStore.Clear();
+        StatusMessage = "Conflits effacés de l'affichage. La stratégie Last Write Wins reste active lors des sync.";
         await RefreshPageAsync(showBusy: false);
     }
 

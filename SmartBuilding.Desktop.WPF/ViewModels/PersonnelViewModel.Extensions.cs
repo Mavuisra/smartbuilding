@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Win32;
 using SmartBuilding.Domain.Entities.Personnel;
+using SmartBuilding.Desktop.WPF.Helpers;
 using SmartBuilding.Desktop.WPF.Models;
 
 namespace SmartBuilding.Desktop.WPF.ViewModels;
@@ -54,14 +55,16 @@ public partial class PersonnelViewModel
         try
         {
             Guid? employeeId = null;
-            if (AttendanceFilterEmployee != AllAttendanceEmployees)
+            if (!PageFilterHelper.IsAll(AttendanceFilterEmployee, AllAttendanceEmployees))
             {
                 var emp = _allEmployees.FirstOrDefault(e =>
                     $"{e.FullName} ({e.Matricule})" == AttendanceFilterEmployee);
                 employeeId = emp?.Id;
             }
 
-            var status = AttendanceFilterStatus == AllAttendanceStatuses ? null : AttendanceFilterStatus;
+            var status = PageFilterHelper.IsAll(AttendanceFilterStatus, AllAttendanceStatuses)
+                ? null
+                : AttendanceFilterStatus;
             var rows = await _personnelService.GetAttendanceHistoryDetailedAsync(
                 employeeId,
                 AttendanceFilterFrom,
@@ -89,6 +92,8 @@ public partial class PersonnelViewModel
         AttendanceEmployeeFilters.Add(AllAttendanceEmployees);
         foreach (var e in _allEmployees.OrderBy(x => x.FullName))
             AttendanceEmployeeFilters.Add($"{e.FullName} ({e.Matricule})");
+        AttendanceFilterEmployee = PageFilterHelper.RestoreSelection(
+            AttendanceFilterEmployee, AttendanceEmployeeFilters, AllAttendanceEmployees);
     }
 
     [RelayCommand]
@@ -123,14 +128,16 @@ public partial class PersonnelViewModel
         try
         {
             Guid? employeeId = null;
-            if (AttendanceFilterEmployee != AllAttendanceEmployees)
+            if (!PageFilterHelper.IsAll(AttendanceFilterEmployee, AllAttendanceEmployees))
             {
                 var emp = _allEmployees.FirstOrDefault(e =>
                     $"{e.FullName} ({e.Matricule})" == AttendanceFilterEmployee);
                 employeeId = emp?.Id;
             }
 
-            var status = AttendanceFilterStatus == AllAttendanceStatuses ? null : AttendanceFilterStatus;
+            var status = PageFilterHelper.IsAll(AttendanceFilterStatus, AllAttendanceStatuses)
+                ? null
+                : AttendanceFilterStatus;
             var path = await _personnelService.ExportAttendanceExcelAsync(
                 AttendanceFilterFrom,
                 AttendanceFilterTo,

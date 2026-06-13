@@ -37,7 +37,7 @@ public sealed class AppConfiguration
     public bool ShowKpiSparklines { get; init; } = true;
 
     public string PdfAccentHex => PrimaryColorHex;
-    public string PdfHeaderHex => ThemeMode == AppThemeMode.Dark ? "#E2E8F0" : "#1B365D";
+    public string PdfHeaderHex => PrimaryColorHex;
 
     public string FullAddress =>
         string.Join(", ", new[] { Address, City, Country }.Where(s => !string.IsNullOrWhiteSpace(s)));

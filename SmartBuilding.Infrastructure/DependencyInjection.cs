@@ -51,8 +51,24 @@ public static class DependencyInjection
             }
         }
 
-        services.AddDbContext<SmartBuildingDbContext>(ConfigureDbContext);
-        services.AddDbContextFactory<SmartBuildingDbContext>(ConfigureDbContext);
+        services.AddDbContext<SmartBuildingDbContext>((sp, options) =>
+        {
+            ConfigureDbContext(options);
+            if (isDesktop)
+                options.AddInterceptors(sp.GetRequiredService<LocalChangeSyncSaveInterceptor>());
+        });
+        services.AddDbContextFactory<SmartBuildingDbContext>((sp, options) =>
+        {
+            ConfigureDbContext(options);
+            if (isDesktop)
+                options.AddInterceptors(sp.GetRequiredService<LocalChangeSyncSaveInterceptor>());
+        });
+
+        if (isDesktop)
+        {
+            services.AddSingleton<ILocalChangeSyncTrigger, LocalChangeSyncTrigger>();
+            services.AddSingleton<LocalChangeSyncSaveInterceptor>();
+        }
 
         services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
         services.AddScoped<IUnitOfWork, UnitOfWork>();

@@ -1,5 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using SmartBuilding.Domain.Entities.Building;
 using SmartBuilding.Desktop.WPF.Models;
+using SmartBuilding.Shared.Constants;
 
 namespace SmartBuilding.Desktop.WPF.ViewModels;
 
@@ -33,6 +35,9 @@ public partial class LocationsPatrimoineViewModel
     [ObservableProperty] private int _commercialUnitCount;
     [ObservableProperty] private int _totalPremisesConfig;
 
+    /// <summary>Immeuble unique — non modifiable.</summary>
+    public string SingleBuildingDisplayName => BrandConstants.AppName;
+
     private void ApplyProfileFromData(SettingsPageData data)
     {
         CompanyName = data.CompanyName;
@@ -49,8 +54,8 @@ public partial class LocationsPatrimoineViewModel
         TaxId = data.TaxId ?? string.Empty;
         BankName = data.BankName ?? string.Empty;
         BankAccount = data.BankAccount ?? string.Empty;
-        BuildingDisplayName = data.BuildingDisplayName;
-        BuildingType = data.BuildingType;
+        BuildingDisplayName = BrandConstants.AppName;
+        BuildingType = string.IsNullOrWhiteSpace(data.BuildingType) ? "Immeuble" : data.BuildingType;
         YearBuiltText = data.YearBuilt?.ToString() ?? string.Empty;
         BuildingAreaSqMValue = data.BuildingAreaSqM;
         ParkingSpaces = data.ParkingSpaces;
@@ -85,7 +90,7 @@ public partial class LocationsPatrimoineViewModel
             TaxId = string.IsNullOrWhiteSpace(TaxId) ? null : TaxId,
             BankName = string.IsNullOrWhiteSpace(BankName) ? null : BankName,
             BankAccount = string.IsNullOrWhiteSpace(BankAccount) ? null : BankAccount,
-            BuildingDisplayName = BuildingDisplayName,
+            BuildingDisplayName = BrandConstants.AppName,
             BuildingType = BuildingType,
             TotalFloors = BuildingFloors,
             TotalPremises = TotalPremisesConfig,

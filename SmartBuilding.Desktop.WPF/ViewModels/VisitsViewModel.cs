@@ -142,6 +142,12 @@ public partial class VisitsViewModel : BaseViewModel
             foreach (var b in _allVisits.Select(v => v.Building).Where(s => !string.IsNullOrWhiteSpace(s)).Distinct().OrderBy(x => x))
                 BuildingFilters.Add(b);
 
+            FilterType = PageFilterHelper.RestoreSelection(FilterType, TypeFilters, AllTypes);
+            FilterStatus = PageFilterHelper.RestoreSelection(FilterStatus, StatusFilters, AllStatuses);
+            FilterBuilding = PageFilterHelper.RestoreSelection(FilterBuilding, BuildingFilters, AllBuildings);
+            FilterHost = PageFilterHelper.RestoreSelection(FilterHost, HostFilters, AllHosts);
+            FilterPeriod = PageFilterHelper.RestoreSelection(FilterPeriod, PeriodFilters, AllPeriods);
+
             BuildCharts(data);
             CurrentPage = 1;
             ApplyFilters();
@@ -255,11 +261,11 @@ public partial class VisitsViewModel : BaseViewModel
         var query = $"{SearchQuery} {TableSearchQuery}".Trim().ToLowerInvariant();
 
         var filtered = _allVisits.Where(v =>
-            (FilterType == AllTypes || v.VisitType == FilterType) &&
-            (FilterStatus == AllStatuses || v.AccessStatus == FilterStatus) &&
-            (FilterBuilding == AllBuildings || v.Building == FilterBuilding) &&
-            (FilterHost == AllHosts || v.HostName == FilterHost) &&
-            (FilterPeriod == AllPeriods
+            PageFilterHelper.Matches(FilterType, AllTypes, v.VisitType) &&
+            PageFilterHelper.Matches(FilterStatus, AllStatuses, v.AccessStatus) &&
+            PageFilterHelper.Matches(FilterBuilding, AllBuildings, v.Building) &&
+            PageFilterHelper.Matches(FilterHost, AllHosts, v.HostName) &&
+            (PageFilterHelper.IsAll(FilterPeriod, AllPeriods)
                 || (FilterPeriod == "Aujourd'hui" && v.CheckInDisplay.StartsWith(today.ToString("dd/MM/yyyy")))
                 || (FilterPeriod == "Cette semaine" && DateTime.TryParse(v.CheckInDisplay[..10], out var d) && d >= weekStart)
                 || (FilterPeriod == "Ce mois" && DateTime.TryParse(v.CheckInDisplay[..10], out var dm) && dm >= monthStart)) &&

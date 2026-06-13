@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SmartBuilding.Domain.Entities.Building;
 using SmartBuilding.Desktop.WPF.Models;
+using SmartBuilding.Shared.Constants;
 using SmartBuilding.Desktop.WPF.Services;
 
 namespace SmartBuilding.Desktop.WPF.ViewModels;
@@ -70,8 +71,7 @@ public partial class LocationsPatrimoineViewModel
             BuildingAreaSqMValue = summary.TotalAreaSqM;
 
         StructureSummaryLine =
-            $"{summary.FloorCount} étage(s) · {summary.ApartmentCount} appartement(s) · " +
-            $"{summary.CommercialCount} local(aux) commercial(aux) · {summary.RoomCount} pièce(s)";
+            $"{BrandConstants.AppName} · {summary.FloorCount} étage(s) · {summary.ApartmentCount + summary.CommercialCount} local(aux)";
     }
 
     [RelayCommand]
@@ -110,16 +110,11 @@ public partial class LocationsPatrimoineViewModel
         var index = floor.Apartments.Count + 1;
         var apt = new PropertyApartmentEditRow
         {
-            Code = $"A{floor.LevelNumberText}-{index:D2}",
-            Name = $"Appartement {floor.Label}-{index}",
+            Code = $"L{floor.LevelNumberText}-{index:D2}",
+            Name = $"Local {floor.Label}-{index}",
             UnitType = PropertyStructureConstants.UnitTypes.Apartment,
             IsExpanded = true
         };
-        apt.Rooms.Add(new PropertyRoomEditRow
-        {
-            Name = "Salon",
-            RoomType = PropertyStructureConstants.RoomTypes.LivingRoom
-        });
         floor.Apartments.Add(apt);
         floor.IsExpanded = true;
         RefreshStructureSummary();
@@ -170,6 +165,6 @@ public partial class LocationsPatrimoineViewModel
     {
         PropertyStructureError = null;
         var drafts = PropertyFloors.Select((f, i) => f.ToDraft(i)).ToList();
-        return await _propertyStructureService.SaveAsync(drafts, BuildingDisplayName);
+        return await _propertyStructureService.SaveAsync(drafts, BrandConstants.AppName);
     }
 }

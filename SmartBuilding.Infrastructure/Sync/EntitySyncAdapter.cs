@@ -112,6 +112,7 @@ public sealed class EntitySyncAdapter<TEntity> : IEntitySyncAdapter
             if (entity is null)
                 return false;
 
+            SyncEntityGraphSanitizer.ClearNavigations(context, entity);
             entity.IsSynced = true;
             set.Add(entity);
             return true;
@@ -123,6 +124,7 @@ public sealed class EntitySyncAdapter<TEntity> : IEntitySyncAdapter
             if (updated is null)
                 return false;
 
+            SyncEntityGraphSanitizer.ClearNavigations(context, updated);
             updated.IsSynced = true;
             context.Entry(local).CurrentValues.SetValues(updated);
             local.IsSynced = true;
@@ -131,5 +133,18 @@ public sealed class EntitySyncAdapter<TEntity> : IEntitySyncAdapter
         }
 
         return false;
+    }
+
+    public async Task<DateTime?> TryGetLocalUpdatedAtAsync(
+        SmartBuildingDbContext context,
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        return await _dbSet(context)
+            .AsNoTracking()
+            .IgnoreQueryFilters()
+            .Where(x => x.Id == id)
+            .Select(x => (DateTime?)x.UpdatedAt)
+            .FirstOrDefaultAsync(cancellationToken);
     }
 }

@@ -7,6 +7,7 @@ using LiveChartsCore;
 using LiveChartsCore.SkiaSharpView;
 using LiveChartsCore.SkiaSharpView.Painting;
 using SkiaSharp;
+using SmartBuilding.Desktop.WPF.Helpers;
 using SmartBuilding.Desktop.WPF.Models;
 using SmartBuilding.Desktop.WPF.Services;
 using SmartBuilding.Shared.Constants;
@@ -357,6 +358,7 @@ public partial class UsersViewModel : BaseViewModel
 
             RoleFilters.Clear();
             foreach (var r in data.RoleFilters) RoleFilters.Add(r);
+            FilterRole = PageFilterHelper.RestoreSelection(FilterRole, RoleFilters, AllRoles);
 
             RecentSignups.Clear();
             foreach (var s in data.RecentSignups) RecentSignups.Add(s);
@@ -438,7 +440,7 @@ public partial class UsersViewModel : BaseViewModel
         var query = SearchQuery.Trim().ToLowerInvariant();
         IEnumerable<UserListItem> filtered = _allUsers;
 
-        if (FilterRole != AllRoles)
+        if (!PageFilterHelper.IsAll(FilterRole, AllRoles))
             filtered = filtered.Where(u => u.RoleLabel.Equals(FilterRole, StringComparison.OrdinalIgnoreCase));
 
         if (_filterSuspendedOnly)

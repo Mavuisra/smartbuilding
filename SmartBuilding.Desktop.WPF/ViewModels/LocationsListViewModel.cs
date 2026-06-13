@@ -831,6 +831,7 @@ public partial class LocationsListViewModel : BaseViewModel
         };
         foreach (var item in source)
             CurrentStatusFilters.Add(item);
+        FilterStatus = PageFilterHelper.RestoreSelection(FilterStatus, CurrentStatusFilters, AllStatuses);
     }
 
     private void ApplyFilter()
@@ -856,7 +857,7 @@ public partial class LocationsListViewModel : BaseViewModel
     private void ApplyContractFilter(string q)
     {
         var filtered = _allContracts.AsEnumerable();
-        if (FilterStatus != AllStatuses)
+        if (!PageFilterHelper.IsAll(FilterStatus, AllStatuses))
             filtered = filtered.Where(c => c.StatusLabel.Equals(FilterStatus, StringComparison.OrdinalIgnoreCase));
         if (!string.IsNullOrWhiteSpace(q))
         {
@@ -876,7 +877,7 @@ public partial class LocationsListViewModel : BaseViewModel
     private void ApplyPremiseFilter(string q)
     {
         var filtered = _allPremises.AsEnumerable();
-        if (FilterStatus != AllStatuses)
+        if (!PageFilterHelper.IsAll(FilterStatus, AllStatuses))
             filtered = filtered.Where(p => p.StatusLabel.Equals(FilterStatus, StringComparison.OrdinalIgnoreCase));
         if (!string.IsNullOrWhiteSpace(q))
         {
@@ -896,7 +897,7 @@ public partial class LocationsListViewModel : BaseViewModel
     private void ApplyPaymentFilter(string q)
     {
         var filtered = _allPayments.AsEnumerable();
-        if (FilterStatus != AllStatuses)
+        if (!PageFilterHelper.IsAll(FilterStatus, AllStatuses))
         {
             filtered = FilterStatus switch
             {
@@ -923,7 +924,7 @@ public partial class LocationsListViewModel : BaseViewModel
     private void ApplyGuaranteeFilter(string q)
     {
         var filtered = _allGuarantees.AsEnumerable();
-        if (FilterStatus != AllStatuses)
+        if (!PageFilterHelper.IsAll(FilterStatus, AllStatuses))
             filtered = filtered.Where(g => g.Status.Equals(FilterStatus, StringComparison.OrdinalIgnoreCase));
         if (!string.IsNullOrWhiteSpace(q))
         {

@@ -139,6 +139,12 @@ public partial class InventoryViewModel : BaseViewModel
             BuildingFilters.Add(AllBuildings);
             foreach (var b in _allItems.Select(i => i.Building).Where(x => x != "—").Distinct().OrderBy(x => x)) BuildingFilters.Add(b);
 
+            FilterCategory = PageFilterHelper.RestoreSelection(FilterCategory, CategoryFilters, AllCategories);
+            FilterLocation = PageFilterHelper.RestoreSelection(FilterLocation, LocationFilters, AllLocations);
+            FilterBuilding = PageFilterHelper.RestoreSelection(FilterBuilding, BuildingFilters, AllBuildings);
+            FilterStatus = PageFilterHelper.RestoreSelection(FilterStatus, StatusFilters, AllStatuses);
+            FilterMaintenance = PageFilterHelper.RestoreSelection(FilterMaintenance, MaintenanceFilters, AllMaintenance);
+
             BuildCharts(data);
             CurrentPage = 1;
             ApplyFilters();
@@ -243,10 +249,10 @@ public partial class InventoryViewModel : BaseViewModel
         var query = $"{SearchQuery} {TableSearchQuery}".Trim();
 
         var filtered = _allItems.Where(i =>
-            (FilterCategory == AllCategories || i.Category == FilterCategory) &&
-            (FilterLocation == AllLocations || i.Location == FilterLocation) &&
-            (FilterStatus == AllStatuses || i.StatusLabel == FilterStatus) &&
-            (FilterBuilding == AllBuildings || i.Building == FilterBuilding) &&
+            PageFilterHelper.Matches(FilterCategory, AllCategories, i.Category) &&
+            PageFilterHelper.Matches(FilterLocation, AllLocations, i.Location) &&
+            PageFilterHelper.Matches(FilterStatus, AllStatuses, i.StatusLabel) &&
+            PageFilterHelper.Matches(FilterBuilding, AllBuildings, i.Building) &&
             MatchesMaintenanceFilter(i, today) &&
             (string.IsNullOrWhiteSpace(query) ||
              i.Name.Contains(query, StringComparison.OrdinalIgnoreCase) ||
@@ -269,7 +275,7 @@ public partial class InventoryViewModel : BaseViewModel
 
     private bool MatchesMaintenanceFilter(InventoryListItem i, DateTime today)
     {
-        if (FilterMaintenance == AllMaintenance) return true;
+        if (PageFilterHelper.IsAll(FilterMaintenance, AllMaintenance)) return true;
         if (FilterMaintenance == "En retard")
             return DateTime.TryParseExact(i.NextMaintenanceDisplay, "dd/MM/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d) && d < today;
         if (FilterMaintenance == "Maintenance due")

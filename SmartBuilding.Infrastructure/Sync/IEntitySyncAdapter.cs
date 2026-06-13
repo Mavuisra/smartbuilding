@@ -33,4 +33,9 @@ public interface IEntitySyncAdapter
         SmartBuildingDbContext context,
         SyncEntityPayload remote,
         CancellationToken cancellationToken);
+
+    Task<DateTime?> TryGetLocalUpdatedAtAsync(
+        SmartBuildingDbContext context,
+        Guid id,
+        CancellationToken cancellationToken);
 }

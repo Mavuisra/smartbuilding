@@ -148,12 +148,12 @@ public partial class LocationContractFormViewModel : BaseViewModel
         await _shellNavigation.OpenTenantFormAsync(null);
     }
 
-    /// <summary>Ouvre le patrimoine — onglet Appartements (étages / unités / pièces).</summary>
+    /// <summary>Ouvre le patrimoine — onglet Bâtiment (étages / locaux).</summary>
     [RelayCommand]
     private async Task OpenCreatePremiseInPatrimoineAsync()
     {
         _shellNavigation.BeginContractSubFlow(this);
-        await _shellNavigation.OpenPatrimoineTabAsync(2);
+        await _shellNavigation.OpenPatrimoineTabAsync(1);
     }
 
     public void ApplyTenantSelection(Guid tenantId) =>

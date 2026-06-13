@@ -6,6 +6,7 @@ using LiveChartsCore;
 using LiveChartsCore.SkiaSharpView;
 using LiveChartsCore.SkiaSharpView.Painting;
 using SkiaSharp;
+using SmartBuilding.Desktop.WPF.Helpers;
 using SmartBuilding.Desktop.WPF.Models;
 using SmartBuilding.Desktop.WPF.Services;
 
@@ -197,13 +198,13 @@ public partial class ActivityLogViewModel : BaseViewModel
         var query = SearchQuery.Trim().ToLowerInvariant();
         IEnumerable<ActivityLogListItem> filtered = _allActivities;
 
-        if (FilterType != AllTypes)
+        if (!PageFilterHelper.IsAll(FilterType, AllTypes))
             filtered = filtered.Where(a => a.ActivityType.Equals(FilterType, StringComparison.OrdinalIgnoreCase));
-        if (FilterModule != AllModules)
+        if (!PageFilterHelper.IsAll(FilterModule, AllModules))
             filtered = filtered.Where(a => a.Module.Equals(FilterModule, StringComparison.OrdinalIgnoreCase));
-        if (FilterUser != AllUsers)
+        if (!PageFilterHelper.IsAll(FilterUser, AllUsers))
             filtered = filtered.Where(a => a.UserName.Equals(FilterUser, StringComparison.OrdinalIgnoreCase));
-        if (FilterStatus != AllStatuses)
+        if (!PageFilterHelper.IsAll(FilterStatus, AllStatuses))
             filtered = filtered.Where(a => a.StatusLabel.Equals(FilterStatus, StringComparison.OrdinalIgnoreCase));
 
         if (!string.IsNullOrWhiteSpace(query))

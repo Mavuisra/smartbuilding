@@ -86,7 +86,7 @@
 
                     <!-- Etape 1 -->
                     <StackPanel Visibility="{Binding StepIndex, Converter={StaticResource IntEqualsToVisibilityConverter}, ConverterParameter=1}">
-                        <TextBlock Text="Configurer le bâtiment" FontSize="20" FontWeight="Bold" Margin="0,0,0,12"/>
+                        <TextBlock Text="Bloom Prosperity — adresse et étages" FontSize="20" FontWeight="Bold" Margin="0,0,0,12"/>
                         <Grid>
                             <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                             <Grid.RowDefinitions>
@@ -94,15 +94,17 @@
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
-                            <StackPanel Margin="0,0,8,8">
-                                <TextBlock Text="Nom du bâtiment"/>
-                                <TextBox Text="{Binding BuildingName, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,0"/>
-                            </StackPanel>
-                            <StackPanel Grid.Column="1" Margin="8,0,0,8">
+                            <Border Grid.ColumnSpan="2" Margin="0,0,0,12" Background="#F0FDF4" Padding="14,12" CornerRadius="8">
+                                <StackPanel>
+                                    <TextBlock Text="Immeuble" FontSize="11" Foreground="#64748B"/>
+                                    <TextBlock Text="Bloom Prosperity" FontSize="18" FontWeight="Bold" Foreground="#166534" Margin="0,4,0,0"/>
+                                </StackPanel>
+                            </Border>
+                            <StackPanel Grid.Row="1" Grid.Column="1" Margin="8,0,0,8">
                                 <TextBlock Text="Nombre d'étages"/>
                                 <TextBox Text="{Binding TotalFloors, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,0"/>
                             </StackPanel>
-                            <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Margin="0,8,0,8">
+                            <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,8,8">
                                 <TextBlock Text="Adresse complète"/>
                                 <TextBox Text="{Binding BuildingAddress, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,0"/>
                             </StackPanel>

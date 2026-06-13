@@ -282,7 +282,7 @@ public class SettingsService
         building.TaxId = input.TaxId?.Trim();
         building.BankName = input.BankName?.Trim();
         building.BankAccount = input.BankAccount?.Trim();
-        building.BuildingDisplayName = input.BuildingDisplayName.Trim();
+        building.BuildingDisplayName = Domain.Entities.Building.BuildingInfoDefaults.ManagedBuildingName;
         building.BuildingType = input.BuildingType.Trim();
         building.TotalFloors = Math.Max(0, input.TotalFloors);
         building.TotalPremises = Math.Max(0, input.TotalPremises);

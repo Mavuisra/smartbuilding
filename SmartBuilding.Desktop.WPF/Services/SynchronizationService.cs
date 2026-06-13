@@ -163,63 +163,63 @@ public class SynchronizationService
         var rows = new List<SyncPendingRow>();
 
         var users = await _db.Users.IgnoreQueryFilters()
-            .Where(x => !x.IsSynced && x.DeletedAt == null).Take(5).ToListAsync(ct);
+            .Where(x => !x.IsSynced).Take(5).ToListAsync(ct);
         rows.AddRange(users.Select(u => new SyncPendingRow
         {
-            TypeLabel = "Utilisateur",
-            IconKind = "Account",
+            TypeLabel = u.DeletedAt.HasValue ? "Utilisateur (suppr.)" : "Utilisateur",
+            IconKind = u.DeletedAt.HasValue ? "Delete" : "Account",
             Description = u.FullName,
-            CreatedAt = u.CreatedAt
+            CreatedAt = u.UpdatedAt
         }));
 
         var incidents = await _db.Incidents.IgnoreQueryFilters()
-            .Where(x => !x.IsSynced && x.DeletedAt == null).Take(5).ToListAsync(ct);
+            .Where(x => !x.IsSynced).Take(5).ToListAsync(ct);
         rows.AddRange(incidents.Select(i => new SyncPendingRow
         {
-            TypeLabel = "Incident",
-            IconKind = "AlertCircle",
+            TypeLabel = i.DeletedAt.HasValue ? "Incident (suppr.)" : "Incident",
+            IconKind = i.DeletedAt.HasValue ? "Delete" : "AlertCircle",
             Description = i.Title,
-            CreatedAt = i.CreatedAt
+            CreatedAt = i.UpdatedAt
         }));
 
         var employees = await _db.Employees.IgnoreQueryFilters()
-            .Where(x => !x.IsSynced && x.DeletedAt == null).Take(5).ToListAsync(ct);
+            .Where(x => !x.IsSynced).Take(5).ToListAsync(ct);
         rows.AddRange(employees.Select(e => new SyncPendingRow
         {
-            TypeLabel = "Employé",
-            IconKind = "AccountGroup",
+            TypeLabel = e.DeletedAt.HasValue ? "Employé (suppr.)" : "Employé",
+            IconKind = e.DeletedAt.HasValue ? "Delete" : "AccountGroup",
             Description = $"{e.FirstName} {e.LastName}",
-            CreatedAt = e.CreatedAt
+            CreatedAt = e.UpdatedAt
         }));
 
         var transactions = await _db.FinancialTransactions.IgnoreQueryFilters()
-            .Where(x => !x.IsSynced && x.DeletedAt == null).Take(5).ToListAsync(ct);
+            .Where(x => !x.IsSynced).Take(5).ToListAsync(ct);
         rows.AddRange(transactions.Select(t => new SyncPendingRow
         {
-            TypeLabel = "Transaction",
-            IconKind = "Cash",
+            TypeLabel = t.DeletedAt.HasValue ? "Transaction (suppr.)" : "Transaction",
+            IconKind = t.DeletedAt.HasValue ? "Delete" : "Cash",
             Description = t.Description ?? t.Reference ?? t.Id.ToString()[..8],
-            CreatedAt = t.CreatedAt
+            CreatedAt = t.UpdatedAt
         }));
 
         var tenants = await _db.Tenants.IgnoreQueryFilters()
-            .Where(x => !x.IsSynced && x.DeletedAt == null).Take(5).ToListAsync(ct);
+            .Where(x => !x.IsSynced).Take(5).ToListAsync(ct);
         rows.AddRange(tenants.Select(t => new SyncPendingRow
         {
-            TypeLabel = "Locataire",
-            IconKind = "HomeAccount",
+            TypeLabel = t.DeletedAt.HasValue ? "Locataire (suppr.)" : "Locataire",
+            IconKind = t.DeletedAt.HasValue ? "Delete" : "HomeAccount",
             Description = t.Name,
-            CreatedAt = t.CreatedAt
+            CreatedAt = t.UpdatedAt
         }));
 
         var premises = await _db.Premises.IgnoreQueryFilters()
-            .Where(x => !x.IsSynced && x.DeletedAt == null).Take(5).ToListAsync(ct);
+            .Where(x => !x.IsSynced).Take(5).ToListAsync(ct);
         rows.AddRange(premises.Select(p => new SyncPendingRow
         {
-            TypeLabel = "Local",
-            IconKind = "OfficeBuilding",
+            TypeLabel = p.DeletedAt.HasValue ? "Local (suppr.)" : "Local",
+            IconKind = p.DeletedAt.HasValue ? "Delete" : "OfficeBuilding",
             Description = p.Name ?? p.Code,
-            CreatedAt = p.CreatedAt
+            CreatedAt = p.UpdatedAt
         }));
 
         return rows.OrderByDescending(r => r.CreatedAt).Take(28).ToList();
@@ -227,19 +227,33 @@ public class SynchronizationService
 
     private async Task<IReadOnlyList<SyncConflictRow>> BuildConflictsAsync(CancellationToken ct)
     {
+        var stored = SyncPullConflictStore.Load()
+            .Select(c => new SyncConflictRow
+            {
+                TableName = c.EntityTypeLabel,
+                RecordLabel = c.RecordLabel,
+                Description =
+                    $"{c.Resolution} — local {c.LocalUpdatedAt.ToLocalTime():dd/MM/yyyy HH:mm}, " +
+                    $"cloud {c.RemoteUpdatedAt.ToLocalTime():dd/MM/yyyy HH:mm}",
+                ConflictAt = DateTime.UtcNow
+            })
+            .ToList();
+
         var logs = await _db.SyncLogs.IgnoreQueryFilters()
             .Where(l => l.ConflictsResolved > 0)
             .OrderByDescending(l => l.StartedAt)
             .Take(10)
             .ToListAsync(ct);
 
-        return logs.Select(l => new SyncConflictRow
+        var fromLogs = logs.Select(l => new SyncConflictRow
         {
             TableName = "Synchronisation",
             RecordLabel = l.Direction,
             Description = $"{l.ConflictsResolved} conflit(s) résolu(s) — {l.ErrorMessage ?? "Last Write Wins"}",
             ConflictAt = l.StartedAt
         }).ToList();
+
+        return stored.Concat(fromLogs).Take(25).ToList();
     }
 
     private async Task<IReadOnlyList<SyncHistoryRow>> BuildHistoryAsync(CancellationToken ct)
@@ -262,7 +276,14 @@ public class SynchronizationService
         return new SyncHistoryRow
         {
             StartedAt = log.StartedAt.ToLocalTime(),
-            TypeLabel = log.Direction.StartsWith("Manual", StringComparison.OrdinalIgnoreCase) ? "Manuelle" : "Automatique",
+            TypeLabel = log.Direction.Contains("CloudPull", StringComparison.OrdinalIgnoreCase)
+                    || log.Direction.Contains("InitialPull", StringComparison.OrdinalIgnoreCase)
+                ? "Cloud → Local"
+                : log.Direction.StartsWith("Push", StringComparison.OrdinalIgnoreCase)
+                    ? "Local → Cloud"
+                : log.Direction.StartsWith("Manual", StringComparison.OrdinalIgnoreCase)
+                    ? "Manuelle"
+                    : "Automatique",
             Success = log.Success,
             ItemsCount = items,
             DataSizeLabel = items > 0 ? $"~{items * 2} KB" : "—",

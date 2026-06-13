@@ -180,6 +180,11 @@ public partial class ConsumptionsViewModel : BaseViewModel
             EquipmentFilters.Add(AllEquipment);
             foreach (var e in _allRecords.Select(r => r.EquipmentSource).Distinct().OrderBy(x => x)) EquipmentFilters.Add(e);
 
+            FilterType = PageFilterHelper.RestoreSelection(FilterType, TypeFilters, AllTypes);
+            FilterBuilding = PageFilterHelper.RestoreSelection(FilterBuilding, BuildingFilters, AllBuildings);
+            FilterEquipment = PageFilterHelper.RestoreSelection(FilterEquipment, EquipmentFilters, AllEquipment);
+            FilterStatus = PageFilterHelper.RestoreSelection(FilterStatus, StatusFilters, AllStatuses);
+
             BuildCharts(data);
             UpdateSyncStatus();
             CurrentPage = 1;
@@ -479,10 +484,10 @@ public partial class ConsumptionsViewModel : BaseViewModel
 
         var filtered = _allRecords.Where(r =>
             InPeriod(r.DateDisplay, monthStart, today) &&
-            (FilterType == AllTypes || r.TypeLabel == FilterType) &&
-            (FilterBuilding == AllBuildings || r.Building == FilterBuilding) &&
-            (FilterEquipment == AllEquipment || r.EquipmentSource == FilterEquipment) &&
-            (FilterStatus == AllStatuses || r.StatusLabel == FilterStatus) &&
+            PageFilterHelper.Matches(FilterType, AllTypes, r.TypeLabel) &&
+            PageFilterHelper.Matches(FilterBuilding, AllBuildings, r.Building) &&
+            PageFilterHelper.Matches(FilterEquipment, AllEquipment, r.EquipmentSource) &&
+            PageFilterHelper.Matches(FilterStatus, AllStatuses, r.StatusLabel) &&
             MatchesAnomaly(r) &&
             (string.IsNullOrWhiteSpace(query) ||
              r.TypeLabel.Contains(query, StringComparison.OrdinalIgnoreCase) ||

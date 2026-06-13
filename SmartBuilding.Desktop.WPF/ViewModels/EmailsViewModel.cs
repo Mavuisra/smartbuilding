@@ -7,6 +7,7 @@ using LiveChartsCore.SkiaSharpView;
 using LiveChartsCore.SkiaSharpView.Painting;
 using SkiaSharp;
 using SmartBuilding.Application.Interfaces;
+using SmartBuilding.Desktop.WPF.Helpers;
 using SmartBuilding.Desktop.WPF.Models;
 using SmartBuilding.Desktop.WPF.Services;
 
@@ -176,6 +177,10 @@ public partial class EmailsViewModel : BaseViewModel
             CategoryFilters.Clear();
             CategoryFilters.Add(AllCategories);
             foreach (var c in EmailCategories) CategoryFilters.Add(c);
+
+            FilterCategory = PageFilterHelper.RestoreSelection(FilterCategory, CategoryFilters, AllCategories);
+            FilterPriority = PageFilterHelper.RestoreSelection(FilterPriority, PriorityFilters, AllPriorities);
+            FilterPeriod = PageFilterHelper.RestoreSelection(FilterPeriod, PeriodFilters, AllPeriods);
 
             BuildCharts(data);
             BuildKpiSparklines(data);
@@ -527,8 +532,8 @@ public partial class EmailsViewModel : BaseViewModel
             if (raw is not null && !EmailsModuleService.MatchesFolder(raw, SelectedFolderId))
                 continue;
 
-            if (FilterCategory != AllCategories && e.Category != FilterCategory) continue;
-            if (FilterPriority != AllPriorities && e.Priority != FilterPriority) continue;
+            if (!PageFilterHelper.IsAll(FilterCategory, AllCategories) && e.Category != FilterCategory) continue;
+            if (!PageFilterHelper.IsAll(FilterPriority, AllPriorities) && e.Priority != FilterPriority) continue;
             if (FilterUnreadOnly && e.IsRead) continue;
             if (FilterAttachmentsOnly && !e.HasAttachments) continue;
 

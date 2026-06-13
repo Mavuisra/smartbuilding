@@ -40,8 +40,8 @@
                                                  HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
                     <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="Patrimoine immobilier" FontSize="24" FontWeight="Bold" Foreground="{StaticResource PatrimoineGelTextBrush}"/>
-                        <TextBlock Text="Bailleur / propriétaire, bâtiment, étages et appartements — synchronisé avec les contrats"
+                        <TextBlock Text="Patrimoine — Bloom Prosperity" FontSize="24" FontWeight="Bold" Foreground="{StaticResource PatrimoineGelTextBrush}"/>
+                        <TextBlock Text="Un seul immeuble : étages et locaux à louer (synchronisés avec les contrats)"
                                    FontSize="12" Foreground="#64748B" Margin="0,6,0,0" TextWrapping="Wrap" MaxWidth="560"/>
                     </StackPanel>
                 </StackPanel>
@@ -53,9 +53,9 @@
             </Grid>
         </Border>
 
-        <!-- Sous-onglets -->
+        <!-- Sous-onglets : Bailleur | Bâtiment | Gestion -->
         <Border Grid.Row="1" Style="{StaticResource SettingsSubTabBar}" Margin="0,0,0,16">
-            <UniformGrid Columns="4">
+            <UniformGrid Columns="3">
                 <Button Command="{Binding SelectPatrimoineTabCommand}" CommandParameter="0">
                     <Button.Style>
                         <Style TargetType="Button" BasedOn="{StaticResource SettingsSubTabButton}">
@@ -85,7 +85,7 @@
                     </Button.Style>
                     <StackPanel Orientation="Horizontal">
                         <materialDesign:PackIcon Kind="OfficeBuilding" Width="18" Height="18" Margin="0,0,8,0"/>
-                        <TextBlock Text="Bâtiment"/>
+                        <TextBlock Text="Bloom Prosperity"/>
                     </StackPanel>
                 </Button>
                 <Button Command="{Binding SelectPatrimoineTabCommand}" CommandParameter="2">
@@ -93,22 +93,6 @@
                         <Style TargetType="Button" BasedOn="{StaticResource SettingsSubTabButton}">
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding SelectedPatrimoineTab}" Value="2">
-                                    <Setter Property="Background" Value="{StaticResource PatrimoineGelBrush}"/>
-                                    <Setter Property="Foreground" Value="White"/>
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </Button.Style>
-                    <StackPanel Orientation="Horizontal">
-                        <materialDesign:PackIcon Kind="HomeGroup" Width="18" Height="18" Margin="0,0,8,0"/>
-                        <TextBlock Text="Appartements"/>
-                    </StackPanel>
-                </Button>
-                <Button Command="{Binding SelectPatrimoineTabCommand}" CommandParameter="3">
-                    <Button.Style>
-                        <Style TargetType="Button" BasedOn="{StaticResource SettingsSubTabButton}">
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding SelectedPatrimoineTab}" Value="3">
                                     <Setter Property="Background" Value="{StaticResource PatrimoineGelBrush}"/>
                                     <Setter Property="Foreground" Value="White"/>
                                 </DataTrigger>
@@ -202,85 +186,33 @@
                 </StackPanel>
             </Border>
 
-            <!-- Bâtiment -->
+            <!-- Bloom Prosperity : étages / locaux -->
             <Border Background="White" CornerRadius="14" BorderBrush="#E5EAF2" BorderThickness="1" Padding="24,22"
                     Visibility="{Binding SelectedPatrimoineTab, Converter={StaticResource IntEqualsToVisibilityConverter}, ConverterParameter=1}">
                 <StackPanel>
-                    <TextBlock Text="Bâtiment" FontSize="16" FontWeight="Bold" Foreground="{StaticResource PatrimoineGelTextBrush}" Margin="0,0,0,6"/>
-                    <TextBlock Text="Caractéristiques générales du patrimoine géré." FontSize="12" Foreground="#64748B"
-                               Margin="0,0,0,20" TextWrapping="Wrap"/>
-                    <UniformGrid Columns="2" Margin="0,0,0,16">
-                        <StackPanel Margin="0,0,12,16">
-                            <TextBlock Text="Nom du bâtiment" Style="{StaticResource SettingsFieldLabel}"/>
-                            <TextBox Text="{Binding BuildingDisplayName, UpdateSourceTrigger=PropertyChanged}"
-                                     Style="{StaticResource MaterialDesignOutlinedTextBox}"/>
-                        </StackPanel>
-                        <StackPanel Margin="12,0,0,16">
-                            <TextBlock Text="Type de bâtiment" Style="{StaticResource SettingsFieldLabel}"/>
-                            <TextBox Text="{Binding BuildingType, UpdateSourceTrigger=PropertyChanged}"
-                                     Style="{StaticResource MaterialDesignOutlinedTextBox}"/>
-                        </StackPanel>
-                        <StackPanel Margin="0,0,12,16">
-                            <TextBlock Text="Année de construction" Style="{StaticResource SettingsFieldLabel}"/>
-                            <TextBox Text="{Binding YearBuiltText, UpdateSourceTrigger=PropertyChanged}"
-                                     Style="{StaticResource MaterialDesignOutlinedTextBox}"/>
-                        </StackPanel>
-                        <StackPanel Margin="12,0,0,16">
-                            <TextBlock Text="Surface totale (m²)" Style="{StaticResource SettingsFieldLabel}"/>
-                            <TextBox Text="{Binding BuildingAreaSqMValue, UpdateSourceTrigger=PropertyChanged}"
-                                     Style="{StaticResource MaterialDesignOutlinedTextBox}"/>
-                        </StackPanel>
-                    </UniformGrid>
-                    <UniformGrid Columns="4" Margin="0,0,0,20">
-                        <Border Style="{StaticResource PropertyStructKpiChip}" Margin="0,0,8,0">
-                            <StackPanel>
-                                <TextBlock Text="ÉTAGES" FontSize="10" FontWeight="Bold" Foreground="#64748B"/>
-                                <TextBlock Text="{Binding BuildingFloors}" FontSize="22" FontWeight="Bold" Foreground="{StaticResource PatrimoineGelTextBrush}"/>
+                    <Border Background="{StaticResource PatrimoineGelSoftBrush}" CornerRadius="12" Padding="18,16" Margin="0,0,0,20"
+                            BorderBrush="#D4EDDC" BorderThickness="1">
+                        <StackPanel Orientation="Horizontal">
+                            <Border Width="48" Height="48" CornerRadius="12" Background="{StaticResource PatrimoineGelLightBrush}" Margin="0,0,14,0">
+                                <materialDesign:PackIcon Kind="OfficeBuilding" Width="28" Height="28" Foreground="{StaticResource PatrimoineGelBrush}"
+                                                         HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="{Binding SingleBuildingDisplayName}" FontSize="20" FontWeight="Bold"
+                                           Foreground="{StaticResource PatrimoineGelTextBrush}"/>
+                                <TextBlock Text="{Binding StructureSummaryLine}" FontSize="12" Foreground="#64748B" Margin="0,4,0,0"/>
+                                <TextBlock Text="Ajoutez des étages, puis des locaux dans chaque étage."
+                                           FontSize="12" Foreground="#64748B" Margin="0,6,0,0" TextWrapping="Wrap"/>
                             </StackPanel>
-                        </Border>
-                        <Border Style="{StaticResource PropertyStructKpiChip}" Margin="4,0,4,0">
-                            <StackPanel>
-                                <TextBlock Text="APPART." FontSize="10" FontWeight="Bold" Foreground="#64748B"/>
-                                <TextBlock Text="{Binding ApartmentCount}" FontSize="22" FontWeight="Bold" Foreground="{StaticResource PatrimoineGelTextBrush}"/>
-                            </StackPanel>
-                        </Border>
-                        <Border Style="{StaticResource PropertyStructKpiChip}" Margin="4,0,4,0">
-                            <StackPanel>
-                                <TextBlock Text="COMMERCE" FontSize="10" FontWeight="Bold" Foreground="#64748B"/>
-                                <TextBlock Text="{Binding CommercialUnitCount}" FontSize="22" FontWeight="Bold" Foreground="#1D4ED8"/>
-                            </StackPanel>
-                        </Border>
-                        <Border Style="{StaticResource PropertyStructKpiChip}" Margin="8,0,0,0">
-                            <StackPanel>
-                                <TextBlock Text="LOCAUX" FontSize="10" FontWeight="Bold" Foreground="#64748B"/>
-                                <TextBlock Text="{Binding TotalPremisesConfig}" FontSize="22" FontWeight="Bold" Foreground="#0F172A"/>
-                            </StackPanel>
-                        </Border>
-                    </UniformGrid>
-                    <UniformGrid Columns="2" Margin="0,0,0,16">
-                        <StackPanel Margin="0,0,12,0">
-                            <TextBlock Text="Places parking" Style="{StaticResource SettingsFieldLabel}"/>
-                            <TextBox Text="{Binding ParkingSpaces, UpdateSourceTrigger=PropertyChanged}"
-                                     Style="{StaticResource MaterialDesignOutlinedTextBox}"/>
                         </StackPanel>
-                        <CheckBox Content="Ascenseur" IsChecked="{Binding HasElevator}" VerticalAlignment="Bottom" Margin="12,0,0,8"/>
-                    </UniformGrid>
-                    <TextBlock Text="Équipements" Style="{StaticResource SettingsFieldLabel}"/>
-                    <TextBox Text="{Binding EquipmentText, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True"
-                             MinHeight="72" TextWrapping="Wrap" Style="{StaticResource MaterialDesignOutlinedTextBox}" Margin="0,0,0,16"/>
-                    <TextBlock Text="Règles de gestion" Style="{StaticResource SettingsFieldLabel}"/>
-                    <TextBox Text="{Binding ManagementRulesText, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True"
-                             MinHeight="72" TextWrapping="Wrap" Style="{StaticResource MaterialDesignOutlinedTextBox}"/>
+                    </Border>
+
+                    <views:SettingsBuildingsApartmentsPanel DataContext="{Binding}"/>
                 </StackPanel>
             </Border>
 
-            <!-- Appartements -->
-            <Border Visibility="{Binding SelectedPatrimoineTab, Converter={StaticResource IntEqualsToVisibilityConverter}, ConverterParameter=2}">
-                <views:SettingsBuildingsApartmentsPanel DataContext="{Binding}"/>
-            </Border>
-
             <!-- Gestion -->
-            <Border Visibility="{Binding SelectedPatrimoineTab, Converter={StaticResource IntEqualsToVisibilityConverter}, ConverterParameter=3}">
+            <Border Visibility="{Binding SelectedPatrimoineTab, Converter={StaticResource IntEqualsToVisibilityConverter}, ConverterParameter=2}">
                 <views:LocationsPatrimoineGestionPanel DataContext="{Binding}"/>
             </Border>
             </StackPanel>

@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SmartBuilding.Desktop.WPF.Helpers;
 using SmartBuilding.Desktop.WPF.Models;
 using SmartBuilding.Desktop.WPF.Services;
 using SmartBuilding.Domain.Entities.Location;
@@ -85,7 +86,7 @@ public partial class LocationsTenantsViewModel : BaseViewModel
     {
         var filtered = _allTenants.AsEnumerable();
 
-        if (!string.Equals(FilterStatus, AllStatuses, StringComparison.OrdinalIgnoreCase))
+        if (!PageFilterHelper.IsAll(FilterStatus, AllStatuses))
             filtered = filtered.Where(t => t.RentalStatus.Equals(FilterStatus, StringComparison.OrdinalIgnoreCase));
 
         if (!string.IsNullOrWhiteSpace(SearchQuery))

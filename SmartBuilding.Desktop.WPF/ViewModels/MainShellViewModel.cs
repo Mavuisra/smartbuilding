@@ -310,8 +310,10 @@ public partial class MainShellViewModel : BaseViewModel
     {
         0 => OpenPatrimoineAsync(0, "locations-landlord"),
         1 => OpenPatrimoineAsync(1, "locations-building"),
-        2 => OpenPatrimoineAsync(2, "locations-apartments"),
-        _ => OpenPatrimoineAsync(3, "locations-gestion")
+        2 => OpenPatrimoineAsync(2, "locations-gestion"),
+        // Compat : ancien index « Appartements »
+        3 => OpenPatrimoineAsync(2, "locations-gestion"),
+        _ => OpenPatrimoineAsync(1, "locations-building")
     };
 
     private async Task ResumeContractFormAsync(LocationContractFormViewModel vm, Guid? selectTenantId)
@@ -426,13 +428,13 @@ public partial class MainShellViewModel : BaseViewModel
 
         if (moduleId == "locations-apartments")
         {
-            await OpenPatrimoineAsync(2, moduleId);
+            await OpenPatrimoineAsync(1, "locations-building");
             return;
         }
 
         if (moduleId == "locations-gestion")
         {
-            await OpenPatrimoineAsync(3, moduleId);
+            await OpenPatrimoineAsync(2, moduleId);
             return;
         }
 

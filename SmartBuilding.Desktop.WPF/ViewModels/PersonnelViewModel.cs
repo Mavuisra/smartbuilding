@@ -238,6 +238,11 @@ public partial class PersonnelViewModel : BaseViewModel
             foreach (var p in _allEmployees.Select(e => e.Position).Where(x => !string.IsNullOrWhiteSpace(x)).Distinct().OrderBy(x => x))
                 Positions.Add(p);
 
+            FilterDepartment = PageFilterHelper.RestoreSelection(FilterDepartment, Departments, AllDepartments);
+            FilterPosition = PageFilterHelper.RestoreSelection(FilterPosition, Positions, AllPositions);
+            FilterStatus = PageFilterHelper.RestoreSelection(FilterStatus, Statuses, AllStatuses);
+            FilterPresence = PageFilterHelper.RestoreSelection(FilterPresence, Presences, AllPresences);
+
             CurrentPage = 1;
             ApplyFilters();
             if (SelectedEmployee is null || !_allEmployees.Any(e => e.Id == SelectedEmployee.Id))
@@ -812,10 +817,10 @@ public partial class PersonnelViewModel : BaseViewModel
     {
         var query = $"{SearchQuery} {TableSearchQuery}".Trim();
         var filtered = _allEmployees.Where(e =>
-            (FilterDepartment == AllDepartments || e.Department == FilterDepartment) &&
-            (FilterPosition == AllPositions || e.Position == FilterPosition) &&
-            (FilterStatus == AllStatuses || e.StatusLabel == FilterStatus) &&
-            (FilterPresence == AllPresences || e.PresenceLabel == FilterPresence) &&
+            PageFilterHelper.Matches(FilterDepartment, AllDepartments, e.Department) &&
+            PageFilterHelper.Matches(FilterPosition, AllPositions, e.Position) &&
+            PageFilterHelper.Matches(FilterStatus, AllStatuses, e.StatusLabel) &&
+            PageFilterHelper.Matches(FilterPresence, AllPresences, e.PresenceLabel) &&
             (string.IsNullOrWhiteSpace(query) ||
              e.FullName.Contains(query, StringComparison.OrdinalIgnoreCase) ||
              e.Matricule.Contains(query, StringComparison.OrdinalIgnoreCase) ||

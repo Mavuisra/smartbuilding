@@ -9,6 +9,7 @@ using LiveChartsCore;
 using LiveChartsCore.SkiaSharpView;
 using LiveChartsCore.SkiaSharpView.Painting;
 using SkiaSharp;
+using SmartBuilding.Desktop.WPF.Helpers;
 using SmartBuilding.Desktop.WPF.Models;
 using SmartBuilding.Desktop.WPF.Services;
 
@@ -215,7 +216,7 @@ public partial class RapportsViewModel : BaseViewModel
         {
             var (title, headers, rows, _) = GetExportData();
             var path = RapportsExportService.ExportExcel(title, headers, rows);
-            StatusMessage = $"Excel exporté : {path}";
+            StatusMessage = $"PDF exporté : {path}";
             Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
         }
         catch (Exception ex)
@@ -308,25 +309,25 @@ public partial class RapportsViewModel : BaseViewModel
 
     private IEnumerable<RapportPersonnelRow> FilterPersonnel(string q) =>
         _allPersonnel.Where(p =>
-            (FilterDepartement == AllDepartements || p.Departement.Equals(FilterDepartement, StringComparison.OrdinalIgnoreCase)) &&
-            (FilterStatutPersonnel == AllStatuts || p.Statut.Equals(FilterStatutPersonnel, StringComparison.OrdinalIgnoreCase)) &&
-            (FilterPresence == AllPresences || p.PresenceResume.Equals(FilterPresence, StringComparison.OrdinalIgnoreCase)) &&
+            PageFilterHelper.Matches(FilterDepartement, AllDepartements, p.Departement) &&
+            PageFilterHelper.Matches(FilterStatutPersonnel, AllStatuts, p.Statut) &&
+            PageFilterHelper.Matches(FilterPresence, AllPresences, p.PresenceResume) &&
             (string.IsNullOrEmpty(q) || Contains(p.NomComplet, q) || Contains(p.Matricule, q) || Contains(p.Fonction, q)));
 
     private IEnumerable<RapportLoyerRow> FilterLoyers(string q) =>
         _allLoyers.Where(l =>
-            (FilterStatutLoyer == AllStatuts || l.StatutPaiement.Equals(FilterStatutLoyer, StringComparison.OrdinalIgnoreCase)) &&
+            PageFilterHelper.Matches(FilterStatutLoyer, AllStatuts, l.StatutPaiement) &&
             (string.IsNullOrEmpty(q) || Contains(l.NomComplet, q) || Contains(l.Appartement, q) ||
              Contains(l.Batiment, q) || Contains(l.Periode, q) || Contains(l.Reference, q)));
 
     private IEnumerable<RapportDepenseRow> FilterDepenses(string q) =>
         _allDepenses.Where(d =>
-            (FilterCategorieDepense == AllCategories || d.Categorie.Equals(FilterCategorieDepense, StringComparison.OrdinalIgnoreCase)) &&
+            PageFilterHelper.Matches(FilterCategorieDepense, AllCategories, d.Categorie) &&
             (string.IsNullOrEmpty(q) || Contains(d.Description, q) || Contains(d.Categorie, q) || Contains(d.Responsable, q)));
 
     private IEnumerable<RapportConsommationRow> FilterConsommations(string q) =>
         _allConsommations.Where(c =>
-            (FilterCategorieConso == AllCategories || c.Categorie.Equals(FilterCategorieConso, StringComparison.OrdinalIgnoreCase)) &&
+            PageFilterHelper.Matches(FilterCategorieConso, AllCategories, c.Categorie) &&
             (string.IsNullOrEmpty(q) || Contains(c.Categorie, q) || Contains(c.Responsable, q) ||
              Contains(c.Equipement, q) || Contains(c.Batiment, q) || Contains(c.Compteur, q) ||
              Contains(c.Notes, q) || Contains(c.Statut, q)));
@@ -339,13 +340,13 @@ public partial class RapportsViewModel : BaseViewModel
 
     private IEnumerable<RapportContratRow> FilterContrats(string q) =>
         _allContrats.Where(c =>
-            (FilterTypeContrat == AllStatuts || c.TypeContrat.Equals(FilterTypeContrat, StringComparison.OrdinalIgnoreCase)) &&
-            (FilterStatutContrat == AllStatuts || c.Statut.Equals(FilterStatutContrat, StringComparison.OrdinalIgnoreCase)) &&
+            PageFilterHelper.Matches(FilterTypeContrat, AllStatuts, c.TypeContrat) &&
+            PageFilterHelper.Matches(FilterStatutContrat, AllStatuts, c.Statut) &&
             (string.IsNullOrEmpty(q) || Contains(c.Locataire, q) || Contains(c.NumeroContrat, q)));
 
     private IEnumerable<RapportIncidentRow> FilterIncidents(string q) =>
         _allIncidents.Where(i =>
-            (FilterStatutIncident == AllStatuts || i.Statut.Equals(FilterStatutIncident, StringComparison.OrdinalIgnoreCase)) &&
+            PageFilterHelper.Matches(FilterStatutIncident, AllStatuts, i.Statut) &&
             (string.IsNullOrEmpty(q) || Contains(i.Incident, q) || Contains(i.Description, q)));
 
     private IEnumerable<RapportVisiteRow> FilterVisites(string q) =>
@@ -354,8 +355,8 @@ public partial class RapportsViewModel : BaseViewModel
 
     private IEnumerable<RapportActiviteRow> FilterActivites(string q) =>
         _allActivites.Where(a =>
-            (FilterModuleActivite == AllStatuts || a.Module.Equals(FilterModuleActivite, StringComparison.OrdinalIgnoreCase)) &&
-            (FilterUtilisateurActivite == AllStatuts || a.Utilisateur.Equals(FilterUtilisateurActivite, StringComparison.OrdinalIgnoreCase)) &&
+            PageFilterHelper.Matches(FilterModuleActivite, AllStatuts, a.Module) &&
+            PageFilterHelper.Matches(FilterUtilisateurActivite, AllStatuts, a.Utilisateur) &&
             (string.IsNullOrEmpty(q) || Contains(a.Action, q) || Contains(a.Utilisateur, q) || Contains(a.Module, q)));
 
     private void UpdateKpis()

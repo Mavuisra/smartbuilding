@@ -16,12 +16,12 @@ public class RentReceiptPdfService
     private const string Border = "#CBD5E1";
     private const string GreenBg = "#DCFCE7";
 
-    private string _navy = "#1B365D";
-    private string _green = "#16A34A";
+    private string _navy = PdfThemeHelper.BrandPrimary;
+    private string _green = PdfThemeHelper.BrandPrimary;
 
     static RentReceiptPdfService()
     {
-        QuestPDF.Settings.License = LicenseType.Community;
+        PdfThemeHelper.EnsureLicense();
     }
 
     public string Generate(
@@ -60,16 +60,14 @@ public class RentReceiptPdfService
             (contract.EndDate.Year - contract.StartDate.Year) * 12 +
             contract.EndDate.Month - contract.StartDate.Month);
 
-        _navy = AppConfigurationService.Instance?.Current.PdfHeaderHex ?? "#1B365D";
-        _green = AppConfigurationService.Instance?.Current.PdfAccentHex ?? "#16A34A";
+        _navy = PdfThemeHelper.ResolveHeaderColor();
+        _green = PdfThemeHelper.ResolveAccentColor();
 
         Document.Create(container =>
         {
             container.Page(page =>
             {
-                page.Size(PageSizes.A4);
-                page.Margin(28);
-                page.DefaultTextStyle(x => x.FontSize(9).FontColor(_navy));
+                PdfThemeHelper.ConfigurePage(page);
 
                 page.Content().Column(root =>
                 {
@@ -80,11 +78,9 @@ public class RentReceiptPdfService
                         DrawInfoRow(c, premise, contract, payment, durationMonths, culture));
                     root.Item().PaddingTop(12).Element(c =>
                         DrawPaymentTable(c, payment, periodLabel, rentLine, penalty, otherFees, totalPaid));
-                    root.Item().PaddingTop(6).Text(t =>
-                    {
-                        t.Span("Montant en lettres : ").Italic().FontColor("#2563EB");
-                        t.Span(FrenchAmountInWords.ToFrancsCongolais(totalPaid)).Bold().FontColor("#2563EB");
-                    });
+                    root.Item().PaddingTop(6).Element(c =>
+                        PdfThemeHelper.AmountHighlight(c, "Montant en lettres : ",
+                            FrenchAmountInWords.ToFrancsCongolais(totalPaid)));
                     root.Item().PaddingTop(12).Row(row =>
                     {
                         row.RelativeItem().Element(c => DrawHistory(c, paymentHistory, culture));
@@ -103,37 +99,18 @@ public class RentReceiptPdfService
 
     private void DrawHeader(IContainer container, string companyName, string receiptNo, DateTime issuedAt, string period, string status)
     {
-        container.Row(row =>
-        {
-            row.RelativeItem().Column(col =>
-            {
-                col.Item().Text(companyName).Bold().FontSize(16).FontColor(_navy);
-                col.Item().Text("Gestion immobilière").FontSize(8).FontColor("#64748B");
-            });
-
-            row.RelativeItem(2).Column(col =>
-            {
-                col.Item().AlignCenter().Text("QUITTANCE DE LOYER").Bold().FontSize(16).FontColor(_navy);
-                col.Item().AlignCenter().Text("REÇU DE PAIEMENT").FontSize(9).FontColor("#64748B");
-                col.Item().PaddingTop(6).AlignCenter()
-                    .Background(_navy)
-                    .PaddingVertical(4).PaddingHorizontal(8)
-                    .Text($"N° {receiptNo}").FontSize(9).Bold().FontColor(Colors.White);
-            });
-
-            row.RelativeItem().AlignRight().Background(GrayBg).Border(1).BorderColor(Border).Padding(8).Column(meta =>
-            {
-                MetaLine(meta, "Date d'émission", issuedAt.ToString("dd MMMM yyyy", CultureInfo.GetCultureInfo("fr-FR")));
-                MetaLine(meta, "Période", period);
-                MetaLine(meta, "Date de paiement", issuedAt.ToString("dd MMMM yyyy", CultureInfo.GetCultureInfo("fr-FR")));
-                meta.Item().PaddingTop(4).Row(r =>
-                {
-                    r.AutoItem().Text("Statut : ").FontSize(8);
-                    r.AutoItem().Background(GreenBg).PaddingVertical(2).PaddingHorizontal(6)
-                        .Text(status).FontSize(8).Bold().FontColor(_green);
-                });
-            });
-        });
+        var culture = CultureInfo.GetCultureInfo("fr-FR");
+        container.Element(c => PdfThemeHelper.DocumentHeader(c, new PdfThemeHelper.PdfHeaderOptions(
+            DocumentTitle: "Quittance de loyer",
+            DocumentSubtitle: "Reçu de paiement officiel",
+            DepartmentLine: "Gestion immobilière",
+            BadgeText: $"N° {receiptNo}",
+            Meta:
+            [
+                ("Date d'émission", issuedAt.ToString("dd MMMM yyyy", culture)),
+                ("Période", period),
+                ("Statut", status)
+            ])));
     }
 
     private void MetaLine(ColumnDescriptor col, string label, string value)
@@ -182,8 +159,9 @@ public class RentReceiptPdfService
                         t.Item().Text($"Adresse : {Display(tenant.Address)}").FontSize(8);
                         t.Item().Text($"ID Nat. : {Display(tenant.NationalId)}").FontSize(8);
                     });
-                    r.ConstantItem(48).Height(48).Background(NavyLight).AlignCenter().AlignMiddle()
-                        .Text("👤").FontSize(20);
+                    r.ConstantItem(48).Height(48).Background(PdfThemeHelper.BrandMuted).Border(1).BorderColor(PdfThemeHelper.Border)
+                        .AlignCenter().AlignMiddle()
+                        .Text(GetInitials(tenant.Name)).Bold().FontSize(14).FontColor(_green);
                 });
             }));
         });
@@ -338,23 +316,18 @@ public class RentReceiptPdfService
         });
     }
 
-    private void SectionBox(IContainer container, string title, Action<ColumnDescriptor> content)
-    {
-        container.Border(1).BorderColor(Border).Column(col =>
-        {
-            col.Item().Background(NavyLight).PaddingVertical(4).PaddingHorizontal(6)
-                .Text(title).Bold().FontSize(7).FontColor(_navy);
-            col.Item().Padding(8).Column(content);
-        });
-    }
+    private void SectionBox(IContainer container, string title, Action<ColumnDescriptor> content) =>
+        PdfThemeHelper.SectionBox(container, title, content);
 
-    private void InfoLine(ColumnDescriptor col, string label, string value)
+    private void InfoLine(ColumnDescriptor col, string label, string value) =>
+        PdfThemeHelper.InfoLine(col, label, value);
+
+    private static string GetInitials(string name)
     {
-        col.Item().PaddingBottom(3).Text(t =>
-        {
-            t.Span($"{label} : ").FontSize(7).FontColor("#64748B");
-            t.Span(value).FontSize(8);
-        });
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (parts.Length == 0) return "?";
+        if (parts.Length == 1) return parts[0][..Math.Min(2, parts[0].Length)].ToUpperInvariant();
+        return $"{char.ToUpperInvariant(parts[0][0])}{char.ToUpperInvariant(parts[^1][0])}";
     }
 
     private static string FormatReceiptNumber(RentPayment payment) =>

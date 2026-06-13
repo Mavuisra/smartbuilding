@@ -206,6 +206,7 @@ public sealed class InitialSetupService
         }
 
         building.Name = request.BuildingName.Trim();
+        building.BuildingDisplayName = BuildingInfoDefaults.ManagedBuildingName;
         building.Address = request.BuildingAddress.Trim();
         building.City = request.BuildingCity.Trim();
         building.Country = request.BuildingCountry.Trim();

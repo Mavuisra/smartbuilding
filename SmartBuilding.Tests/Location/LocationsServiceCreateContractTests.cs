@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using SmartBuilding.Application.Interfaces;
 using SmartBuilding.Domain.Entities.Location;
 using SmartBuilding.Domain.Enums;
 using SmartBuilding.Desktop.WPF.Services;
@@ -15,7 +16,7 @@ public class LocationsServiceCreateContractTests
     {
         await using var db = await CreateDbAsync();
         var (tenantId, premiseId) = await SeedTenantAndPremiseAsync(db);
-        var service = new LocationsService(db, new FinanceLedgerService(db));
+        var service = new LocationsService(db, new FinanceLedgerService(db), new NoOpDocumentUpload());
 
         var result = await service.CreateContractAsync(
             premiseId,
@@ -53,7 +54,7 @@ public class LocationsServiceCreateContractTests
         });
         await db.SaveChangesAsync();
 
-        var service = new LocationsService(db, new FinanceLedgerService(db));
+        var service = new LocationsService(db, new FinanceLedgerService(db), new NoOpDocumentUpload());
         var result = await service.CreateContractAsync(
             premiseId,
             tenantId,
@@ -85,7 +86,7 @@ public class LocationsServiceCreateContractTests
         db.LeaseContracts.Add(contract);
         await db.SaveChangesAsync();
 
-        var service = new LocationsService(db, new FinanceLedgerService(db));
+        var service = new LocationsService(db, new FinanceLedgerService(db), new NoOpDocumentUpload());
         var next = await service.GenerateNextContractNumberAsync();
 
         Assert.Equal("CTR-002", next);
@@ -110,7 +111,7 @@ public class LocationsServiceCreateContractTests
         });
         await db.SaveChangesAsync();
 
-        var service = new LocationsService(db, new FinanceLedgerService(db));
+        var service = new LocationsService(db, new FinanceLedgerService(db), new NoOpDocumentUpload());
         var result = await service.CreateContractAsync(
             premiseId,
             tenantId,
@@ -144,5 +145,20 @@ public class LocationsServiceCreateContractTests
         db.Premises.Add(new Premise { Id = premiseId, Code = "LOC-T", Name = "Local test", IsOccupied = false });
         await db.SaveChangesAsync();
         return (tenantId, premiseId);
+    }
+
+    private sealed class NoOpDocumentUpload : IDocumentCloudUploadService
+    {
+        public Task<bool> TryUploadFileAsync(
+            string localPath,
+            string entityType,
+            Guid entityId,
+            string category,
+            string? addedBy = null,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(false);
+
+        public Task<int> UploadAllPendingAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(0);
     }
 }

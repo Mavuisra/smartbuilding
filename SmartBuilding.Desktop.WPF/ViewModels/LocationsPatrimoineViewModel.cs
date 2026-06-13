@@ -85,9 +85,8 @@ public partial class LocationsPatrimoineViewModel : BaseViewModel
 
     private void UpdatePageTitle() => PageTitle = SelectedPatrimoineTab switch
     {
-        1 => "Bâtiment",
-        2 => "Appartements",
-        3 => "Gestion",
+        1 => "Bloom Prosperity",
+        2 => "Gestion",
         _ => "Bailleur"
     };
 
@@ -111,7 +110,7 @@ public partial class LocationsPatrimoineViewModel : BaseViewModel
             if (!string.IsNullOrEmpty(structureError))
             {
                 FormError = structureError;
-                SelectedPatrimoineTab = 2;
+                SelectedPatrimoineTab = 1;
                 return;
             }
 

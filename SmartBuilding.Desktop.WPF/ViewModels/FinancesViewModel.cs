@@ -159,6 +159,12 @@ public partial class FinancesViewModel : BaseViewModel
             SourceFilters.Add(AllSources);
             foreach (var s in data.Sources) SourceFilters.Add(s);
 
+            FilterPeriod = PageFilterHelper.RestoreSelection(FilterPeriod, PeriodFilters, AllPeriods);
+            FilterType = PageFilterHelper.RestoreSelection(FilterType, TypeFilters, AllTypes);
+            FilterCategory = PageFilterHelper.RestoreSelection(FilterCategory, CategoryFilters, AllCategories);
+            FilterSource = PageFilterHelper.RestoreSelection(FilterSource, SourceFilters, AllSources);
+            FilterStatus = PageFilterHelper.RestoreSelection(FilterStatus, StatusFilters, AllStatuses);
+
             BuildCharts(data);
             CurrentPage = 1;
             ApplyFilters();
@@ -211,7 +217,7 @@ public partial class FinancesViewModel : BaseViewModel
 
         var path = FinancesExportService.ExportCsv(list);
         TryOpenFile(path);
-        StatusMessage = $"Export Excel enregistré ({list.Count} lignes).";
+        StatusMessage = $"Export PDF enregistré ({list.Count} lignes).";
     }
 
     [RelayCommand]
@@ -348,10 +354,10 @@ public partial class FinancesViewModel : BaseViewModel
             : ApplyPeriodFilter(filtered, monthStart);
         filtered = filtered.Where(MatchesTab);
         filtered = filtered.Where(t =>
-            (FilterType == AllTypes || t.TypeLabel == FilterType) &&
-            (FilterCategory == AllCategories || t.Category == FilterCategory) &&
-            (FilterSource == AllSources || t.Source == FilterSource) &&
-            (FilterStatus == AllStatuses || t.StatusLabel == FilterStatus) &&
+            PageFilterHelper.Matches(FilterType, AllTypes, t.TypeLabel) &&
+            PageFilterHelper.Matches(FilterCategory, AllCategories, t.Category) &&
+            PageFilterHelper.Matches(FilterSource, AllSources, t.Source) &&
+            PageFilterHelper.Matches(FilterStatus, AllStatuses, t.StatusLabel) &&
             (string.IsNullOrWhiteSpace(query) ||
              t.Reference.Contains(query, StringComparison.OrdinalIgnoreCase) ||
              t.Description.Contains(query, StringComparison.OrdinalIgnoreCase) ||
@@ -382,6 +388,9 @@ public partial class FinancesViewModel : BaseViewModel
     private IEnumerable<FinanceTransactionItem> ApplyPeriodFilter(IEnumerable<FinanceTransactionItem> items, DateTime monthStart)
     {
         var today = DateTime.Today;
+        if (string.IsNullOrWhiteSpace(FilterPeriod))
+            return items.Where(t => t.TransactionDate >= monthStart && t.TransactionDate <= today);
+
         return FilterPeriod switch
         {
             "3 derniers mois" => items.Where(t => t.TransactionDate >= monthStart.AddMonths(-2)),

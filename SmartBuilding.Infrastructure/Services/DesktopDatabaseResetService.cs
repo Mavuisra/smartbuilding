@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using SmartBuilding.Infrastructure.Persistence;
+using SmartBuilding.Infrastructure.Sync;
 
 namespace SmartBuilding.Infrastructure.Services;
 
@@ -35,6 +36,10 @@ public static class DesktopDatabaseResetService
 
         DeleteIfExists(SetupFlagPath);
         DeleteIfExists(ApiTokenPath);
+        CloudIdentityStore.Clear();
+        InitialSyncStore.Clear();
+        SyncCloudTokenStore.Clear();
+        SyncPullConflictStore.Clear();
     }
 
     private static void DeleteIfExists(string path)

@@ -162,6 +162,10 @@ public partial class TechnicalViewModel : BaseViewModel
             foreach (var l in _allEquipment.Select(e => e.Location).Where(x => x != "—").Distinct().OrderBy(x => x))
                 LocationFilters.Add(l);
 
+            FilterCategory = PageFilterHelper.RestoreSelection(FilterCategory, CategoryFilters, AllCategories);
+            FilterLocation = PageFilterHelper.RestoreSelection(FilterLocation, LocationFilters, AllLocations);
+            FilterStatus = PageFilterHelper.RestoreSelection(FilterStatus, StatusFilters, AllStatuses);
+
             BuildCharts(data);
             CurrentPage = 1;
             ApplyFilters();
@@ -361,9 +365,9 @@ public partial class TechnicalViewModel : BaseViewModel
     {
         var query = $"{SearchQuery} {TableSearchQuery}".Trim();
         var filtered = _allEquipment.Where(e =>
-            (FilterCategory == AllCategories || e.Category == FilterCategory) &&
-            (FilterStatus == AllStatuses || e.StatusLabel == FilterStatus) &&
-            (FilterLocation == AllLocations || e.Location == FilterLocation) &&
+            PageFilterHelper.Matches(FilterCategory, AllCategories, e.Category) &&
+            PageFilterHelper.Matches(FilterStatus, AllStatuses, e.StatusLabel) &&
+            PageFilterHelper.Matches(FilterLocation, AllLocations, e.Location) &&
             (string.IsNullOrWhiteSpace(query) ||
              e.Name.Contains(query, StringComparison.OrdinalIgnoreCase) ||
              e.Code.Contains(query, StringComparison.OrdinalIgnoreCase) ||

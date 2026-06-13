@@ -19,10 +19,7 @@ public class PersonnelPaySlipPdfService
     private string _navy = "#1B365D";
     private string _green = "#16A34A";
 
-    static PersonnelPaySlipPdfService()
-    {
-        QuestPDF.Settings.License = LicenseType.Community;
-    }
+    static PersonnelPaySlipPdfService() => PdfThemeHelper.EnsureLicense();
 
     public string Generate(SalaryPayment payment, Employee employee, string? companyName = null)
     {
@@ -35,8 +32,8 @@ public class PersonnelPaySlipPdfService
             ? PdfThemeHelper.ResolveCompanyName()
             : companyName.Trim();
 
-        _navy = AppConfigurationService.Instance?.Current.PdfHeaderHex ?? "#1B365D";
-        _green = AppConfigurationService.Instance?.Current.PdfAccentHex ?? "#16A34A";
+        _navy = PdfThemeHelper.ResolveHeaderColor();
+        _green = PdfThemeHelper.ResolveAccentColor();
 
         var net = payment.NetAmount > 0 ? payment.NetAmount : payment.Amount;
         var gross = payment.GrossSalary > 0 ? payment.GrossSalary : payment.Amount;
@@ -53,9 +50,7 @@ public class PersonnelPaySlipPdfService
         {
             container.Page(page =>
             {
-                page.Size(PageSizes.A4);
-                page.Margin(28);
-                page.DefaultTextStyle(x => x.FontSize(9).FontColor(_navy));
+                PdfThemeHelper.ConfigurePage(page);
 
                 page.Content().Column(root =>
                 {
@@ -85,31 +80,17 @@ public class PersonnelPaySlipPdfService
         string periodLabel,
         CultureInfo culture)
     {
-        container.Column(col =>
-        {
-            col.Item().Row(row =>
-            {
-                row.RelativeItem().Column(left =>
-                {
-                    left.Item().Text(companyName).Bold().FontSize(16).FontColor(_navy);
-                    left.Item().Text("Ressources humaines").FontSize(8).FontColor("#64748B");
-                });
-                row.RelativeItem(2).AlignCenter().Column(center =>
-                {
-                    center.Item().Text("FICHE DE PAIE").Bold().FontSize(14).FontColor(_navy);
-                    center.Item().Text("Document officiel — ressources humaines").FontSize(8).FontColor("#64748B");
-                    center.Item().PaddingTop(6).AlignCenter()
-                        .Background(_navy).PaddingVertical(4).PaddingHorizontal(10)
-                        .Text(periodLabel.ToUpper(culture)).FontSize(9).Bold().FontColor(Colors.White);
-                });
-                row.RelativeItem().AlignRight().Background(GrayBg).Border(1).BorderColor(Border).Padding(8).Column(meta =>
-                {
-                    MetaLine(meta, "Matricule", employee.Matricule);
-                    MetaLine(meta, "Statut paie", payment.Status);
-                    MetaLine(meta, "Émis le", DateTime.Now.ToString("dd/MM/yyyy HH:mm", culture));
-                });
-            });
-        });
+        container.Element(c => PdfThemeHelper.DocumentHeader(c, new PdfThemeHelper.PdfHeaderOptions(
+            DocumentTitle: "Fiche de paie",
+            DocumentSubtitle: "Document officiel — ressources humaines",
+            DepartmentLine: "Ressources humaines",
+            BadgeText: periodLabel.ToUpper(culture),
+            Meta:
+            [
+                ("Matricule", employee.Matricule),
+                ("Statut paie", payment.Status),
+                ("Émis le", DateTime.Now.ToString("dd/MM/yyyy HH:mm", culture))
+            ])));
     }
 
     private static void MetaLine(ColumnDescriptor col, string label, string value)
@@ -212,9 +193,9 @@ public class PersonnelPaySlipPdfService
             $"({FrenchAmountInWords.ToDollarsUs(net)}). Ce document est établi conformément aux données enregistrées dans SBMS " +
             "et peut être imprimé, archivé ou remis à l'employé.";
 
-        container.Background(NavyLight).Border(1).BorderColor(Border).Padding(12).Column(col =>
+        container.Background(PdfThemeHelper.BrandMuted).Border(1).BorderColor(PdfThemeHelper.Border).Padding(12).Column(col =>
         {
-            col.Item().Text("RÉSUMÉ").Bold().FontSize(9).FontColor(_navy);
+            col.Item().Text("RÉSUMÉ").Bold().FontSize(9).FontColor(_green);
             col.Item().PaddingTop(6).Text(summary).FontSize(9).LineHeight(1.4f).FontColor("#334155");
         });
     }
@@ -246,24 +227,11 @@ public class PersonnelPaySlipPdfService
         });
     }
 
-    private static void SectionBox(IContainer container, string title, Action<ColumnDescriptor> content)
-    {
-        container.Border(1).BorderColor(Border).Column(col =>
-        {
-            col.Item().Background(NavyLight).PaddingVertical(4).PaddingHorizontal(6)
-                .Text(title).Bold().FontSize(7).FontColor("#1B365D");
-            col.Item().Padding(8).Column(content);
-        });
-    }
+    private static void SectionBox(IContainer container, string title, Action<ColumnDescriptor> content) =>
+        PdfThemeHelper.SectionBox(container, title, content);
 
-    private static void InfoLine(ColumnDescriptor col, string label, string value)
-    {
-        col.Item().PaddingBottom(3).Text(t =>
-        {
-            t.Span($"{label} : ").FontSize(7).FontColor("#64748B");
-            t.Span(value).FontSize(8);
-        });
-    }
+    private static void InfoLine(ColumnDescriptor col, string label, string value) =>
+        PdfThemeHelper.InfoLine(col, label, value);
 
     private static IContainer Td(IContainer c) => c.BorderBottom(1).BorderColor(Border).PaddingVertical(5).PaddingHorizontal(4);
 

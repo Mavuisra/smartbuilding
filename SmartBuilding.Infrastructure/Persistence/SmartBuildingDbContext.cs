@@ -87,6 +87,14 @@ public class SmartBuildingDbContext : DbContext
     {
         foreach (var entry in ChangeTracker.Entries<Domain.Common.BaseEntity>())
         {
+            if (entry.State == EntityState.Deleted)
+            {
+                // Suppression physique → soft delete pour synchroniser la tombstone vers le cloud.
+                entry.State = EntityState.Modified;
+                entry.Entity.SoftDelete();
+                continue;
+            }
+
             if (entry.State == EntityState.Modified)
             {
                 entry.Entity.UpdatedAt = DateTime.UtcNow;
@@ -99,9 +107,11 @@ public class SmartBuildingDbContext : DbContext
             }
             else if (entry.State == EntityState.Added)
             {
-                entry.Entity.CreatedAt = DateTime.UtcNow;
-                entry.Entity.UpdatedAt = DateTime.UtcNow;
-                entry.Entity.IsSynced = false;
+                if (entry.Entity.CreatedAt == default)
+                    entry.Entity.CreatedAt = DateTime.UtcNow;
+                if (entry.Entity.UpdatedAt == default)
+                    entry.Entity.UpdatedAt = DateTime.UtcNow;
+                // IsSynced=true conservé lors d'un pull cloud (ApplyRemoteAsync).
             }
         }
         return base.SaveChangesAsync(cancellationToken);

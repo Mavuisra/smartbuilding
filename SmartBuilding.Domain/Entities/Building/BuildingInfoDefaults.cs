@@ -4,6 +4,8 @@ namespace SmartBuilding.Domain.Entities.Building;
 public static class BuildingInfoDefaults
 {
     public const string CompanyName = "BLOOM PROSPERTY INVESTISSEMENT";
+    /// <summary>Immeuble unique géré par l'application (étages et locaux).</summary>
+    public const string ManagedBuildingName = "Bloom Prosperity";
     public const string Address = "123, Avenue de la Gombe";
     public const string City = "Kinshasa";
     public const string Country = "RDC";
@@ -25,6 +27,7 @@ public static class BuildingInfoDefaults
         building.TimeZoneId = "Africa/Kinshasa";
         building.Currency = "USD";
         building.Language = "Français";
+        building.BuildingDisplayName = ManagedBuildingName;
     }
 
     public static bool NeedsKinshasaNormalization(BuildingInfo building) =>

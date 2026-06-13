@@ -167,6 +167,11 @@ public partial class IncidentsViewModel : BaseViewModel
             BuildingFilters.Add(AllBuildings);
             foreach (var b in _allIncidents.Select(i => i.Building).Where(x => x != "—").Distinct().OrderBy(x => x)) BuildingFilters.Add(b);
 
+            FilterType = PageFilterHelper.RestoreSelection(FilterType, TypeFilters, AllTypes);
+            FilterSeverity = PageFilterHelper.RestoreSelection(FilterSeverity, SeverityFilters, AllSeverities);
+            FilterStatus = PageFilterHelper.RestoreSelection(FilterStatus, StatusFilters, AllStatuses);
+            FilterBuilding = PageFilterHelper.RestoreSelection(FilterBuilding, BuildingFilters, AllBuildings);
+
             BuildCharts(data);
             UpdateSyncStatus();
             CurrentPage = 1;
@@ -277,10 +282,10 @@ public partial class IncidentsViewModel : BaseViewModel
         var query = $"{SearchQuery} {TableSearchQuery}".Trim();
 
         var filtered = _allIncidents.Where(i =>
-            (FilterType == AllTypes || i.TypeLabel == FilterType) &&
-            (FilterSeverity == AllSeverities || i.SeverityLabel == FilterSeverity) &&
-            (FilterStatus == AllStatuses || i.StatusLabel == FilterStatus) &&
-            (FilterBuilding == AllBuildings || i.Building == FilterBuilding) &&
+            PageFilterHelper.Matches(FilterType, AllTypes, i.TypeLabel) &&
+            PageFilterHelper.Matches(FilterSeverity, AllSeverities, i.SeverityLabel) &&
+            PageFilterHelper.Matches(FilterStatus, AllStatuses, i.StatusLabel) &&
+            PageFilterHelper.Matches(FilterBuilding, AllBuildings, i.Building) &&
             InPeriod(i.DateDisplay, monthStart, today) &&
             (string.IsNullOrWhiteSpace(query) ||
              i.Code.Contains(query, StringComparison.OrdinalIgnoreCase) ||

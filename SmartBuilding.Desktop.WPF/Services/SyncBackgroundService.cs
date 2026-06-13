@@ -102,6 +102,13 @@ public class SyncBackgroundService : BackgroundService
         {
             using var scope = _scopeFactory.CreateScope();
             var syncService = scope.ServiceProvider.GetRequiredService<ISyncService>();
+
+            if (await syncService.NeedsInitialCloudPullAsync(cancellationToken))
+            {
+                _logger.LogInformation("Sync initiale cloud → local en attente (première connexion requise).");
+                return;
+            }
+
             var result = await syncService.SyncAsync(manual: false, cancellationToken);
 
             if (await syncService.IsCloudStoreEmptyAsync(cancellationToken))

@@ -24,7 +24,7 @@ public partial class InitialSetupViewModel : ObservableObject
     [ObservableProperty] private string _adminPassword = string.Empty;
     [ObservableProperty] private string _adminPasswordConfirm = string.Empty;
 
-    [ObservableProperty] private string _buildingName = string.Empty;
+    [ObservableProperty] private string _buildingName = BuildingInfoDefaults.ManagedBuildingName;
     [ObservableProperty] private string _buildingAddress = string.Empty;
     [ObservableProperty] private string _buildingCity = "Kinshasa";
     [ObservableProperty] private string _buildingCountry = "RDC";
@@ -314,7 +314,8 @@ public partial class InitialSetupViewModel : ObservableObject
 
     private bool ValidateBuildingStep()
     {
-        if (string.IsNullOrWhiteSpace(BuildingName) || string.IsNullOrWhiteSpace(BuildingAddress))
+        BuildingName = BuildingInfoDefaults.ManagedBuildingName;
+        if (string.IsNullOrWhiteSpace(BuildingAddress))
         {
             ErrorMessage = "Le nom du bâtiment et l'adresse sont obligatoires.";
             return false;

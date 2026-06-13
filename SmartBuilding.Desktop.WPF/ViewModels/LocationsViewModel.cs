@@ -203,6 +203,11 @@ public partial class LocationsViewModel : BaseViewModel
             foreach (var t in _allPremises.Select(p => p.PremiseType).Distinct().OrderBy(x => x))
                 Types.Add(t);
 
+            FilterBuilding = PageFilterHelper.RestoreSelection(FilterBuilding, Buildings, AllBuildings);
+            FilterFloor = PageFilterHelper.RestoreSelection(FilterFloor, Floors, AllFloors);
+            FilterType = PageFilterHelper.RestoreSelection(FilterType, Types, AllTypes);
+            FilterStatus = PageFilterHelper.RestoreSelection(FilterStatus, Statuses, AllStatuses);
+
             Contracts.Clear();
             foreach (var c in data.Contracts) Contracts.Add(c);
 
@@ -497,7 +502,7 @@ public partial class LocationsViewModel : BaseViewModel
         }
 
         if (LocationsExportService.ExportPremisesCsv(rows))
-            StatusMessage = "Export Excel (CSV) enregistré.";
+            StatusMessage = "Export PDF enregistré.";
     }
 
     [RelayCommand]
@@ -652,10 +657,10 @@ public partial class LocationsViewModel : BaseViewModel
     {
         var query = $"{SearchQuery} {TableSearchQuery}".Trim();
         var filtered = _allPremises.Where(p =>
-            (FilterBuilding == AllBuildings || p.Building == FilterBuilding) &&
-            (FilterFloor == AllFloors || p.Floor == FilterFloor) &&
-            (FilterType == AllTypes || p.PremiseType == FilterType) &&
-            (FilterStatus == AllStatuses || p.StatusLabel == FilterStatus) &&
+            PageFilterHelper.Matches(FilterBuilding, AllBuildings, p.Building) &&
+            PageFilterHelper.Matches(FilterFloor, AllFloors, p.Floor) &&
+            PageFilterHelper.Matches(FilterType, AllTypes, p.PremiseType) &&
+            PageFilterHelper.Matches(FilterStatus, AllStatuses, p.StatusLabel) &&
             (string.IsNullOrWhiteSpace(query) ||
              p.Name.Contains(query, StringComparison.OrdinalIgnoreCase) ||
              p.Code.Contains(query, StringComparison.OrdinalIgnoreCase) ||

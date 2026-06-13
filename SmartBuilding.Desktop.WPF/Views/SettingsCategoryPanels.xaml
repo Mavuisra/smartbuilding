@@ -180,8 +180,8 @@
                             </StackPanel>
                         </Button>
                         <StackPanel>
-                            <TextBlock Text="Patrimoine (étages, appartements, pièces)" FontWeight="SemiBold" Foreground="#1E40AF"/>
-                            <TextBlock Text="Configurez le bâtiment dans Location → Bailleur, Bâtiment ou Appartements."
+                            <TextBlock Text="Patrimoine (étages et locaux)" FontWeight="SemiBold" Foreground="#1E40AF"/>
+                            <TextBlock Text="Configurez Bloom Prosperity dans Location → Bloom Prosperity."
                                        FontSize="11" Foreground="#64748B" Margin="0,6,0,0" TextWrapping="Wrap"/>
                         </StackPanel>
                     </DockPanel>

@@ -178,7 +178,7 @@ public partial class VisitsViewModel
         {
             var path = VisitsExportService.ExportCsv(_allVisits);
             Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
-            StatusMessage = $"Export Excel : {path}";
+            StatusMessage = $"Export PDF : {path}";
         }
         catch (Exception ex)
         {

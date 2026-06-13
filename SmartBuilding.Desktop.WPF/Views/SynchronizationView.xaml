@@ -50,15 +50,25 @@
                                     </StackPanel>
                                 </StackPanel>
                             </StackPanel>
-                            <Button Grid.Column="1" Command="{Binding SyncNowCommand}" Style="{StaticResource SyncHeroButton}"
-                                    VerticalAlignment="Center" Margin="12,0,0,0"
-                                    IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}"
-                                    ToolTip="Forcer un envoi immédiat">
-                                <StackPanel Orientation="Horizontal">
-                                    <materialDesign:PackIcon Kind="Sync" Width="20" Height="20" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                                    <TextBlock Text="Forcer maintenant" VerticalAlignment="Center"/>
-                                </StackPanel>
-                            </Button>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                <Button Command="{Binding PullFromCloudCommand}" Style="{StaticResource SyncHeroButton}"
+                                        Margin="0,0,10,0"
+                                        IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}"
+                                        ToolTip="Télécharger toutes les données PostgreSQL vers MySQL local">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="CloudDownload" Width="20" Height="20" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                        <TextBlock Text="Cloud → Local" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button Command="{Binding SyncNowCommand}" Style="{StaticResource SyncHeroButton}"
+                                        IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}"
+                                        ToolTip="Forcer un envoi immédiat">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="Sync" Width="20" Height="20" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                        <TextBlock Text="Forcer maintenant" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
                         </Grid>
 
                         <UniformGrid Grid.Row="1" Columns="4" Margin="0,0,0,16">
@@ -546,6 +556,12 @@
                                         <TextBlock Text="Forcer la synchronisation"/>
                                     </StackPanel>
                                 </Button>
+                                <Button Style="{StaticResource SyncQuickActionButton}" Command="{Binding PullFromCloudCommand}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <materialDesign:PackIcon Kind="CloudDownload" Foreground="#2563EB" Margin="0,0,10,0"/>
+                                        <TextBlock Text="Télécharger depuis le cloud (PostgreSQL → local)"/>
+                                    </StackPanel>
+                                </Button>
                                 <Button Style="{StaticResource SyncQuickActionButton}" Command="{Binding ForceFullSyncCommand}">
                                     <StackPanel Orientation="Horizontal">
                                         <materialDesign:PackIcon Kind="CloudSync" Foreground="#3B82F6" Margin="0,0,10,0"/>
@@ -629,9 +645,11 @@
                                     <DataGridTextColumn Header="Date" Binding="{Binding ConflictAt, StringFormat=dd/MM/yyyy}" Width="90"/>
                                 </DataGrid.Columns>
                             </DataGrid>
-                            <Button Content="Résoudre les conflits" Command="{Binding ResetConflictsCommand}"
+                            <Button Content="Actualiser l'affichage des conflits" Command="{Binding ResetConflictsCommand}"
                                     Style="{StaticResource SyncPrimaryButton}" HorizontalAlignment="Left" Margin="0,12,0,0"
                                     Padding="16,8"/>
+                            <TextBlock Text="Stratégie : Last Write Wins — la version la plus récente (local ou cloud) est conservée."
+                                       FontSize="10" Foreground="{StaticResource SbmsTextMutedBrush}" TextWrapping="Wrap" Margin="0,8,0,0"/>
                         </StackPanel>
                     </Border>
                 </Grid>

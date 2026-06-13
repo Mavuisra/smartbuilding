@@ -26,32 +26,65 @@ public static class SyncCoordinator
         return applied;
     }
 
-    public static async Task<int> ApplyPullAsync(
+    public static async Task<(int Conflicts, int Applied)> ApplyPullAsync(
         SmartBuildingDbContext context,
         string entityType,
         IReadOnlyList<SyncEntityPayload> entities,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        IList<SyncConflictDetail>? conflictDetails = null)
     {
         var adapter = SyncEntityRegistry.TryGet(entityType);
         if (adapter is null)
-            return 0;
+            return (0, 0);
 
         var conflicts = 0;
+        var applied = 0;
         foreach (var remote in entities)
         {
-            if (!await adapter.ApplyRemoteAsync(context, remote, cancellationToken))
+            var localUpdatedAt = await adapter.TryGetLocalUpdatedAtAsync(context, remote.Id, cancellationToken);
+            if (localUpdatedAt.HasValue && remote.UpdatedAt < localUpdatedAt.Value)
+            {
                 conflicts++;
+                conflictDetails?.Add(new SyncConflictDetail(
+                    entityType,
+                    SyncEntityLabels.ToFrench(entityType),
+                    remote.Id,
+                    $"{SyncEntityLabels.ToFrench(entityType)} #{remote.Id.ToString()[..8]}",
+                    localUpdatedAt.Value,
+                    remote.UpdatedAt,
+                    "Local conservé (plus récent — Last Write Wins)"));
+                continue;
+            }
+
+            if (!await adapter.ApplyRemoteAsync(context, remote, cancellationToken))
+            {
+                conflicts++;
+                continue;
+            }
+
+            try
+            {
+                await context.SaveChangesAsync(cancellationToken);
+                applied++;
+            }
+            catch (DbUpdateException)
+            {
+                DetachPendingEntries(context);
+                conflicts++;
+            }
         }
 
-        await context.SaveChangesAsync(cancellationToken);
+        return (conflicts, applied);
+    }
 
-        if (entities.Count > 0)
-            await adapter.MarkAsSyncedAsync(
-                context,
-                entities.Select(e => e.Id).ToList(),
-                cancellationToken);
-
-        return conflicts;
+    private static void DetachPendingEntries(DbContext context)
+    {
+        foreach (var entry in context.ChangeTracker.Entries()
+                     .Where(e => e.State != EntityState.Unchanged)
+                     .ToList())
+        {
+            entry.State = EntityState.Detached;
+        }
     }
 
     public static async Task<string?> DescribeUnsyncedAsync(

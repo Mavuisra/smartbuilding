@@ -17,10 +17,7 @@ public class ConsumptionsReportPdfService
     private readonly string _green = PdfThemeHelper.ResolveAccentColor();
     private readonly string _company = PdfThemeHelper.ResolveCompanyName();
 
-    static ConsumptionsReportPdfService()
-    {
-        QuestPDF.Settings.License = LicenseType.Community;
-    }
+    static ConsumptionsReportPdfService() => PdfThemeHelper.EnsureLicense();
 
     public string ExportRecordDetails(ConsumptionListItem item)
     {
@@ -36,9 +33,7 @@ public class ConsumptionsReportPdfService
         {
             container.Page(page =>
             {
-                page.Size(PageSizes.A4);
-                page.Margin(28);
-                page.DefaultTextStyle(x => x.FontSize(9).FontColor(_navy));
+                PdfThemeHelper.ConfigurePage(page);
 
                 page.Content().Column(root =>
                 {
@@ -106,29 +101,16 @@ public class ConsumptionsReportPdfService
 
     private void DrawHeader(IContainer container, ConsumptionListItem item, CultureInfo culture)
     {
-        container.Row(row =>
-        {
-            row.RelativeItem().Column(col =>
-            {
-                col.Item().Text(_company).Bold().FontSize(16).FontColor(_navy);
-                col.Item().Text("Gestion immobilière & consommations").FontSize(8).FontColor("#64748B");
-            });
-
-            row.RelativeItem(2).Column(col =>
-            {
-                col.Item().AlignCenter().Text("RAPPORT DE CONSOMMATION").Bold().FontSize(16).FontColor(_navy);
-                col.Item().AlignCenter().Text("SUIVI ÉNERGÉTIQUE").FontSize(9).FontColor("#64748B");
-            });
-
-            row.RelativeItem().AlignRight().Background(GrayBg).Border(1).BorderColor(Border).Padding(8).Column(meta =>
-            {
-                MetaLine(meta, "Type", item.TypeLabel);
-                MetaLine(meta, "Date", DateTime.Now.ToString("dd MMMM yyyy", culture));
-                MetaLine(meta, "Heure", DateTime.Now.ToString("HH:mm", culture));
-                meta.Item().PaddingTop(4).Background(NavyLight).Padding(4)
-                    .Text($"Coût : {item.CostDisplay}").Bold().FontSize(8).FontColor(_green);
-            });
-        });
+        container.Element(c => PdfThemeHelper.DocumentHeader(c, new PdfThemeHelper.PdfHeaderOptions(
+            DocumentTitle: "Rapport de consommation",
+            DocumentSubtitle: "Suivi énergétique",
+            DepartmentLine: "Gestion immobilière & consommations",
+            Meta:
+            [
+                ("Type", item.TypeLabel),
+                ("Date", DateTime.Now.ToString("dd MMMM yyyy", culture)),
+                ("Coût", item.CostDisplay)
+            ])));
     }
 
     private void SectionBox(IContainer container, string title, Action<ColumnDescriptor> content)

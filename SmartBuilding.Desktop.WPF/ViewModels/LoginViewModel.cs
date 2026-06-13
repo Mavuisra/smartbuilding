@@ -147,6 +147,16 @@ public partial class LoginViewModel : BaseViewModel
     {
         try
         {
+            if (await _syncService.NeedsInitialCloudPullAsync())
+            {
+                await EnsureCloudSessionAsync(username, password);
+                if (!_session.IsCloudIdentityLinked)
+                    return;
+
+                await RunInitialCloudPullAsync();
+                return;
+            }
+
             if (CloudIdentityStore.IsAlreadyLinkedForUser(username))
             {
                 var linked = CloudIdentityStore.TryGetForUser(username, out var state) ? state : null;
@@ -165,20 +175,55 @@ public partial class LoginViewModel : BaseViewModel
 
             CloudIdentityStore.MarkLinked(username, identity.Message);
 
-            LoginProgressText = "Synchronisation initiale des données…";
-            await _syncService.SyncAsync(manual: false);
-
             if (await _syncService.IsCloudStoreEmptyAsync())
             {
-                LoginProgressText = "Publication complète des données locales…";
+                LoginProgressText = "Publication complète des données locales vers le cloud…";
                 await _syncService.MarkAllLocalDataForPushAsync();
+                var pushResult = await _syncService.SyncAsync(manual: false);
+                if (pushResult.Success)
+                    InitialSyncStore.MarkCompleted();
+            }
+            else
+            {
                 await _syncService.SyncAsync(manual: false);
+                InitialSyncStore.MarkCompleted();
             }
         }
         catch (Exception ex)
         {
             _session.SetCloudIdentityStatus(false, ex.Message);
         }
+    }
+
+    private async Task EnsureCloudSessionAsync(string username, string password)
+    {
+        if (CloudIdentityStore.IsAlreadyLinkedForUser(username))
+            return;
+
+        LoginProgressText = "Connexion au cloud (première fois)…";
+        var identity = await _cloudIdentity.EnsureCloudLoginAsync(username, password);
+        _session.SetCloudIdentityStatus(identity.Success, identity.Message);
+
+        if (identity.Success)
+            CloudIdentityStore.MarkLinked(username, identity.Message);
+    }
+
+    private async Task RunInitialCloudPullAsync()
+    {
+        LoginProgressText = "Synchronisation initiale — téléchargement depuis le cloud…";
+        var pullResult = await _syncService.PerformInitialCloudPullAsync();
+
+        if (pullResult.Success)
+        {
+            InitialSyncStore.MarkCompleted();
+            _session.SetCloudIdentityStatus(
+                true,
+                $"Données cloud téléchargées ({pullResult.Pulled} enregistrement(s)). Travail local prêt.");
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(pullResult.Error))
+            _session.SetCloudIdentityStatus(false, pullResult.Error);
     }
 
     private static void SaveRememberedUsername(string username)

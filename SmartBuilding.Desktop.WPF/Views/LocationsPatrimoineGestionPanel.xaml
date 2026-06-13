@@ -144,7 +144,7 @@
                             </StackPanel>
                             <StackPanel VerticalAlignment="Center">
                                 <TextBlock Text="Inventaire des locaux" FontSize="16" FontWeight="Bold" Foreground="{StaticResource PatrimoineGelTextBrush}"/>
-                                <TextBlock Text="Bâtiments, appartements et statuts d'occupation" FontSize="11" Foreground="{StaticResource PatrimoineGelMutedBrush}" Margin="0,4,0,0"/>
+                                <TextBlock Text="Bloom Prosperity — occupation des locaux" FontSize="11" Foreground="{StaticResource PatrimoineGelMutedBrush}" Margin="0,4,0,0"/>
                             </StackPanel>
                         </DockPanel>
                     </Border>
@@ -199,39 +199,23 @@
                                                     <ColumnDefinition Width="Auto"/>
                                                     <ColumnDefinition Width="*"/>
                                                 </Grid.ColumnDefinitions>
-                                                <Border Width="44" Height="44" CornerRadius="12" Margin="0,0,14,0">
-                                                    <Border.Style>
-                                                        <Style TargetType="Border">
-                                                            <Setter Property="Background" Value="{StaticResource PatrimoineGelLightBrush}"/>
-                                                            <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding IsCommercial}" Value="True">
-                                                                    <Setter Property="Background" Value="#EEF1F5"/>
-                                                                </DataTrigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </Border.Style>
+                                                <Border Width="44" Height="44" CornerRadius="12" Margin="0,0,14,0"
+                                                        Background="#D1FAE5" BorderBrush="#86EFAC" BorderThickness="1">
                                                     <TextBlock Text="{Binding Initials}" FontWeight="Bold" FontSize="14"
-                                                               HorizontalAlignment="Center" VerticalAlignment="Center">
-                                                        <TextBlock.Style>
-                                                            <Style TargetType="TextBlock">
-                                                                <Setter Property="Foreground" Value="{StaticResource PatrimoineGelBrush}"/>
-                                                                <Style.Triggers>
-                                                                    <DataTrigger Binding="{Binding IsCommercial}" Value="True">
-                                                                        <Setter Property="Foreground" Value="#6B8299"/>
-                                                                    </DataTrigger>
-                                                                </Style.Triggers>
-                                                            </Style>
-                                                        </TextBlock.Style>
-                                                    </TextBlock>
+                                                               Foreground="#166534"
+                                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                                 </Border>
                                                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                                    <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="14" Foreground="#0F172A"/>
+                                                    <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="14"
+                                                               Foreground="{StaticResource PatrimoineGelRowTextBrush}"/>
                                                     <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                                                        <Border Background="#F1F5F9" CornerRadius="4" Padding="6,2" Margin="0,0,6,0">
-                                                            <TextBlock Text="{Binding Code}" FontSize="10" FontWeight="SemiBold" Foreground="#475569"/>
+                                                        <Border Background="#E2E8F0" CornerRadius="4" Padding="6,2" Margin="0,0,6,0">
+                                                            <TextBlock Text="{Binding Code}" FontSize="10" FontWeight="Bold"
+                                                                       Foreground="#1E293B"/>
                                                         </Border>
-                                                        <materialDesign:PackIcon Kind="Stairs" Width="12" Height="12" Foreground="#94A3B8" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                                                        <TextBlock Text="{Binding FloorDisplay}" FontSize="11" Foreground="#64748B" VerticalAlignment="Center"/>
+                                                        <materialDesign:PackIcon Kind="Stairs" Width="12" Height="12" Foreground="#64748B" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                                        <TextBlock Text="{Binding FloorDisplay}" FontSize="11" FontWeight="Medium"
+                                                                   Foreground="#334155" VerticalAlignment="Center"/>
                                                     </StackPanel>
                                                 </StackPanel>
                                             </Grid>
@@ -243,8 +227,9 @@
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                                <materialDesign:PackIcon Kind="OfficeBuilding" Width="16" Height="16" Foreground="#64748B" Margin="0,0,8,0"/>
-                                                <TextBlock Text="{Binding BuildingName}" FontSize="12" FontWeight="Medium" Foreground="#334155" TextTrimming="CharacterEllipsis"/>
+                                                <materialDesign:PackIcon Kind="OfficeBuilding" Width="16" Height="16" Foreground="{StaticResource PatrimoineGelBrush}" Margin="0,0,8,0"/>
+                                                <TextBlock Text="{Binding BuildingName}" FontSize="12" FontWeight="SemiBold"
+                                                           Foreground="{StaticResource PatrimoineGelRowTextBrush}" TextTrimming="CharacterEllipsis"/>
                                             </StackPanel>
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
@@ -282,7 +267,8 @@
                                 <DataGridTemplateColumn Header="SURFACE" Width="95">
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
-                                            <TextBlock Text="{Binding AreaDisplay}" FontSize="13" FontWeight="SemiBold" Foreground="#475569" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding AreaDisplay}" FontSize="13" FontWeight="SemiBold"
+                                                       Foreground="{StaticResource PatrimoineGelRowTextBrush}" VerticalAlignment="Center"/>
                                         </DataTemplate>
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
@@ -370,7 +356,7 @@
                                                                HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 </Border>
                                 <TextBlock Text="Aucune unité à afficher" FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource PatrimoineGelTextBrush}" HorizontalAlignment="Center"/>
-                                <TextBlock Text="Ajoutez des appartements dans l'onglet Appartements ou modifiez vos filtres."
+                                <TextBlock Text="Ajoutez des locaux dans Bloom Prosperity ou modifiez vos filtres."
                                            FontSize="12" Foreground="{StaticResource PatrimoineGelMutedBrush}" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="280" Margin="0,8,0,16"/>
                                 <Button Command="{Binding AddGestionUnitInStructureCommand}" Style="{StaticResource PatrimoineGelPrimaryButton}" Padding="18,10">
                                     <TextBlock Text="Créer une unité"/>
@@ -413,8 +399,10 @@
                                 <materialDesign:PackIcon Kind="Close" Foreground="{StaticResource PatrimoineGelMutedBrush}" Width="16" Height="16"/>
                             </Button>
                             <StackPanel Margin="0,0,32,0">
-                                <TextBlock Text="{Binding DetailUnitTitle}" FontSize="16" FontWeight="Bold" Foreground="{StaticResource PatrimoineGelTextBrush}" TextWrapping="Wrap"/>
-                                <TextBlock Text="{Binding DetailUnitSubtitle}" FontSize="11" Foreground="{StaticResource PatrimoineGelMutedBrush}" Margin="0,6,0,0" TextWrapping="Wrap"/>
+                                <TextBlock Text="{Binding DetailUnitTitle}" FontSize="16" FontWeight="Bold"
+                                           Foreground="{StaticResource PatrimoineGelRowTextBrush}" TextWrapping="Wrap"/>
+                                <TextBlock Text="{Binding DetailUnitSubtitle}" FontSize="11" FontWeight="Medium"
+                                           Foreground="{StaticResource PatrimoineGelMutedBrush}" Margin="0,6,0,0" TextWrapping="Wrap"/>
                             </StackPanel>
                         </Grid>
                     </Border>
@@ -471,17 +459,17 @@
                                 Style="{StaticResource PatrimoineGelPrimaryButton}" Padding="16,11" Margin="0,0,0,8"
                                 Visibility="{Binding CanManage, Converter={StaticResource BoolToVisibilityConverter}}">
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                <materialDesign:PackIcon Kind="Pencil" Width="16" Height="16" Margin="0,0,8,0"/>
-                                <TextBlock Text="Modifier dans Appartements" FontWeight="SemiBold"/>
+                                <materialDesign:PackIcon Kind="Pencil" Width="16" Height="16" Margin="0,0,8,0" Foreground="White"/>
+                                <TextBlock Text="Modifier dans Bloom Prosperity" FontWeight="SemiBold" Foreground="White"/>
                             </StackPanel>
                         </Button>
                         <Button Command="{Binding DeleteGestionUnitCommand}" CommandParameter="{Binding SelectedGestionUnit}"
-                                Style="{StaticResource MaterialDesignOutlinedButton}" Foreground="#A67B7B" BorderBrush="#E8D4D4"
-                                Padding="16,10"
+                                Style="{StaticResource PatrimoineGelDangerButton}"
                                 Visibility="{Binding CanManage, Converter={StaticResource BoolToVisibilityConverter}}">
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                <materialDesign:PackIcon Kind="DeleteOutline" Width="16" Height="16" Margin="0,0,8,0"/>
-                                <TextBlock Text="Supprimer l'unité"/>
+                                <materialDesign:PackIcon Kind="DeleteOutline" Width="16" Height="16" Margin="0,0,8,0"
+                                                         Foreground="{StaticResource PatrimoineGelDangerBrush}"/>
+                                <TextBlock Text="Supprimer l'unité" Foreground="{StaticResource PatrimoineGelDangerBrush}"/>
                             </StackPanel>
                         </Button>
                     </StackPanel>
