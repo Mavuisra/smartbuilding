@@ -2,7 +2,7 @@
 
 import uuid
 
-from django.test import Client, TestCase
+from django.test import Client, TestCase, override_settings
 
 from api.models import Organization, SyncedEntityStore, User
 
@@ -57,3 +57,18 @@ class AuthApiFormatTests(TestCase):
         self.assertEqual(res.status_code, 200)
         self.assertContains(res, "csrfmiddlewaretoken")
         self.assertIn("csrftoken", res.cookies)
+
+    @override_settings(DEBUG=False)
+    def test_jessica_login_bootstraps_in_production(self):
+        """Jessica / Admin@2026 doit fonctionner en production sans SBMS_RUN_SEED."""
+        self.assertFalse(User.objects.filter(username__iexact="Jessica").exists())
+        res = self.client.post(
+            "/api/auth/login/",
+            {"username": "Jessica", "password": "Admin@2026"},
+            format="json",
+        )
+        self.assertEqual(res.status_code, 200, res.content)
+        body = res.json()
+        self.assertTrue(body["success"])
+        self.assertTrue(body["data"]["canSwitchOrganizations"])
+        self.assertTrue(User.objects.filter(username__iexact="Jessica").exists())

