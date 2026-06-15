@@ -21,7 +21,7 @@ from api.module_data_utils import pick_sync_value
 from api.services.finance_ledger import dedupe_financial_transactions, financial_dedupe_key
 
 
-from api.organization_context import scope_sync_store
+from api.organization_context import DEFAULT_ORG_ID, allows_legacy_orm_fallback, scope_sync_store
 
 
 def _sync_store_qs(entity_type: str, organization_id=None):
@@ -52,11 +52,22 @@ def synced_id_set(entity_type: str, organization_id=None) -> set | None:
 
 
 def filter_to_synced(qs: QuerySet, entity_type: str, organization_id=None) -> QuerySet:
-    """Limite l'ORM aux enregistrements poussés par le Desktop (exclut le seed démo)."""
+    """Limite l'ORM aux enregistrements du tenant (magasin sync). Pas de fuite cross-tenant."""
+    from api.organization_context import get_request_organization_id
+
+    if organization_id is None:
+        organization_id = get_request_organization_id()
+    if organization_id is None:
+        return qs
+
     ids = synced_id_set(entity_type, organization_id)
     if ids is not None:
         return qs.filter(id__in=ids)
-    return qs
+
+    if allows_legacy_orm_fallback(organization_id):
+        return qs
+
+    return qs.none()
 
 
 def orm_without_sync_filter(qs: QuerySet) -> QuerySet:
@@ -277,6 +288,9 @@ def rent_all_time_collected(organization_id=None) -> Decimal:
 
         return Decimal("0")
 
+    if organization_id is not None and not allows_legacy_orm_fallback(organization_id):
+        return Decimal("0")
+
     orm_list = list(base)
     if orm_list:
         return _sum_rent_payments(_dedupe_rent_payments_orm(orm_list))[0]
@@ -329,11 +343,26 @@ def rent_month_totals(
 ) -> tuple[Decimal, Decimal, int, Decimal]:
     """
     Loyers du mois : RentPayments (priorité Desktop), puis journal Loyers dédupliqué.
-    Si aucune donnée sync taguée pour ce type/org, utilise l'ORM complet (comme les onglets).
+    Hors organisation par défaut : uniquement les données taguées pour ce tenant.
     """
     base = RentPayment.objects.filter(
         deleted_at__isnull=True, year=year, month=month
     )
+
+    if organization_id is not None and not allows_legacy_orm_fallback(organization_id):
+        if entity_has_scoped_sync("RentPayments", organization_id):
+            ids = synced_id_set("RentPayments", organization_id)
+            orm_list = list(base.filter(id__in=ids)) if ids is not None else []
+            if orm_list:
+                totals = _sum_rent_payments(_dedupe_rent_payments_orm(orm_list))
+                if totals[0] > 0 or totals[1] > 0:
+                    return totals
+
+        totals = rent_from_sync_store(year, month, organization_id=organization_id)
+        if totals[0] > 0 or totals[1] > 0:
+            return totals
+
+        return rent_from_ledger_deduped(year, month, organization_id=organization_id)
 
     if organization_id is not None and entity_has_scoped_sync("RentPayments", organization_id):
         ids = synced_id_set("RentPayments", organization_id)
@@ -360,10 +389,28 @@ def rent_month_totals(
         if totals[0] > 0 or totals[1] > 0:
             return totals
 
+    totals = rent_from_sync_store(year, month, organization_id=organization_id)
+    if totals[0] > 0 or totals[1] > 0:
+        return totals
+
     return rent_from_ledger_deduped(year, month, organization_id=organization_id)
 
 
 def rent_from_orm(year: int, month: int, *, synced_only: bool = False) -> tuple[Decimal, Decimal, int, Decimal]:
+    if synced_only:
+        from api.organization_context import DEFAULT_ORG_ID, get_request_organization_id
+
+        org_id = get_request_organization_id() or DEFAULT_ORG_ID
+        base = RentPayment.objects.filter(deleted_at__isnull=True, year=year, month=month)
+        ids = synced_id_set("RentPayments", org_id)
+        if ids is not None:
+            totals = _sum_rent_payments(
+                _dedupe_rent_payments_orm(list(base.filter(id__in=ids)))
+            )
+            if totals[0] > 0 or totals[1] > 0:
+                return totals
+        return rent_from_sync_store(year, month, organization_id=org_id)
+
     return rent_month_totals(year, month)
 
 
@@ -415,6 +462,9 @@ def _expenses_totals(*, month_start: date | None = None, organization_id=None) -
             )
             seen[key] = Decimal(str(pick_sync_value(payload, "Amount", "amount", default=0) or 0))
         return sum(seen.values(), Decimal("0"))
+
+    if organization_id is not None and not allows_legacy_orm_fallback(organization_id):
+        return Decimal("0")
 
     deduped = dedupe_financial_transactions(list(base))
     if deduped:
@@ -491,6 +541,9 @@ def occupancy_totals(organization_id=None) -> tuple[int, int]:
             return active, active
         return 0, 0
 
+    if organization_id is not None and not allows_legacy_orm_fallback(organization_id):
+        return 0, 0
+
     total, occupied = occupancy_from_orm(synced_only=False, organization_id=organization_id)
     if total > 0:
         return total, occupied
@@ -537,6 +590,9 @@ def count_active_leases(organization_id=None) -> int:
                 count += 1
         return count
 
+    if organization_id is not None and not allows_legacy_orm_fallback(organization_id):
+        return 0
+
     active = sum(
         1
         for c in base.iterator()
@@ -566,6 +622,9 @@ def count_tenants_total(organization_id=None) -> int:
         if n > 0:
             return n
         return 0
+
+    if organization_id is not None and not allows_legacy_orm_fallback(organization_id):
+        return _sync_store_qs("Tenants", organization_id).count()
 
     n = base.count()
     if n > 0:

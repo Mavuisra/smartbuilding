@@ -33,6 +33,11 @@ def get_request_organization_id() -> UUID | None:
     return _current_org_id.get()
 
 
+def allows_legacy_orm_fallback(organization_id: UUID | None) -> bool:
+    """ORM complet sans filtre sync — uniquement pour l'organisation par défaut (données héritées)."""
+    return organization_id is None or organization_id == DEFAULT_ORG_ID
+
+
 def get_default_organization() -> Organization:
     org, _ = Organization.objects.get_or_create(
         id=DEFAULT_ORG_ID,

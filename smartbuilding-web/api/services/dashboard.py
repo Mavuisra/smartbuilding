@@ -200,16 +200,23 @@ def get_sync_health(window_hours: int = 24, organization_id=None) -> dict:
 
 
 def get_executive_overview(organization_id=None) -> dict:
+    from api.services.sync_metrics import filter_to_synced
+
     summary = get_executive_summary(organization_id=organization_id)
     pending_contracts = list(
-        LeaseContract.objects.filter(deleted_at__isnull=True)
+        filter_to_synced(
+            LeaseContract.objects.filter(deleted_at__isnull=True), "LeaseContracts", organization_id
+        )
         .exclude(status__icontains="actif")
         .order_by("-updated_at")[:6]
     )
     from api.services.finance_pdg import collect_pending_expenses
 
-    active_employees = Employee.objects.filter(deleted_at__isnull=True, is_active=True).count()
-    total_employees = Employee.objects.filter(deleted_at__isnull=True).count()
+    emp_qs = filter_to_synced(
+        Employee.objects.filter(deleted_at__isnull=True), "Employees", organization_id
+    )
+    active_employees = emp_qs.filter(is_active=True).count()
+    total_employees = emp_qs.count()
 
     validations = []
     for c in pending_contracts:
@@ -251,7 +258,9 @@ def get_executive_overview(organization_id=None) -> dict:
         for item in summary["recentSyncActivity"][:5]
     ]
     for inc in (
-        Incident.objects.filter(deleted_at__isnull=True)
+        filter_to_synced(
+            Incident.objects.filter(deleted_at__isnull=True), "Incidents", organization_id
+        )
         .order_by("-updated_at")
         .values("title", "updated_at")[:5]
     ):

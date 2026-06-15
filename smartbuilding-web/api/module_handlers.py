@@ -95,8 +95,14 @@ def get_module_handler(slug: str):
     return handlers.get(slug)
 
 
+def _scoped_count(qs, entity_type: str) -> int:
+    return _filter_synced(qs, entity_type).count()
+
+
 def personnel():
     repair_employees_from_sync_store()
+    base = Employee.objects.filter(deleted_at__isnull=True)
+    scoped = _filter_synced(base, "Employees")
     rows = [
         {
             "Matricule": (e.employee_number or "").strip() or "—",
@@ -106,14 +112,33 @@ def personnel():
             "Téléphone": e.phone or "—",
             "Statut": "Actif" if e.is_active else "Inactif",
         }
-        for e in Employee.objects.filter(deleted_at__isnull=True).order_by("full_name")[:300]
+        for e in scoped.order_by("full_name")[:300]
     ]
+    if not rows:
+        rows = _rows_from_sync_store(
+            ["Employees"],
+            lambda d: {
+                "Matricule": _pick_sync_value(d, "EmployeeNumber", "employeeNumber"),
+                "Nom": _pick_sync_value(d, "FullName", "fullName", "Name", "name"),
+                "Poste": _pick_sync_value(d, "Position", "position"),
+                "Département": _pick_sync_value(d, "Department", "department"),
+                "Téléphone": _pick_sync_value(d, "Phone", "phone"),
+                "Statut": "Actif"
+                if _pick_sync_value(d, "IsActive", "isActive", default=True)
+                in (True, "true", "True", 1, "1")
+                else "Inactif",
+            },
+        )
     return _module_payload(
         "Personnel",
         rows,
         [
-            {"label": "Employés", "value": Employee.objects.filter(deleted_at__isnull=True).count()},
-            {"label": "Actifs", "value": Employee.objects.filter(deleted_at__isnull=True, is_active=True).count()},
+            {"label": "Employés", "value": scoped.count() or len(rows)},
+            {
+                "label": "Actifs",
+                "value": scoped.filter(is_active=True).count()
+                or sum(1 for r in rows if r.get("Statut") == "Actif"),
+            },
         ],
     )
 
@@ -263,6 +288,7 @@ def locations_rent_payments():
 
 
 def locations_tenants():
+    scoped = _filter_synced(Tenant.objects.filter(deleted_at__isnull=True), "Tenants")
     rows = [
         {
             "Dossier": t.dossier_number or "—",
@@ -272,7 +298,7 @@ def locations_tenants():
             "Entreprise": t.company or "—",
             "Statut": t.rental_status or "—",
         }
-        for t in Tenant.objects.filter(deleted_at__isnull=True).order_by("name")[:300]
+        for t in scoped.order_by("name")[:300]
     ]
     if not rows:
         rows = _rows_from_sync_store(
@@ -289,14 +315,15 @@ def locations_tenants():
     return _module_payload(
         "Locataires",
         rows,
-        [{"label": "Locataires", "value": Tenant.objects.filter(deleted_at__isnull=True).count()}],
+        [{"label": "Locataires", "value": scoped.count() or len(rows)}],
     )
 
 
 def locations_landlord():
+    scoped = _filter_synced(Building.objects.filter(deleted_at__isnull=True), "Buildings")
     rows = [
         {"Bâtiment": b.name, "Adresse": b.address or "—", "Ville": b.city or "—", "Étages": b.floors}
-        for b in Building.objects.filter(deleted_at__isnull=True).order_by("name")[:100]
+        for b in scoped.order_by("name")[:100]
     ]
     if not rows:
         rows = _rows_from_sync_store(
@@ -334,7 +361,7 @@ def locations_landlord():
         title,
         rows,
         [
-            {"label": "Bâtiments", "value": Building.objects.filter(deleted_at__isnull=True).count() or len(rows)},
+            {"label": "Bâtiments", "value": scoped.count() or len(rows)},
             {"label": "Bailleurs", "value": len(landlord_rows)},
         ],
     )
@@ -374,7 +401,9 @@ def locations_apartments():
 
 
 def locations_gestion():
-    summary = get_executive_summary()
+    from api.organization_context import get_request_organization_id
+
+    summary = get_executive_summary(organization_id=get_request_organization_id())
     rows = [
         {"Indicateur": "Taux occupation", "Valeur": f"{summary['occupancyRate']} %"},
         {"Indicateur": "Contrats actifs", "Valeur": summary.get("activeLeases", 0)},
@@ -410,11 +439,18 @@ def _finance_rows_from_sync_store():
 
 
 def _finance_totals_from_sync_store() -> tuple[float, float]:
+    from api.organization_context import get_request_organization_id, scope_sync_store
+
     income = 0.0
     expenses = 0.0
-    for row in SyncedEntityStore.objects.filter(
-        entity_type="FinancialTransactions", deleted_at__isnull=True
-    ).iterator():
+    org_id = get_request_organization_id()
+    qs = scope_sync_store(
+        SyncedEntityStore.objects.filter(
+            entity_type="FinancialTransactions", deleted_at__isnull=True
+        ),
+        org_id,
+    )
+    for row in qs.iterator():
         payload = row.json_data if isinstance(row.json_data, dict) else {}
         amount = float(_pick_sync_value(payload, "Amount", "amount", default=0) or 0)
         raw = _pick_sync_value(payload, "Type", "type", default=1)
@@ -440,12 +476,7 @@ def finances():
     pending_rows = [e.to_validation_dict() for e in pending]
 
     base_qs = FinancialTransaction.objects.filter(deleted_at__isnull=True)
-    if _sync_count("FinancialTransactions") > 0:
-        txs = queryset_to_deduped_list(
-            _filter_synced(base_qs, "FinancialTransactions")
-        )
-    else:
-        txs = queryset_to_deduped_list(base_qs)
+    txs = queryset_to_deduped_list(_filter_synced(base_qs, "FinancialTransactions"))
 
     ledger_rows = [
         {
@@ -520,6 +551,7 @@ def documents():
 
 
 def technique():
+    scoped = _filter_synced(Equipment.objects.filter(deleted_at__isnull=True), "Equipment")
     rows = [
         {
             "Équipement": e.name,
@@ -528,7 +560,7 @@ def technique():
             "Localisation": e.location or "—",
             "Dernière maj": _iso(e.updated_at),
         }
-        for e in Equipment.objects.filter(deleted_at__isnull=True).order_by("name")[:300]
+        for e in scoped.order_by("name")[:300]
     ]
     if not rows:
         rows = _rows_from_sync_store(
@@ -544,11 +576,12 @@ def technique():
     return _module_payload(
         "Technique & Sécurité",
         rows,
-        [{"label": "Équipements", "value": Equipment.objects.filter(deleted_at__isnull=True).count()}],
+        [{"label": "Équipements", "value": scoped.count() or len(rows)}],
     )
 
 
 def incidents():
+    scoped = _filter_synced(Incident.objects.filter(deleted_at__isnull=True), "Incidents")
     rows = [
         {
             "Code": i.code or "—",
@@ -558,7 +591,7 @@ def incidents():
             "Lieu": i.location or "—",
             "Coût": _money(i.cost),
         }
-        for i in Incident.objects.filter(deleted_at__isnull=True).order_by("-reported_at")[:300]
+        for i in scoped.order_by("-reported_at")[:300]
     ]
     if not rows:
         rows = _rows_from_sync_store(
@@ -575,11 +608,12 @@ def incidents():
     return _module_payload(
         "Incidents",
         rows,
-        [{"label": "Incidents", "value": Incident.objects.filter(deleted_at__isnull=True).count()}],
+        [{"label": "Incidents", "value": scoped.count() or len(rows)}],
     )
 
 
 def fournisseurs():
+    scoped = _filter_synced(Supplier.objects.filter(deleted_at__isnull=True), "Suppliers")
     rows = [
         {
             "Nom": s.name,
@@ -588,7 +622,7 @@ def fournisseurs():
             "Téléphone": s.phone or "—",
             "Catégorie": s.category or "—",
         }
-        for s in Supplier.objects.filter(deleted_at__isnull=True).order_by("name")[:300]
+        for s in scoped.order_by("name")[:300]
     ]
     if not rows:
         rows = _rows_from_sync_store(
@@ -604,11 +638,14 @@ def fournisseurs():
     return _module_payload(
         "Fournisseurs",
         rows,
-        [{"label": "Fournisseurs", "value": Supplier.objects.filter(deleted_at__isnull=True).count()}],
+        [{"label": "Fournisseurs", "value": scoped.count() or len(rows)}],
     )
 
 
 def consommations():
+    scoped = _filter_synced(
+        ConsumptionRecord.objects.filter(deleted_at__isnull=True), "ConsumptionRecords"
+    )
     rows = [
         {
             "Type": c.consumption_type or "—",
@@ -617,7 +654,7 @@ def consommations():
             "Quantité": c.quantity,
             "Coût": _money(c.cost),
         }
-        for c in ConsumptionRecord.objects.filter(deleted_at__isnull=True).order_by("-period_end")[:300]
+        for c in scoped.order_by("-period_end")[:300]
     ]
     if not rows:
         rows = _rows_from_sync_store(
@@ -630,18 +667,19 @@ def consommations():
                 "Coût": _money(_pick_sync_value(d, "Cost", "cost", default=0)),
             },
         )
-    total_cost = ConsumptionRecord.objects.filter(deleted_at__isnull=True).aggregate(t=Sum("cost"))["t"] or 0
+    total_cost = scoped.aggregate(t=Sum("cost"))["t"] or 0
     return _module_payload(
         "Consommations",
         rows,
         [
-            {"label": "Relevés", "value": ConsumptionRecord.objects.filter(deleted_at__isnull=True).count()},
+            {"label": "Relevés", "value": scoped.count() or len(rows)},
             {"label": "Coût total", "value": _money(total_cost)},
         ],
     )
 
 
 def visites():
+    scoped = _filter_synced(Visitor.objects.filter(deleted_at__isnull=True), "Visitors")
     rows = [
         {
             "Visiteur": v.full_name,
@@ -650,7 +688,7 @@ def visites():
             "Entrée": _iso(v.check_in_at),
             "Sortie": _iso(v.check_out_at),
         }
-        for v in Visitor.objects.filter(deleted_at__isnull=True).order_by("-check_in_at")[:300]
+        for v in scoped.order_by("-check_in_at")[:300]
     ]
     if not rows:
         rows = _rows_from_sync_store(
@@ -663,12 +701,12 @@ def visites():
                 "Sortie": _pick_sync_value(d, "CheckOutAt", "checkOutAt"),
             },
         )
-    on_site = Visitor.objects.filter(deleted_at__isnull=True, check_out_at__isnull=True).count()
+    on_site = scoped.filter(check_out_at__isnull=True).count()
     return _module_payload(
         "Visites & Accès",
         rows,
         [
-            {"label": "Visiteurs", "value": Visitor.objects.filter(deleted_at__isnull=True).count()},
+            {"label": "Visiteurs", "value": scoped.count() or len(rows)},
             {"label": "Sur site", "value": on_site},
         ],
     )

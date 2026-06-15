@@ -144,10 +144,11 @@ class OrganizationApiTests(TestCase):
         self.assertEqual(summary_b["totalTenants"], 1)
 
     def test_dashboard_uses_orm_when_sync_not_tagged_for_org(self):
-        """Les onglets lisent l'ORM complet ; le dashboard doit faire de même sans sync tagué."""
+        """Organisation par défaut : ORM hérité sans tag sync."""
         from decimal import Decimal
 
         from api.models import RentPayment, Tenant
+        from api.organization_context import get_default_organization
         from api.services.dashboard import get_executive_summary
 
         Tenant.objects.create(
@@ -162,6 +163,27 @@ class OrganizationApiTests(TestCase):
             amount_paid=Decimal("500"),
             is_late=False,
         )
-        summary = get_executive_summary(organization_id=self.org_a.id)
+        default_org = get_default_organization()
+        summary = get_executive_summary(organization_id=default_org.id)
         self.assertGreaterEqual(summary["totalTenants"], 1)
         self.assertGreater(summary["rentCollectedTotal"], 0)
+
+    def test_empty_tenant_shows_no_data_when_other_org_has_sync(self):
+        from api.services.dashboard import get_executive_summary
+        from api.sync.registry import apply_push
+
+        apply_push(
+            "Tenants",
+            [
+                {
+                    "id": str(uuid.uuid4()),
+                    "updatedAt": "2026-06-15T10:00:00+00:00",
+                    "jsonData": '{"Name": "Seul Org A"}',
+                }
+            ],
+            organization_id=self.org_a.id,
+        )
+        summary_empty = get_executive_summary(organization_id=self.org_b.id)
+        summary_a = get_executive_summary(organization_id=self.org_a.id)
+        self.assertEqual(summary_empty["totalTenants"], 0)
+        self.assertEqual(summary_a["totalTenants"], 1)

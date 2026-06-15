@@ -27,7 +27,9 @@ from api.models import (
     Visitor,
 )
 from api.permission_codes import ALL_PERMISSION_CODES, permissions_for_role
+from api.module_data_utils import pick_sync_value, rows_from_sync_store
 from api.services.dashboard import get_executive_overview, get_sync_health
+from api.services.sync_metrics import filter_to_synced
 from api.services.sync_metrics import (
     calendar_month_starts,
     expenses_month_totals,
@@ -192,7 +194,11 @@ def load_dashboard_page(organization_id=None) -> dict:
         for m in summary.get("recentMovements") or []
     ]
 
-    tenants = list(Tenant.objects.filter(deleted_at__isnull=True).order_by("name")[:100])
+    tenants = list(
+        filter_to_synced(
+            Tenant.objects.filter(deleted_at__isnull=True), "Tenants", organization_id
+        ).order_by("name")[:100]
+    )
     tenant_rows = [
         {
             "ID": str(t.id),
@@ -208,6 +214,24 @@ def load_dashboard_page(organization_id=None) -> dict:
         }
         for t in tenants
     ]
+    if not tenant_rows:
+        tenant_rows = rows_from_sync_store(
+            ["Tenants"],
+            lambda d: {
+                "ID": str(pick_sync_value(d, "Id", "id", default="")),
+                "Nom": _full_text(pick_sync_value(d, "Name", "name")),
+                "Email": _full_text(pick_sync_value(d, "Email", "email")),
+                "Téléphone": _full_text(pick_sync_value(d, "Phone", "phone")),
+                "Société": _full_text(pick_sync_value(d, "Company", "company")),
+                "N° dossier": _full_text(pick_sync_value(d, "DossierNumber", "dossierNumber")),
+                "Statut location": _full_text(pick_sync_value(d, "RentalStatus", "rentalStatus")),
+                "Catégorie": _full_text(pick_sync_value(d, "TenantCategory", "tenantCategory")),
+                "Créé le": "—",
+                "Modifié le": "—",
+            },
+            limit=100,
+            organization_id=organization_id,
+        )
 
     treasury = float(summary.get("availableBalance") or summary.get("netBalance") or 0)
     explanations = [
