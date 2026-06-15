@@ -3,14 +3,16 @@
 import uuid
 from datetime import date
 from decimal import Decimal
+from unittest.mock import patch
 
 from django.test import TestCase
 from django.utils import timezone
 
-from api.models import FinancialTransaction, Premise, RentPayment, SyncedEntityStore
+from api.models import FinancialTransaction, Premise, RentPayment, SyncedEntityStore, User
 from api.services.dashboard import get_executive_summary
 from api.services.sync_metrics import (
     calendar_month_starts,
+    ensure_dashboard_orm_materialized,
     rent_from_orm,
     rent_month_totals,
     revenue_chart_from_orm,
@@ -202,3 +204,57 @@ class DashboardSyncAlignmentTests(TestCase):
                 )
         collected, _, _, _ = rent_month_totals(today.year, today.month)
         self.assertEqual(collected, Decimal("10000"))
+
+    def test_ensure_dashboard_skips_rebuild_when_orm_matches_sync(self):
+        pay_id = uuid.uuid4()
+        SyncedEntityStore.objects.create(
+            id=pay_id,
+            entity_type="RentPayments",
+            json_data={"Year": 2026, "Month": 6, "AmountDue": 100, "AmountPaid": 100},
+            updated_at=timezone.now(),
+        )
+        RentPayment.objects.create(
+            id=pay_id,
+            year=2026,
+            month=6,
+            amount_due=Decimal("100"),
+            amount_paid=Decimal("100"),
+        )
+        with patch("api.sync.registry.rematerialize_entity_type") as mock_rebuild:
+            rebuilt = ensure_dashboard_orm_materialized()
+        mock_rebuild.assert_not_called()
+        self.assertEqual(rebuilt, 0)
+
+    def test_ensure_dashboard_rebuilds_only_mismatched_entity_types(self):
+        pay_id = uuid.uuid4()
+        SyncedEntityStore.objects.create(
+            id=pay_id,
+            entity_type="RentPayments",
+            json_data={"Year": 2026, "Month": 6, "AmountDue": 100, "AmountPaid": 100},
+            updated_at=timezone.now(),
+        )
+        with patch("api.sync.registry.rematerialize_entity_type", return_value=1) as mock_rebuild:
+            rebuilt = ensure_dashboard_orm_materialized()
+        mock_rebuild.assert_called_once_with("RentPayments")
+        self.assertEqual(rebuilt, 1)
+
+
+class DashboardModuleApiTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="admin",
+            password="Admin@2026",
+            role=User.Role.ADMIN,
+            full_name="Administrateur",
+        )
+        self.user.is_staff = True
+        self.user.save()
+
+    def test_dashboard_module_returns_json_envelope(self):
+        self.client.force_login(self.user)
+        res = self.client.get("/api/executive/modules/dashboard/")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res["Content-Type"], "application/json")
+        body = res.json()
+        self.assertTrue(body["success"])
+        self.assertIn("summary", body["data"])

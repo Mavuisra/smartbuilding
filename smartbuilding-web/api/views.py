@@ -558,26 +558,33 @@ class ExecutiveModuleDataView(APIView):
             return api_fail("Module non disponible sur le portail web.", status=403)
         if not can_access_module(request.user.role, slug):
             return api_fail("Accès refusé à ce module.", status=403)
-        from api.services.sync_metrics import ensure_dashboard_orm_materialized
 
-        ensure_dashboard_orm_materialized()
-        handler = get_module_handler(slug)
-        if handler is None:
-            return api_fail(f"Module inconnu : {slug}", status=404)
+        try:
+            from api.services.sync_metrics import ensure_dashboard_orm_materialized
 
-        if slug == "rapports":
-            df = request.query_params.get("dateFrom")
-            dt = request.query_params.get("dateTo")
-            date_from = date_cls.fromisoformat(df) if df else None
-            date_to = date_cls.fromisoformat(dt) if dt else None
-            return api_ok(handler(date_from=date_from, date_to=date_to))
+            ensure_dashboard_orm_materialized()
+            handler = get_module_handler(slug)
+            if handler is None:
+                return api_fail(f"Module inconnu : {slug}", status=404)
 
-        if slug == "utilisateurs":
-            from api.services.web_desktop_modules import load_users
+            if slug == "rapports":
+                df = request.query_params.get("dateFrom")
+                dt = request.query_params.get("dateTo")
+                date_from = date_cls.fromisoformat(df) if df else None
+                date_to = date_cls.fromisoformat(dt) if dt else None
+                return api_ok(handler(date_from=date_from, date_to=date_to))
 
-            return api_ok(load_users(current_username=getattr(request.user, "username", None)))
+            if slug == "utilisateurs":
+                from api.services.web_desktop_modules import load_users
 
-        return api_ok(handler())
+                return api_ok(load_users(current_username=getattr(request.user, "username", None)))
+
+            return api_ok(handler())
+        except Exception as ex:
+            import logging
+
+            logging.getLogger(__name__).exception("executive/modules/%s", slug)
+            return api_fail(f"Erreur module {slug} : {ex}", status=500)
 
 
 class ExecutiveNavigationView(APIView):

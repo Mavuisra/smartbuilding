@@ -86,13 +86,18 @@ Sbms.apiFetch = async (path, options = {}) => {
   });
 
   const contentType = res.headers.get('Content-Type') || '';
+  const rawBody = await res.text();
   let json = null;
-  if (contentType.includes('application/json')) {
-    json = await res.json();
-  } else {
-    const text = await res.text();
+  if (contentType.includes('application/json') || rawBody.trim().startsWith('{')) {
+    try {
+      json = rawBody ? JSON.parse(rawBody) : null;
+    } catch (_) {
+      json = null;
+    }
+  }
+  if (json === null) {
     throw new Error(
-      text ? `Réponse serveur invalide (${res.status})` : `Erreur HTTP ${res.status}`
+      rawBody ? `Réponse serveur invalide (${res.status})` : `Erreur HTTP ${res.status}`
     );
   }
 

@@ -275,7 +275,7 @@ def get_executive_overview() -> dict:
         "recentActivities": recent_activities[:10],
         "notifications": [
             {
-                "id": n["id"],
+                "id": str(n["id"]),
                 "title": n["title"],
                 "message": n["message"],
                 "severity": n["severity"],

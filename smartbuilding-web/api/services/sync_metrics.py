@@ -505,19 +505,19 @@ DASHBOARD_ENTITY_TYPES = (
 
 
 def ensure_dashboard_orm_materialized() -> int:
-    """Rejoue les matérialiseurs si le magasin sync est en avance sur l'ORM."""
+    """Rejoue les matérialiseurs uniquement si l'ORM est en retard sur le magasin sync."""
     from api.services.diagnostics import get_data_pipeline_diagnostics
     from api.sync.registry import rematerialize_entity_type
 
     diag = get_data_pipeline_diagnostics()
-    rebuilt = 0
-    targets = list(DASHBOARD_ENTITY_TYPES)
-    if diag.get("syncStoreTotal", 0) > 0:
-        for et in targets:
-            if sync_store_count(et) > 0:
-                rebuilt += rematerialize_entity_type(et)
+    targets = set(DASHBOARD_ENTITY_TYPES)
+    to_rebuild: set[str] = set()
     for item in diag.get("mismatches") or []:
         et = item.get("entityType")
         if et in targets:
-            rebuilt += rematerialize_entity_type(et)
+            to_rebuild.add(et)
+
+    rebuilt = 0
+    for et in to_rebuild:
+        rebuilt += rematerialize_entity_type(et)
     return rebuilt
