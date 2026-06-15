@@ -44,8 +44,11 @@ def _ensure_org_users_materialized(organization_id) -> None:
     """Matérialise les comptes Users du tenant avant affichage du module."""
     if not organization_id:
         return
+    from api.services.cloud_login import repair_organization_user_sync_links
     from api.sync.materializers import materialize_user
     from api.sync.utils import inject_entity_id
+
+    repair_organization_user_sync_links(organization_id)
 
     stores = SyncedEntityStore.objects.filter(
         entity_type="Users",
@@ -740,8 +743,13 @@ def load_user_detail(user_id: str) -> dict | None:
     }
 
 
-def load_sync_page() -> dict:
-    health = get_sync_health(window_hours=168)
+def load_sync_page(organization_id=None) -> dict:
+    from api.organization_context import get_request_organization_id, scope_sync_events
+
+    if organization_id is None:
+        organization_id = get_request_organization_id()
+
+    health = get_sync_health(window_hours=168, organization_id=organization_id)
     info = database_info()
 
     entity_types = [
@@ -751,11 +759,15 @@ def load_sync_page() -> dict:
     data_types = []
     total_store = 0
     for et in entity_types:
-        count = sync_store_count(et)
+        count = sync_store_count(et, organization_id)
         total_store += count
         data_types.append({"name": et, "synced": count, "total": count, "isComplete": True})
 
-    events = list(ServerSyncEvent.objects.order_by("-created_at")[:200])
+    events = list(
+        scope_sync_events(ServerSyncEvent.objects.all(), organization_id).order_by(
+            "-created_at"
+        )[:200]
+    )
     history = []
     history_table_rows = []
     for e in events:
@@ -835,7 +847,7 @@ def load_sync_page() -> dict:
                 "timeLabel": "Maintenant",
             }
         ],
-        "last7DaysCounts": _last7_sync_counts(),
+        "last7DaysCounts": _last7_sync_counts(organization_id),
         "lastSyncError": failed[0].error_message if failed else None,
         "autoSyncEnabled": True,
         "autoSyncStatusLabel": "Active (desktop)",
@@ -845,23 +857,36 @@ def load_sync_page() -> dict:
     }
 
 
-def _last7_sync_counts() -> list[int]:
+def _last7_sync_counts(organization_id=None) -> list[int]:
+    from api.organization_context import get_request_organization_id, scope_sync_events
+
+    if organization_id is None:
+        organization_id = get_request_organization_id()
+
     today = timezone.localdate()
     out = []
     for i in range(6, -1, -1):
         d = today - timedelta(days=i)
         start = timezone.make_aware(datetime.combine(d, datetime.min.time()))
         end = timezone.make_aware(datetime.combine(d, datetime.max.time()))
-        out.append(
-            ServerSyncEvent.objects.filter(created_at__gte=start, created_at__lte=end).count()
-        )
+        qs = scope_sync_events(ServerSyncEvent.objects.all(), organization_id)
+        out.append(qs.filter(created_at__gte=start, created_at__lte=end).count())
     return out
 
 
-def load_activity_log() -> dict:
+def load_activity_log(organization_id=None) -> dict:
+    from api.organization_context import get_request_organization_id, scope_sync_events
+
+    if organization_id is None:
+        organization_id = get_request_organization_id()
+
     today = timezone.localdate()
     range_start = today - timedelta(days=3)
-    events = list(ServerSyncEvent.objects.order_by("-created_at")[:500])
+    events = list(
+        scope_sync_events(ServerSyncEvent.objects.all(), organization_id).order_by(
+            "-created_at"
+        )[:500]
+    )
 
     activities = []
     for e in events:
@@ -921,7 +946,7 @@ def load_activity_log() -> dict:
         "securityAlertsTrend": "—",
         "systemErrorsTrend": _trend(count_type(today_items, "Erreur"), count_type(yesterday_items, "Erreur")),
         "syncTrend": _trend(count_type(today_items, "Synchronisation"), count_type(yesterday_items, "Synchronisation")),
-        "activitiesSparkline": _last7_sync_counts(),
+        "activitiesSparkline": _last7_sync_counts(organization_id),
         "activities": activities,
         "tableRows": [
             {
@@ -951,9 +976,14 @@ def load_activity_log() -> dict:
     }
 
 
-def load_settings_page() -> dict:
+def load_settings_page(organization_id=None) -> dict:
+    from api.organization_context import get_request_organization_id, scope_sync_store
+
+    if organization_id is None:
+        organization_id = get_request_organization_id()
+
     info = database_info()
-    health = get_sync_health()
+    health = get_sync_health(organization_id=organization_id)
     categories = [
         {"id": "general", "label": "Général", "icon": "tune"},
         {"id": "buildings", "label": "Société & bailleur", "icon": "domain"},
@@ -966,9 +996,13 @@ def load_settings_page() -> dict:
         {"id": "logs", "label": "Logs système", "icon": "journal-text"},
         {"id": "about", "label": "À propos", "icon": "info-circle"},
     ]
-    building = Building.objects.filter(deleted_at__isnull=True).first()
+    building = filter_to_synced(
+        Building.objects.filter(deleted_at__isnull=True), "Buildings", organization_id
+    ).first()
     sync_entities = list(
-        SyncedEntityStore.objects.order_by("-updated_at")[:300]
+        scope_sync_store(
+            SyncedEntityStore.objects.filter(deleted_at__isnull=True), organization_id
+        ).order_by("-updated_at")[:300]
     )
     sync_table_rows = [
         {
@@ -1003,18 +1037,46 @@ def load_settings_page() -> dict:
         "databasePathDisplay": info.get("name", "—"),
         "environmentName": "Production (Render)" if info.get("isRender") else "Développement",
         "appVersion": "SBMS Web 1.0",
-        "activeUsersDisplay": str(User.objects.filter(deleted_at__isnull=True, is_active=True).count()),
+        "activeUsersDisplay": str(
+            _scoped_users_qs(organization_id).filter(is_active=True).count()
+        ),
         "rolesDisplay": str(len(User.Role.choices)),
         "syncKpiLabel": f"{health.get('successRate', 100)} %",
         "syncKpiSub": "Taux succès sync (24h)",
         "securityKpiLabel": "JWT",
         "securityKpiSub": "Authentification active",
         "stats": [
-            {"label": "Entités sync", "value": SyncedEntityStore.objects.count()},
-            {"label": "Utilisateurs", "value": User.objects.filter(deleted_at__isnull=True).count()},
-            {"label": "Locataires", "value": Tenant.objects.filter(deleted_at__isnull=True).count()},
-            {"label": "Contrats", "value": LeaseContract.objects.filter(deleted_at__isnull=True).count()},
-            {"label": "Locaux", "value": Premise.objects.filter(deleted_at__isnull=True).count()},
+            {
+                "label": "Entités sync",
+                "value": scope_sync_store(
+                    SyncedEntityStore.objects.filter(deleted_at__isnull=True),
+                    organization_id,
+                ).count(),
+            },
+            {
+                "label": "Utilisateurs",
+                "value": _scoped_users_qs(organization_id).count(),
+            },
+            {
+                "label": "Locataires",
+                "value": filter_to_synced(
+                    Tenant.objects.filter(deleted_at__isnull=True), "Tenants", organization_id
+                ).count(),
+            },
+            {
+                "label": "Contrats",
+                "value": filter_to_synced(
+                    LeaseContract.objects.filter(deleted_at__isnull=True),
+                    "LeaseContracts",
+                    organization_id,
+                ).count(),
+            },
+            {
+                "label": "Locaux",
+                "value": filter_to_synced(
+                    Premise.objects.filter(deleted_at__isnull=True), "Premises", organization_id
+                ).count(),
+            },
         ],
         "canResetDatabase": True,
         "resetConfirmPhrase": "REINITIALISER SBMS",
@@ -1063,13 +1125,27 @@ def _file_type_label(mime: str, file_name: str) -> str:
     return "Fichier"
 
 
-def load_documents_page() -> dict:
+def load_documents_page(organization_id=None) -> dict:
+    from api.organization_context import DEFAULT_ORG_ID, get_request_organization_id
+
+    if organization_id is None:
+        organization_id = get_request_organization_id()
+
     today = timezone.localdate()
     week_start = today - timedelta(days=7)
     month_start = today.replace(day=1)
     prev_month_start = (month_start - timedelta(days=1)).replace(day=1)
 
-    docs = list(SyncedDocument.objects.order_by("-updated_at")[:2000])
+    docs_qs = SyncedDocument.objects.all()
+    if organization_id is not None:
+        if organization_id == DEFAULT_ORG_ID:
+            docs_qs = docs_qs.filter(
+                Q(organization_id=organization_id) | Q(organization_id__isnull=True)
+            )
+        else:
+            docs_qs = docs_qs.filter(organization_id=organization_id)
+
+    docs = list(docs_qs.order_by("-updated_at")[:2000])
     total_bytes = sum(d.file_size for d in docs)
 
     recent = sum(1 for d in docs if d.updated_at.date() >= week_start)

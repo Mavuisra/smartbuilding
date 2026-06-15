@@ -545,9 +545,10 @@ def dashboard(organization_id=None):
 
 
 def documents():
+    from api.organization_context import get_request_organization_id
     from api.services.web_desktop_modules import load_documents_page
 
-    return load_documents_page()
+    return load_documents_page(organization_id=get_request_organization_id())
 
 
 def technique():
@@ -731,7 +732,10 @@ def emails():
 
 
 def supervision():
-    summary = get_executive_summary()
+    from api.organization_context import get_request_organization_id
+
+    org_id = get_request_organization_id()
+    summary = get_executive_summary(organization_id=org_id)
     rows = [
         {"Indicateur": "Revenus loyers (total)", "Valeur": _money(summary.get("rentCollectedTotal", summary["monthlyRevenue"])), "Statut": "Suivi"},
         {"Indicateur": "Dépenses engagées (total)", "Valeur": _money(summary.get("totalExpenses", summary["monthlyExpenses"])), "Statut": "À contrôler"},
@@ -742,9 +746,11 @@ def supervision():
 
 
 def validations():
+    from api.organization_context import get_request_organization_id
     from api.services.finance_pdg import collect_pending_expenses, pending_validation_summary
 
-    pending = collect_pending_expenses()
+    org_id = get_request_organization_id()
+    pending = collect_pending_expenses(organization_id=org_id)
     summary = pending_validation_summary(pending)
     rows = [e.to_validation_dict() for e in pending]
     return _module_payload(
@@ -760,9 +766,10 @@ def validations():
 
 
 def activities():
+    from api.organization_context import get_request_organization_id
     from api.services.web_desktop_modules import load_activity_log
 
-    return load_activity_log()
+    return load_activity_log(organization_id=get_request_organization_id())
 
 
 def users(organization_id=None):
@@ -778,21 +785,27 @@ def reports(date_from=None, date_to=None, organization_id=None):
 
 
 def sync_module():
+    from api.organization_context import get_request_organization_id
     from api.services.web_desktop_modules import load_sync_page
 
-    return load_sync_page()
+    return load_sync_page(organization_id=get_request_organization_id())
 
 
 def settings_module():
+    from api.organization_context import get_request_organization_id
     from api.services.web_desktop_modules import load_settings_page
 
-    return load_settings_page()
+    return load_settings_page(organization_id=get_request_organization_id())
 
 
 def audit():
+    from api.organization_context import get_request_organization_id, scope_sync_events
+
+    org_id = get_request_organization_id()
+    event_count = scope_sync_events(ServerSyncEvent.objects.all(), org_id).count()
     rows = [
         {"Contrôle": "Authentification JWT", "Statut": "Active", "Détail": "API protégée"},
         {"Contrôle": "Rôles desktop", "Statut": "Alignés", "Détail": "PermissionCodes partagés"},
-        {"Contrôle": "Journal sync", "Statut": "Actif", "Détail": f"{ServerSyncEvent.objects.count()} événements"},
+        {"Contrôle": "Journal sync", "Statut": "Actif", "Détail": f"{event_count} événements"},
     ]
     return _module_payload("Audit & Sécurité", rows)

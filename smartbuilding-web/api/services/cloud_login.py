@@ -139,6 +139,123 @@ def repair_orphan_user_sync_links(username: str) -> int:
     )
 
 
+def _usernames_tagged_to_other_orgs(organization_id) -> set[str]:
+    """Noms d'utilisateur déjà rattachés à un autre tenant."""
+    foreign: set[str] = set()
+    for row in (
+        SyncedEntityStore.objects.filter(entity_type="Users", deleted_at__isnull=True)
+        .exclude(organization_id__isnull=True)
+        .exclude(organization_id=organization_id)
+        .only("json_data")
+    ):
+        un = _username_from_sync_payload(row.json_data).lower()
+        if un:
+            foreign.add(un)
+    return foreign
+
+
+def _infer_org_from_users_push_proximity(row) -> UUID | None:
+    """Déduit le tenant d'une entrée Users orpheline via le journal sync (push Users)."""
+    from api.models import ServerSyncEvent
+
+    row_ts = row.updated_at or row.created_at
+    if not row_ts:
+        return None
+
+    best_org = None
+    best_delta = None
+    for ev in (
+        ServerSyncEvent.objects.filter(entity_type="Users", success=True)
+        .exclude(organization_id__isnull=True)
+        .order_by("-created_at")[:200]
+    ):
+        delta = abs((ev.created_at - row_ts).total_seconds())
+        if best_delta is None or delta < best_delta:
+            best_delta = delta
+            best_org = ev.organization_id
+
+    if best_org and best_delta is not None and best_delta <= 7200:
+        return best_org
+    return None
+
+
+def _org_id_from_users_push_events(username: str) -> UUID | None:
+    """Tenant où cet utilisateur a poussé des Users (journal sync)."""
+    from api.models import ServerSyncEvent
+
+    org_ids = list(
+        ServerSyncEvent.objects.filter(
+            entity_type="Users",
+            username__iexact=username,
+            success=True,
+        )
+        .exclude(organization_id__isnull=True)
+        .values_list("organization_id", flat=True)
+        .distinct()
+    )
+    if len(org_ids) == 1:
+        return org_ids[0]
+    return None
+
+
+def _should_claim_orphan_user_for_org(row, organization_id, foreign_usernames: set[str]) -> bool:
+    """True si l'entrée Users orpheline peut être rattachée au tenant consulté."""
+    from api.models import Organization
+
+    un = _username_from_sync_payload(row.json_data).lower()
+    if not un or un in foreign_usernames:
+        return False
+
+    org = Organization.objects.filter(
+        id=organization_id, deleted_at__isnull=True, is_active=True
+    ).first()
+    if not org:
+        return False
+
+    if org.created_by_username and org.created_by_username.strip().lower() == un:
+        return True
+
+    if infer_organization_id_for_username(un) == organization_id:
+        return True
+
+    if _org_id_from_users_push_events(un) == organization_id:
+        return True
+
+    if _infer_org_from_users_push_proximity(row) == organization_id:
+        return True
+
+    return False
+
+
+def repair_organization_user_sync_links(organization_id) -> int:
+    """
+    Rattache les entrées Users sync orphelines au tenant consulté (module Utilisateurs).
+    N'affecte pas les usernames déjà assignés à un autre tenant.
+    """
+    if not organization_id:
+        return 0
+
+    foreign = _usernames_tagged_to_other_orgs(organization_id)
+    updated = 0
+
+    orphans = SyncedEntityStore.objects.filter(
+        entity_type="Users",
+        organization_id__isnull=True,
+        deleted_at__isnull=True,
+    )
+    for row in orphans.iterator():
+        if not _should_claim_orphan_user_for_org(row, organization_id, foreign):
+            continue
+        un = _username_from_sync_payload(row.json_data).lower()
+        row.organization_id = organization_id
+        row.save(update_fields=["organization_id"])
+        if un:
+            foreign.add(un)
+        updated += 1
+
+    return updated
+
+
 def ensure_user_tenant_membership(user: User) -> None:
     """Garantit le lien utilisateur ↔ tenant(s) avant d'émettre le JWT."""
     username = (getattr(user, "username", "") or "").strip()

@@ -137,3 +137,65 @@ class StandardTenantMembershipTests(TestCase):
         self.assertEqual(len(sections_b.get("Loyers", [])), 0)
         self.assertEqual(rapports_a["financierSummary"]["loyersEncaisses"], 0.0)
         self.assertEqual(rapports_b["financierSummary"]["loyersEncaisses"], 0.0)
+
+    def test_load_users_repairs_orphan_sync_users_for_tenant(self):
+        from api.services.web_desktop_modules import load_users
+
+        org = self._create_org("Immeuble Delta", "sbms_delta")
+        self._store_user(org, "gestionnaire_delta", "Pass@2026", tag_organization=False)
+        SyncedEntityStore.objects.create(
+            id=uuid.uuid4(),
+            entity_type="Tenants",
+            organization_id=org.id,
+            json_data={"Name": "Locataire delta"},
+        )
+
+        data = load_users(organization_id=org.id)
+        self.assertEqual(data["totalCount"], 1)
+        self.assertEqual(data["users"][0]["username"], "gestionnaire_delta")
+        self.assertTrue(
+            SyncedEntityStore.objects.filter(
+                entity_type="Users",
+                organization_id=org.id,
+                json_data__Username="gestionnaire_delta",
+            ).exists()
+        )
+
+    def test_load_users_isolated_across_orphan_tenants(self):
+        from api.models import ServerSyncEvent
+        from api.services.web_desktop_modules import load_users
+
+        org_a = self._create_org("Tenant Orphan A", "sbms_orphan_a")
+        org_b = self._create_org("Tenant Orphan B", "sbms_orphan_b")
+        org_a.created_by_username = "admin_orphan_a"
+        org_a.save(update_fields=["created_by_username"])
+        org_b.created_by_username = "admin_orphan_b"
+        org_b.save(update_fields=["created_by_username"])
+        self._store_user(org_a, "admin_orphan_a", "Pass@2026", tag_organization=False)
+        self._store_user(org_b, "admin_orphan_b", "Pass@2026", tag_organization=False)
+        SyncedEntityStore.objects.create(
+            id=uuid.uuid4(),
+            entity_type="Tenants",
+            organization_id=org_a.id,
+            json_data={"Name": "Locataire A"},
+        )
+        SyncedEntityStore.objects.create(
+            id=uuid.uuid4(),
+            entity_type="Tenants",
+            organization_id=org_b.id,
+            json_data={"Name": "Locataire B"},
+        )
+        ServerSyncEvent.objects.create(
+            entity_type="Users",
+            organization_id=org_b.id,
+            username="admin_orphan_b",
+            success=True,
+            records_count=2,
+        )
+
+        users_a = load_users(organization_id=org_a.id)
+        users_b = load_users(organization_id=org_b.id)
+        self.assertEqual(users_a["totalCount"], 1)
+        self.assertEqual(users_b["totalCount"], 1)
+        self.assertEqual(users_a["users"][0]["username"], "admin_orphan_a")
+        self.assertEqual(users_b["users"][0]["username"], "admin_orphan_b")

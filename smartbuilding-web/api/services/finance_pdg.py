@@ -144,17 +144,24 @@ def _expense_from_sync(payload: dict, entity_id: UUID) -> ExpenseRow | None:
     )
 
 
-def collect_pending_expenses(limit: int = 200) -> list[ExpenseRow]:
+def collect_pending_expenses(limit: int = 200, organization_id=None) -> list[ExpenseRow]:
     """Dépenses non validées — ORM prioritaire, complété par le magasin sync."""
+    from api.organization_context import get_request_organization_id, scope_sync_store
+    from api.services.sync_metrics import filter_to_synced
+
+    if organization_id is None:
+        organization_id = get_request_organization_id()
+
     seen: set[str] = set()
     rows: list[ExpenseRow] = []
 
-    orm_qs = (
+    orm_qs = filter_to_synced(
         FinancialTransaction.objects.filter(
             deleted_at__isnull=True,
             type=FinancialTransaction.TxType.DEPENSE,
-        )
-        .order_by("-transaction_date", "-updated_at")
+        ).order_by("-transaction_date", "-updated_at"),
+        "FinancialTransactions",
+        organization_id,
     )
     for tx in orm_qs[: limit * 2]:
         if not is_pending_expense(tx.status or "", tx.requires_pdg_approval):
@@ -167,12 +174,13 @@ def collect_pending_expenses(limit: int = 200) -> list[ExpenseRow]:
         if len(rows) >= limit:
             return rows
 
-    for store in (
+    store_qs = scope_sync_store(
         SyncedEntityStore.objects.filter(
             entity_type="FinancialTransactions", deleted_at__isnull=True
-        )
-        .order_by("-updated_at")[: limit * 3]
-    ):
+        ),
+        organization_id,
+    )
+    for store in store_qs.order_by("-updated_at")[: limit * 3]:
         payload = store.json_data if isinstance(store.json_data, dict) else {}
         parsed = _expense_from_sync(payload, store.id)
         if parsed is None or parsed.id in seen:
