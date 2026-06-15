@@ -50,6 +50,7 @@ from api.serializers import (
 )
 from api.module_handlers import get_module_handler
 from api.permission_codes import permissions_for_role
+from api.services.cloud_login import resolve_cloud_login_user
 from api.services.dashboard import get_executive_overview, get_executive_summary, get_sync_health
 from api.services.notifications import (
     maybe_notify_sync_push,
@@ -245,13 +246,7 @@ class LoginView(APIView):
             return user
 
         return (
-            User.objects.filter(
-                username__iexact=normalized,
-                is_active=True,
-                deleted_at__isnull=True,
-            )
-            .order_by("-updated_at")
-            .first()
+            resolve_cloud_login_user(normalized)
         )
 
     def post(self, request):

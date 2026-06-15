@@ -100,7 +100,10 @@ def materialize_user(data: dict):
         roles = ["", "Administrateur", "Comptable", "Technique", "Gestionnaire", "Réceptionniste"]
         user.role = roles[role] if role < len(roles) else User.Role.GESTIONNAIRE
     elif role:
-        user.role = str(role)
+        role_str = str(role)
+        if role_str == "Receptionniste":
+            role_str = User.Role.RECEPTIONNISTE
+        user.role = role_str
 
     if username.lower() in ("admin", "admini", "admin2"):
         user.role = User.Role.ADMIN

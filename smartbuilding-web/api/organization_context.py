@@ -185,7 +185,7 @@ def resolve_user_organizations(user) -> list[Organization]:
     Organisations visibles pour l'utilisateur.
     Jessica (super admin) : toutes. Autres : uniquement le(s) tenant(s) sync où ils existent.
     """
-    from api.models import SyncedEntityStore
+    from api.services.cloud_login import sync_store_organization_ids_for_user
 
     if not user or not getattr(user, "is_authenticated", False):
         return []
@@ -195,15 +195,7 @@ def resolve_user_organizations(user) -> list[Organization]:
             Organization.objects.filter(deleted_at__isnull=True, is_active=True).order_by("name")
         )
 
-    org_ids = (
-        SyncedEntityStore.objects.filter(
-            entity_type="Users",
-            id=user.id,
-            deleted_at__isnull=True,
-        )
-        .values_list("organization_id", flat=True)
-        .distinct()
-    )
+    org_ids = sync_store_organization_ids_for_user(user)
 
     orgs = list(
         Organization.objects.filter(
