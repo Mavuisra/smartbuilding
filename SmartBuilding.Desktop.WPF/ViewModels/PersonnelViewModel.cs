@@ -526,7 +526,7 @@ public partial class PersonnelViewModel : BaseViewModel
 
     private Employee BuildEmployeeFromForm() => new()
     {
-        Id = EditingEmployeeId,
+        Id = IsEditingEmployee ? EditingEmployeeId : Guid.NewGuid(),
         Matricule = FormMatricule,
         FirstName = FormFirstName,
         LastName = FormLastName,
@@ -560,8 +560,7 @@ public partial class PersonnelViewModel : BaseViewModel
     {
         IsEmployeeEditorOpen = false;
         IsAddFormOpen = false;
-        IsEditingEmployee = false;
-        FormError = null;
+        ResetEmployeeFormState(forCreate: true);
     }
 
     partial void OnIsEditingEmployeeChanged(bool value)
@@ -714,7 +713,7 @@ public partial class PersonnelViewModel : BaseViewModel
     [RelayCommand]
     private async Task AddEmployeeAsync()
     {
-        FormError = null;
+        ResetEmployeeFormState(forCreate: true);
         FormMatricule = await _personnelService.GenerateNextMatriculeAsync();
         FormFirstName = string.Empty;
         FormLastName = string.Empty;
@@ -728,11 +727,21 @@ public partial class PersonnelViewModel : BaseViewModel
         IsAddFormOpen = true;
     }
 
+    private void ResetEmployeeFormState(bool forCreate)
+    {
+        FormError = null;
+        if (forCreate)
+        {
+            IsEditingEmployee = false;
+            EditingEmployeeId = Guid.Empty;
+        }
+    }
+
     [RelayCommand]
     private void CancelAddForm()
     {
         IsAddFormOpen = false;
-        FormError = null;
+        ResetEmployeeFormState(forCreate: true);
     }
 
     [RelayCommand]
