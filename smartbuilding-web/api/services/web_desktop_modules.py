@@ -60,11 +60,23 @@ def _fmt_date(d) -> str:
 def _fmt_datetime(dt) -> str:
     if not dt:
         return "—"
+    if isinstance(dt, str):
+        from api.sync.utils import parse_datetime
+
+        raw = dt.strip()
+        if not raw:
+            return "—"
+        parsed = parse_datetime(raw)
+        if parsed is None:
+            return raw
+        dt = parsed
     if isinstance(dt, date) and not isinstance(dt, datetime):
         return dt.strftime("%d/%m/%Y")
-    if timezone.is_aware(dt):
-        dt = timezone.localtime(dt)
-    return dt.strftime("%d/%m/%Y %H:%M:%S")
+    if isinstance(dt, datetime):
+        if timezone.is_aware(dt):
+            dt = timezone.localtime(dt)
+        return dt.strftime("%d/%m/%Y %H:%M:%S")
+    return str(dt)
 
 
 def _audit_row(obj) -> dict:

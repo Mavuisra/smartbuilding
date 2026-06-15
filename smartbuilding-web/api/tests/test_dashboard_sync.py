@@ -258,3 +258,10 @@ class DashboardModuleApiTests(TestCase):
         body = res.json()
         self.assertTrue(body["success"])
         self.assertIn("summary", body["data"])
+
+    def test_fmt_datetime_accepts_iso_strings(self):
+        from api.services.web_desktop_modules import _fmt_datetime
+
+        result = _fmt_datetime("2026-06-15T10:30:00+00:00")
+        self.assertIn("15/06/2026", result)
+        self.assertRegex(result, r"\d{2}:\d{2}:\d{2}")
