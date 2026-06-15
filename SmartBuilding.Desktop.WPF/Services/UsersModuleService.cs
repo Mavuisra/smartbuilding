@@ -13,8 +13,21 @@ public class UsersModuleService
 {
     private static readonly CultureInfo Fr = CultureInfo.GetCultureInfo("fr-FR");
     private readonly SmartBuildingDbContext _db;
+    private readonly GlobalUsernameRegistry? _usernameRegistry;
+    private readonly OrganizationRegistry? _organizationRegistry;
+    private readonly OrganizationConnectionResolver? _connectionResolver;
 
-    public UsersModuleService(SmartBuildingDbContext db) => _db = db;
+    public UsersModuleService(
+        SmartBuildingDbContext db,
+        GlobalUsernameRegistry? usernameRegistry = null,
+        OrganizationRegistry? organizationRegistry = null,
+        OrganizationConnectionResolver? connectionResolver = null)
+    {
+        _db = db;
+        _usernameRegistry = usernameRegistry;
+        _organizationRegistry = organizationRegistry;
+        _connectionResolver = connectionResolver;
+    }
 
     public async Task<UsersPageData> LoadAsync(Guid? currentUserId, CancellationToken cancellationToken = default)
     {
@@ -217,7 +230,24 @@ public class UsersModuleService
         if (string.IsNullOrWhiteSpace(password) || password.Length < 6)
             return (false, "Le mot de passe doit contenir au moins 6 caractères.");
         if (await _db.Users.AnyAsync(u => u.Username == username, cancellationToken))
-            return (false, "Cet identifiant existe déjà.");
+            return (false, "Cet identifiant existe déjà dans cette organisation.");
+
+        if (_usernameRegistry is not null
+            && _organizationRegistry is not null
+            && _connectionResolver is not null)
+        {
+            if (await _usernameRegistry.IsUsernameTakenGloballyAsync(
+                    username,
+                    _organizationRegistry,
+                    _connectionResolver,
+                    _organizationRegistry.ActiveOrganizationId,
+                    cancellationToken))
+            {
+                return (false,
+                    $"L'identifiant « {username} » est déjà utilisé dans une autre organisation.\n" +
+                    "Choisissez un autre nom d'utilisateur.");
+            }
+        }
 
         var user = new User
         {
@@ -230,6 +260,10 @@ public class UsersModuleService
         };
         _db.Users.Add(user);
         await _db.SaveChangesAsync(cancellationToken);
+
+        if (_usernameRegistry is not null && _organizationRegistry?.ActiveOrganizationId is Guid orgId)
+            _usernameRegistry.Register(username, orgId);
+
         return (true, null);
     }
 

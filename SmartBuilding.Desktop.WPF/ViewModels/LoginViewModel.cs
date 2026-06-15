@@ -1,4 +1,3 @@
-using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -10,7 +9,6 @@ using SmartBuilding.Desktop.WPF.Views;
 using SmartBuilding.Infrastructure.Persistence;
 using SmartBuilding.Infrastructure.Services;
 using SmartBuilding.Infrastructure.Sync;
-using SmartBuilding.Shared.DTOs.Auth;
 
 namespace SmartBuilding.Desktop.WPF.ViewModels;
 
@@ -18,8 +16,8 @@ public partial class LoginViewModel : BaseViewModel
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly CloudIdentityService _cloudIdentity;
-    private readonly OrganizationRegistry _organizationRegistry;
     private readonly OrganizationCloudSyncService _organizationCloudSync;
+    private readonly OrganizationLoginResolver _loginResolver;
     private readonly IServiceProvider _services;
     private readonly SessionService _session;
     private readonly Action _onLoginSuccess;
@@ -31,17 +29,14 @@ public partial class LoginViewModel : BaseViewModel
     [ObservableProperty] private bool _isErrorDialogVisible;
     [ObservableProperty] private string? _errorDialogMessage;
     [ObservableProperty] private string _loginProgressText = "Connexion en cours…";
-    [ObservableProperty] private OrganizationEntry? _selectedOrganization;
-
-    public ObservableCollection<OrganizationEntry> Organizations { get; } = [];
 
     public AppBrandingState Branding { get; }
 
     public LoginViewModel(
         IServiceScopeFactory scopeFactory,
         CloudIdentityService cloudIdentity,
-        OrganizationRegistry organizationRegistry,
         OrganizationCloudSyncService organizationCloudSync,
+        OrganizationLoginResolver loginResolver,
         IServiceProvider services,
         SessionService session,
         AppBrandingState branding,
@@ -49,29 +44,20 @@ public partial class LoginViewModel : BaseViewModel
     {
         _scopeFactory = scopeFactory;
         _cloudIdentity = cloudIdentity;
-        _organizationRegistry = organizationRegistry;
         _organizationCloudSync = organizationCloudSync;
+        _loginResolver = loginResolver;
         _services = services;
         _session = session;
         Branding = branding;
         _onLoginSuccess = onLoginSuccess;
-        Username = LoadRememberedUsername() ?? "admin";
-        ReloadOrganizations();
+        Username = LoadRememberedUsername() ?? string.Empty;
+
+        // Écran de connexion neutre — pas le branding du dernier tenant connecté.
+        Branding.CompanyName = "Smart Building MS";
+        Branding.AppSubtitle = AppBrandingState.DefaultSubtitle;
     }
 
-    partial void OnSelectedOrganizationChanged(OrganizationEntry? value)
-    {
-        if (value is not null)
-            _organizationRegistry.SetActive(value.Id);
-    }
-
-    private void ReloadOrganizations()
-    {
-        Organizations.Clear();
-        foreach (var org in _organizationRegistry.Organizations)
-            Organizations.Add(org);
-        SelectedOrganization = _organizationRegistry.Active;
-    }
+    public void ClearPassword() => Password = string.Empty;
 
     [RelayCommand]
     private void CreateTenant()
@@ -80,11 +66,7 @@ public partial class LoginViewModel : BaseViewModel
         {
             Owner = System.Windows.Application.Current?.MainWindow
         };
-        if (window.ShowDialog() == true)
-        {
-            ReloadOrganizations();
-            SelectedOrganization = _organizationRegistry.Active;
-        }
+        window.ShowDialog();
     }
 
     [RelayCommand]
@@ -92,55 +74,30 @@ public partial class LoginViewModel : BaseViewModel
     {
         DismissErrorDialog();
         IsBusy = true;
-        LoginProgressText = "Vérification des identifiants…";
+        LoginProgressText = "Recherche de votre organisation…";
 
         try
         {
-            if (SelectedOrganization is null)
+            LoginProgressText = "Vérification des identifiants…";
+            var loginResult = await _loginResolver.LoginAsync(Username, Password);
+
+            if (!loginResult.Success || loginResult.Organization is null || loginResult.User is null)
             {
-                ShowLoginError("Sélectionnez une organisation (tenant).");
+                ShowLoginError(loginResult.Message);
                 return;
             }
 
-            _organizationRegistry.SetActive(SelectedOrganization.Id);
-            _session.SetOrganization(SelectedOrganization);
-
-            if (string.IsNullOrWhiteSpace(Username))
-            {
-                ShowLoginError("Veuillez saisir votre nom d'utilisateur.");
-                return;
-            }
-
-            if (string.IsNullOrWhiteSpace(Password))
-            {
-                ShowLoginError("Veuillez saisir votre mot de passe.");
-                return;
-            }
-
-            using var loginScope = _scopeFactory.CreateScope();
-            var authService = loginScope.ServiceProvider.GetRequiredService<IAuthService>();
-            var syncService = loginScope.ServiceProvider.GetRequiredService<ISyncService>();
-
-            var result = await authService.LoginAsync(new LoginRequest
-            {
-                Username = Username.Trim(),
-                Password = Password
-            });
-
-            if (result is null)
-            {
-                ShowLoginError(
-                    "Nom d'utilisateur ou mot de passe incorrect.\n\n" +
-                    "Utilisez le compte créé lors de la configuration initiale, ou admin / Admin@2026 si c'est une ancienne base.");
-                return;
-            }
+            _session.SetOrganization(loginResult.Organization);
 
             if (RememberMe)
                 SaveRememberedUsername(Username.Trim());
 
-            _session.SetUser(result);
+            _session.SetUser(loginResult.User);
 
             await _organizationCloudSync.RegisterActiveOrganizationAsync(Username.Trim(), Password);
+
+            using var syncScope = _scopeFactory.CreateScope();
+            var syncService = syncScope.ServiceProvider.GetRequiredService<ISyncService>();
             await PublishAndSyncToCloudAsync(syncService, Username.Trim(), Password);
 
             LoginProgressText = "Ouverture de l'application…";

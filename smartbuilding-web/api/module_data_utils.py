@@ -50,12 +50,18 @@ def rows_from_sync_store(
     entity_types: list[str],
     mapper: Callable[[dict[str, Any]], dict[str, Any] | None],
     limit: int = 300,
+    organization_id=None,
 ) -> list[dict[str, Any]]:
+    from api.organization_context import get_request_organization_id, scope_sync_store
+
+    if organization_id is None:
+        organization_id = get_request_organization_id()
+
     rows = []
-    stores = (
-        SyncedEntityStore.objects.filter(entity_type__in=entity_types, deleted_at__isnull=True)
-        .order_by("-updated_at")[:limit]
+    qs = SyncedEntityStore.objects.filter(
+        entity_type__in=entity_types, deleted_at__isnull=True
     )
+    stores = scope_sync_store(qs, organization_id).order_by("-updated_at")[:limit]
     for s in stores:
         payload = s.json_data if isinstance(s.json_data, dict) else {}
         mapped = mapper(payload)

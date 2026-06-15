@@ -211,13 +211,13 @@ public partial class App : System.Windows.Application
 
             var mainWindow = _host.Services.GetRequiredService<MainWindow>();
 
-            splash.UpdateProgress(95, "Chargement du profil société...");
+            splash.UpdateProgress(95, "Préparation de l'interface...");
             await PumpUiAsync();
 
-            var appConfig = _host.Services.GetRequiredService<AppConfigurationService>();
-            await appConfig.LoadAndApplyAsync();
-
+            // Branding neutre avant login — le profil société est chargé après authentification.
             var branding = _host.Services.GetRequiredService<AppBrandingState>();
+            branding.CompanyName = "Smart Building MS";
+            branding.AppSubtitle = AppBrandingState.DefaultSubtitle;
             splash.ApplyBranding(branding.CompanyName, branding.AppSubtitle);
             Resources["Branding"] = branding;
 

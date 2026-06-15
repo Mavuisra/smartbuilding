@@ -1,6 +1,7 @@
 from django.db.models import Sum
 from typing import Any
 from django.utils import timezone
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -27,9 +28,15 @@ from api.models import (
     Visitor,
 )
 from api.organization_context import (
+    default_organization_for_user,
+    normalize_slug,
     organization_to_dict,
     parse_organization_id,
+    reset_request_organization_id,
     resolve_organization_id,
+    resolve_user_organizations,
+    scope_sync_store,
+    set_request_organization_id,
     user_can_list_all_organizations,
 )
 from api.permissions import IsDatabaseAdmin, IsExecutive
@@ -88,12 +95,13 @@ def _rows_from_sync_store(
     entity_types: list[str],
     mapper,
     limit: int = 300,
+    organization_id=None,
 ) -> list[dict[str, Any]]:
     rows = []
-    stores = (
-        SyncedEntityStore.objects.filter(entity_type__in=entity_types, deleted_at__isnull=True)
-        .order_by("-updated_at")[:limit]
+    qs = SyncedEntityStore.objects.filter(
+        entity_type__in=entity_types, deleted_at__isnull=True
     )
+    stores = scope_sync_store(qs, organization_id).order_by("-updated_at")[:limit]
     for s in stores:
         payload = s.json_data if isinstance(s.json_data, dict) else {}
         mapped = mapper(payload)
@@ -160,13 +168,25 @@ class LoginView(APIView):
         return {"admin", "Admin@2026"}
 
     @classmethod
+    def _bootstrap_allowed(cls) -> bool:
+        import os
+
+        from django.conf import settings
+
+        return settings.DEBUG or os.getenv("SBMS_ALLOW_BOOTSTRAP_ADMIN", "").lower() in (
+            "1",
+            "true",
+            "yes",
+        )
+
+    @classmethod
     def _resolve_login_user(cls, username: str, password: str):
         """Connexion cloud standard : admin / Admin@2026 (insensible à la casse)."""
         normalized = (username or "").strip()
         lowered = normalized.lower()
         bootstrap_passwords = cls._bootstrap_admin_passwords()
 
-        if lowered == "admin" and password in bootstrap_passwords:
+        if lowered == "admin" and password in bootstrap_passwords and cls._bootstrap_allowed():
             user = (
                 User.objects.filter(username__iexact="admin")
                 .order_by("-updated_at")
@@ -232,6 +252,9 @@ class LoginView(APIView):
         token = AccessToken.for_user(user)
         expires = timezone.now() + token.lifetime
 
+        user_orgs = resolve_user_organizations(user)
+        default_org = default_organization_for_user(user)
+
         return api_ok(
             {
                 "token": str(token),
@@ -241,6 +264,8 @@ class LoginView(APIView):
                 "role": user.role,
                 "permissions": permissions_for_role(user.role),
                 "expiresAt": expires.isoformat().replace("+00:00", "Z"),
+                "organizationId": str(default_org.id),
+                "organizations": [organization_to_dict(o) for o in user_orgs],
             }
         )
 
@@ -364,6 +389,7 @@ class DocumentUploadView(APIView):
         import base64
         import hashlib
 
+        org_id = resolve_organization_id(request)
         entity_type = request.data.get("entityType") or request.data.get("EntityType") or ""
         entity_id = request.data.get("entityId") or request.data.get("EntityId")
         category = request.data.get("category") or request.data.get("Category") or "rapports"
@@ -399,7 +425,10 @@ class DocumentUploadView(APIView):
 
         doc_id = uid
         existing = SyncedDocument.objects.filter(
-            entity_type=entity_type, entity_id=uid, content_sha256=sha
+            organization_id=org_id,
+            entity_type=entity_type,
+            entity_id=uid,
+            content_sha256=sha,
         ).first()
         if existing is not None:
             return api_ok({"id": str(existing.id), "duplicate": True})
@@ -407,6 +436,7 @@ class DocumentUploadView(APIView):
         SyncedDocument.objects.update_or_create(
             id=doc_id,
             defaults={
+                "organization_id": org_id,
                 "entity_type": entity_type,
                 "entity_id": uid,
                 "category": category,
@@ -421,6 +451,7 @@ class DocumentUploadView(APIView):
         )
 
         ServerSyncEvent.objects.create(
+            organization_id=org_id,
             username=getattr(request.user, "username", ""),
             user_role=getattr(request.user, "role", ""),
             entity_type="Documents",
@@ -435,8 +466,9 @@ class DocumentDownloadView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, document_id):
+        org_id = resolve_organization_id(request)
         try:
-            doc = SyncedDocument.objects.get(id=document_id)
+            doc = SyncedDocument.objects.get(id=document_id, organization_id=org_id)
         except SyncedDocument.DoesNotExist:
             return api_fail("Document introuvable.", status=404)
 
@@ -452,14 +484,16 @@ class DashboardSummaryView(APIView):
     permission_classes = [IsExecutive]
 
     def get(self, request):
-        return api_ok(get_executive_summary())
+        org_id = resolve_organization_id(request)
+        return api_ok(get_executive_summary(organization_id=org_id))
 
 
 class SyncStatusView(APIView):
     permission_classes = [IsExecutive]
 
     def get(self, request):
-        return api_ok(get_sync_health())
+        org_id = resolve_organization_id(request)
+        return api_ok(get_sync_health(organization_id=org_id))
 
 
 class ExecutiveOverviewView(APIView):
@@ -469,6 +503,8 @@ class ExecutiveOverviewView(APIView):
         try:
             org_id = resolve_organization_id(request)
             return api_ok(get_executive_overview(organization_id=org_id))
+        except PermissionDenied as ex:
+            return api_fail(str(ex.detail), status=403)
         except Exception as ex:
             import logging
 
@@ -481,11 +517,13 @@ class ExecutiveTenantsView(APIView):
 
     def get(self, request):
         from api.models import Tenant
-        from api.services.sync_metrics import ensure_dashboard_orm_materialized
+        from api.services.sync_metrics import ensure_dashboard_orm_materialized, filter_to_synced
 
-        ensure_dashboard_orm_materialized()
+        org_id = resolve_organization_id(request)
+        ensure_dashboard_orm_materialized(org_id)
 
-        rows = Tenant.objects.filter(deleted_at__isnull=True).order_by("name")[:500]
+        base = Tenant.objects.filter(deleted_at__isnull=True).order_by("name")
+        rows = filter_to_synced(base, "Tenants", org_id)[:500]
         data = [
             {
                 "id": str(t.id),
@@ -502,7 +540,7 @@ class ExecutiveTenantsView(APIView):
             data = _rows_from_sync_store(
                 ["Tenants"],
                 lambda p: {
-                    "id": str(pick_sync_id(p)),
+                    "id": str(_pick_sync_id(p)),
                     "name": _pick_sync_value(p, "Name", "name", "FullName", "fullName"),
                     "email": _pick_sync_value(p, "Email", "email"),
                     "phone": _pick_sync_value(p, "Phone", "phone"),
@@ -510,6 +548,7 @@ class ExecutiveTenantsView(APIView):
                     "status": _pick_sync_value(p, "RentalStatus", "rentalStatus", "Status", "status"),
                     "updatedAt": _pick_sync_value(p, "UpdatedAt", "updatedAt"),
                 },
+                organization_id=org_id,
             )
         return api_ok(data)
 
@@ -519,8 +558,11 @@ class ExecutiveIncidentsView(APIView):
 
     def get(self, request):
         from api.models import Incident
+        from api.services.sync_metrics import filter_to_synced
 
-        rows = Incident.objects.filter(deleted_at__isnull=True).order_by("-reported_at")[:200]
+        org_id = resolve_organization_id(request)
+        base = Incident.objects.filter(deleted_at__isnull=True).order_by("-reported_at")
+        rows = filter_to_synced(base, "Incidents", org_id)[:200]
         data = [
             {
                 "id": str(i.id),
@@ -541,7 +583,12 @@ class ExecutiveSyncLogView(APIView):
     permission_classes = [IsExecutive]
 
     def get(self, request):
-        rows = ServerSyncEvent.objects.all().order_by("-created_at")[:100]
+        from api.organization_context import scope_sync_events
+
+        org_id = resolve_organization_id(request)
+        rows = scope_sync_events(ServerSyncEvent.objects.all(), org_id).order_by(
+            "-created_at"
+        )[:100]
         data = [
             {
                 "username": r.username,
@@ -575,28 +622,36 @@ class ExecutiveModuleDataView(APIView):
         try:
             from api.services.sync_metrics import ensure_dashboard_orm_materialized
 
-            ensure_dashboard_orm_materialized()
-            handler = get_module_handler(slug)
-            if handler is None:
-                return api_fail(f"Module inconnu : {slug}", status=404)
-
-            if slug == "rapports":
-                df = request.query_params.get("dateFrom")
-                dt = request.query_params.get("dateTo")
-                date_from = date_cls.fromisoformat(df) if df else None
-                date_to = date_cls.fromisoformat(dt) if dt else None
-                return api_ok(handler(date_from=date_from, date_to=date_to))
-
-            if slug == "utilisateurs":
-                from api.services.web_desktop_modules import load_users
-
-                return api_ok(load_users(current_username=getattr(request.user, "username", None)))
-
             org_id = resolve_organization_id(request)
-            if slug == "dashboard":
-                return api_ok(handler(organization_id=org_id))
+            org_token = set_request_organization_id(org_id)
+            try:
+                ensure_dashboard_orm_materialized(org_id)
+                handler = get_module_handler(slug)
+                if handler is None:
+                    return api_fail(f"Module inconnu : {slug}", status=404)
 
-            return api_ok(handler())
+                if slug == "rapports":
+                    df = request.query_params.get("dateFrom")
+                    dt = request.query_params.get("dateTo")
+                    date_from = date_cls.fromisoformat(df) if df else None
+                    date_to = date_cls.fromisoformat(dt) if dt else None
+                    return api_ok(handler(date_from=date_from, date_to=date_to))
+
+                if slug == "utilisateurs":
+                    from api.services.web_desktop_modules import load_users
+
+                    return api_ok(
+                        load_users(current_username=getattr(request.user, "username", None))
+                    )
+
+                if slug == "dashboard":
+                    return api_ok(handler(organization_id=org_id))
+
+                return api_ok(handler())
+            finally:
+                reset_request_organization_id(org_token)
+        except PermissionDenied as ex:
+            return api_fail(str(ex.detail), status=403)
         except Exception as ex:
             import logging
 
@@ -915,6 +970,24 @@ class OrganizationRegisterView(APIView):
         if not slug:
             slug = name.lower().replace(" ", "-")[:80]
 
+        try:
+            slug = normalize_slug(slug)
+        except ValueError as exc:
+            return api_fail(str(exc), status=400)
+
+        if Organization.objects.filter(slug=slug).exclude(id=org_id).exists():
+            return api_fail("Ce slug est déjà utilisé par une autre organisation.", status=400)
+
+        existing = Organization.objects.filter(id=org_id).first()
+        username = getattr(request.user, "username", "") or ""
+        if existing and not user_can_list_all_organizations(request.user):
+            owner = (existing.created_by_username or "").lower()
+            if owner and owner != username.lower():
+                return api_fail(
+                    "Mise à jour refusée : vous n'êtes pas propriétaire de cette organisation.",
+                    status=403,
+                )
+
         database_name = (data.get("databaseName") or data.get("database_name") or "").strip()
         city = (data.get("city") or data.get("City") or "").strip()
 
@@ -926,7 +999,7 @@ class OrganizationRegisterView(APIView):
                 "database_name": database_name,
                 "city": city,
                 "is_active": True,
-                "created_by_username": getattr(request.user, "username", "") or "",
+                "created_by_username": username,
                 "updated_at": timezone.now(),
             },
         )

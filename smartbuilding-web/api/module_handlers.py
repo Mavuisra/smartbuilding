@@ -41,6 +41,19 @@ _pick_sync_value = pick_sync_value
 _rows_from_sync_store = rows_from_sync_store
 
 
+def _filter_synced(qs, entity_type):
+    from api.organization_context import get_request_organization_id
+
+    org_id = get_request_organization_id()
+    return filter_to_synced(qs, entity_type, org_id)
+
+
+def _sync_count(entity_type: str) -> int:
+    from api.organization_context import get_request_organization_id
+
+    return sync_store_count(entity_type, get_request_organization_id())
+
+
 def get_module_handler(slug: str):
     from executive.module_registry import resolve_slug
 
@@ -115,7 +128,7 @@ def locations_list():
             "Loyer": _money(p.monthly_rent),
             "Statut": "Occupé" if p.is_occupied else "Libre",
         }
-        for p in filter_to_synced(
+        for p in _filter_synced(
             Premise.objects.filter(deleted_at__isnull=True), "Premises"
         ).order_by("code")[:300]
     ]
@@ -133,10 +146,10 @@ def locations_list():
                 else "Libre",
             },
         )
-    total = filter_to_synced(
+    total = _filter_synced(
         Premise.objects.filter(deleted_at__isnull=True), "Premises"
     ).count()
-    occupied = filter_to_synced(
+    occupied = _filter_synced(
         Premise.objects.filter(deleted_at__isnull=True), "Premises"
     ).filter(is_occupied=True).count()
     if total == 0 and rows:
@@ -164,7 +177,7 @@ def locations_contracts():
             "Loyer mensuel": _money(c.monthly_rent),
             "Statut": c.status or "—",
         }
-        for c in filter_to_synced(
+        for c in _filter_synced(
             LeaseContract.objects.filter(deleted_at__isnull=True), "LeaseContracts"
         ).order_by("-updated_at")[:300]
     ]
@@ -187,13 +200,13 @@ def locations_contracts():
         [
             {
                 "label": "Contrats",
-                "value": filter_to_synced(
+                "value": _filter_synced(
                     LeaseContract.objects.filter(deleted_at__isnull=True), "LeaseContracts"
                 ).count(),
             },
             {
                 "label": "Actifs",
-                "value": filter_to_synced(
+                "value": _filter_synced(
                     LeaseContract.objects.filter(deleted_at__isnull=True), "LeaseContracts"
                 )
                 .filter(status__icontains="actif")
@@ -214,7 +227,7 @@ def locations_rent_payments():
             "Statut": p.payment_status or "—",
             "Retard": "Oui" if p.is_late else "Non",
         }
-        for p in filter_to_synced(
+        for p in _filter_synced(
             RentPayment.objects.filter(deleted_at__isnull=True), "RentPayments"
         ).order_by("-year", "-month")[:300]
     ]
@@ -231,7 +244,7 @@ def locations_rent_payments():
                 "Retard": "Oui" if _pick_sync_value(d, "IsLate", "isLate", default=False) else "Non",
             },
         )
-    late = filter_to_synced(
+    late = _filter_synced(
         RentPayment.objects.filter(deleted_at__isnull=True), "RentPayments"
     ).filter(is_late=True).count()
     return _module_payload(
@@ -240,7 +253,7 @@ def locations_rent_payments():
         [
             {
                 "label": "Paiements",
-                "value": filter_to_synced(
+                "value": _filter_synced(
                     RentPayment.objects.filter(deleted_at__isnull=True), "RentPayments"
                 ).count(),
             },
@@ -341,7 +354,7 @@ def locations_apartments():
             "Surface m²": p.area_sq_m,
             "Loyer": _money(p.monthly_rent),
         }
-        for p in filter_to_synced(
+        for p in _filter_synced(
             Premise.objects.filter(deleted_at__isnull=True), "Premises"
         ).order_by("building_name", "code")[:300]
     ]
@@ -427,9 +440,9 @@ def finances():
     pending_rows = [e.to_validation_dict() for e in pending]
 
     base_qs = FinancialTransaction.objects.filter(deleted_at__isnull=True)
-    if sync_store_count("FinancialTransactions") > 0:
+    if _sync_count("FinancialTransactions") > 0:
         txs = queryset_to_deduped_list(
-            filter_to_synced(base_qs, "FinancialTransactions")
+            _filter_synced(base_qs, "FinancialTransactions")
         )
     else:
         txs = queryset_to_deduped_list(base_qs)

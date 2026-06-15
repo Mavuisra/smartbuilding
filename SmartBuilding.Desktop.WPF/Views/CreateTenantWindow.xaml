@@ -27,7 +27,9 @@
             <TextBox Text="{Binding City, UpdateSourceTrigger=PropertyChanged}" Height="36" Margin="0,0,0,12"/>
 
             <TextBlock Text="Identifiant administrateur *" FontWeight="SemiBold" Margin="0,0,0,6"/>
-            <TextBox Text="{Binding AdminUsername, UpdateSourceTrigger=PropertyChanged}" Height="36" Margin="0,0,0,12"/>
+            <TextBox Text="{Binding AdminUsername, UpdateSourceTrigger=PropertyChanged}" Height="36"/>
+            <TextBlock Text="Doit être unique sur tout le système (ex. admin.blooom, jean.dupont)."
+                       FontSize="11" Foreground="#64748B" TextWrapping="Wrap" Margin="0,4,0,12"/>
 
             <TextBlock Text="Mot de passe administrateur *" FontWeight="SemiBold" Margin="0,0,0,6"/>
             <PasswordBox x:Name="AdminPasswordBox" Height="36" Margin="0,0,0,12" PasswordChanged="AdminPasswordBox_OnPasswordChanged"/>

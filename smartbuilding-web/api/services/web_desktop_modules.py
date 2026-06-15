@@ -123,7 +123,7 @@ def load_dashboard_page(organization_id=None) -> dict:
     today = timezone.localdate()
     month_starts = calendar_month_starts(today, months=6)
     expenses_chart = [
-        {"label": ms.strftime("%b %Y"), "value": float(expenses_month_totals(ms))}
+        {"label": ms.strftime("%b %Y"), "value": float(expenses_month_totals(ms, organization_id=organization_id))}
         for ms in month_starts
     ]
 

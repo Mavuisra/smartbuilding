@@ -81,13 +81,16 @@ public sealed class OrganizationRegistry
         return registry;
     }
 
+    private static readonly Guid DefaultOrganizationId =
+        Guid.Parse("00000000-0000-0000-0000-000000000001");
+
     private static void BootstrapLegacyOrganization(IConfiguration configuration, OrganizationRegistryFile data)
     {
         var section = configuration.GetSection(DesktopLocalDatabaseConfig.SectionName);
         var dbName = section.GetValue<string>("Database") ?? DesktopMySqlConnectionBuilder.DefaultDatabase;
         var entry = new OrganizationEntry
         {
-            Id = Guid.NewGuid(),
+            Id = DefaultOrganizationId,
             Name = "Organisation principale",
             Slug = "organisation-principale",
             DatabaseName = dbName,
@@ -132,6 +135,29 @@ public sealed class OrganizationRegistry
         if (!string.IsNullOrWhiteSpace(folder))
             Directory.CreateDirectory(folder);
         File.WriteAllText(RegistryPath, JsonSerializer.Serialize(_file, JsonOptions));
+    }
+
+    /// <summary>Recharge organizations.json (nouveaux tenants créés pendant la session).</summary>
+    public void ReloadFromDisk()
+    {
+        if (!File.Exists(RegistryPath))
+            return;
+
+        try
+        {
+            var json = File.ReadAllText(RegistryPath);
+            var data = JsonSerializer.Deserialize<OrganizationRegistryFile>(json, JsonOptions);
+            if (data is null)
+                return;
+
+            _file.Organizations = data.Organizations;
+            if (data.ActiveOrganizationId is not null)
+                _file.ActiveOrganizationId = data.ActiveOrganizationId;
+        }
+        catch
+        {
+            // Conserver la copie en mémoire si le fichier est corrompu.
+        }
     }
 
     public static string Slugify(string name)

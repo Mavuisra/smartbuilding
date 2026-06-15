@@ -91,5 +91,77 @@ class OrganizationApiTests(TestCase):
 
         factory = RequestFactory()
         request = factory.get("/", HTTP_X_ORGANIZATION_ID=str(self.org_b.id))
+        request.user = self.admin
         resolved = resolve_organization_id(request)
         self.assertEqual(resolved, self.org_b.id)
+
+    def test_cross_tenant_header_denied_for_regular_user(self):
+        from django.test import RequestFactory
+        from rest_framework.exceptions import PermissionDenied
+
+        user = User.objects.create_user(
+            username="comptable",
+            password="secret",
+            role=User.Role.COMPTABLE,
+        )
+        factory = RequestFactory()
+        request = factory.get("/", HTTP_X_ORGANIZATION_ID=str(self.org_b.id))
+        request.user = user
+        with self.assertRaises(PermissionDenied):
+            resolve_organization_id(request)
+
+    def test_dashboard_isolated_by_organization(self):
+        from api.services.dashboard import get_executive_summary
+        from api.sync.registry import apply_push
+
+        tenant_a = uuid.uuid4()
+        tenant_b = uuid.uuid4()
+        apply_push(
+            "Tenants",
+            [
+                {
+                    "id": str(tenant_a),
+                    "updatedAt": "2026-06-15T10:00:00+00:00",
+                    "jsonData": '{"Name": "Tenant Org A"}',
+                }
+            ],
+            organization_id=self.org_a.id,
+        )
+        apply_push(
+            "Tenants",
+            [
+                {
+                    "id": str(tenant_b),
+                    "updatedAt": "2026-06-15T10:00:00+00:00",
+                    "jsonData": '{"Name": "Tenant Org B"}',
+                }
+            ],
+            organization_id=self.org_b.id,
+        )
+        summary_a = get_executive_summary(organization_id=self.org_a.id)
+        summary_b = get_executive_summary(organization_id=self.org_b.id)
+        self.assertEqual(summary_a["totalTenants"], 1)
+        self.assertEqual(summary_b["totalTenants"], 1)
+
+    def test_dashboard_uses_orm_when_sync_not_tagged_for_org(self):
+        """Les onglets lisent l'ORM complet ; le dashboard doit faire de même sans sync tagué."""
+        from decimal import Decimal
+
+        from api.models import RentPayment, Tenant
+        from api.services.dashboard import get_executive_summary
+
+        Tenant.objects.create(
+            id=uuid.uuid4(),
+            name="Locataire ORM seul",
+            rental_status="Actif",
+        )
+        RentPayment.objects.create(
+            year=2026,
+            month=6,
+            amount_due=Decimal("500"),
+            amount_paid=Decimal("500"),
+            is_late=False,
+        )
+        summary = get_executive_summary(organization_id=self.org_a.id)
+        self.assertGreaterEqual(summary["totalTenants"], 1)
+        self.assertGreater(summary["rentCollectedTotal"], 0)

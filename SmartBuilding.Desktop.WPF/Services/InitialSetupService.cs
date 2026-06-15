@@ -20,15 +20,24 @@ public sealed class InitialSetupService
     private readonly AppConfigurationService _appConfiguration;
     private readonly IConfiguration _configuration;
     private readonly DesktopLocalDatabaseConfig _localDb;
+    private readonly GlobalUsernameRegistry? _usernameRegistry;
+    private readonly OrganizationRegistry? _organizationRegistry;
+    private readonly OrganizationConnectionResolver? _connectionResolver;
 
     public InitialSetupService(
         AppConfigurationService appConfiguration,
         IConfiguration configuration,
-        DesktopLocalDatabaseConfig localDb)
+        DesktopLocalDatabaseConfig localDb,
+        GlobalUsernameRegistry? usernameRegistry = null,
+        OrganizationRegistry? organizationRegistry = null,
+        OrganizationConnectionResolver? connectionResolver = null)
     {
         _appConfiguration = appConfiguration;
         _configuration = configuration;
         _localDb = localDb;
+        _usernameRegistry = usernameRegistry;
+        _organizationRegistry = organizationRegistry;
+        _connectionResolver = connectionResolver;
     }
 
     /// <summary>Indique si l'assistant de configuration obligatoire n'a pas encore été terminé.</summary>
@@ -167,6 +176,24 @@ public sealed class InitialSetupService
 
         await DatabaseSeeder.SeedReferenceDataAsync(db);
 
+        if (_usernameRegistry is not null
+            && _organizationRegistry is not null
+            && _connectionResolver is not null)
+        {
+            var adminName = request.AdminUsername.Trim();
+            if (await _usernameRegistry.IsUsernameTakenGloballyAsync(
+                    adminName,
+                    _organizationRegistry,
+                    _connectionResolver,
+                    _organizationRegistry.ActiveOrganizationId,
+                    cancellationToken))
+            {
+                throw new InvalidOperationException(
+                    $"L'identifiant « {adminName} » est déjà utilisé dans une autre organisation.\n" +
+                    "Choisissez un autre nom d'utilisateur.");
+            }
+        }
+
         var admin = await FindOrCreateSetupAdminAsync(db, request.AdminUsername, cancellationToken);
         var adminEmail = await ResolveAdminEmailAsync(db, request, admin.Id, cancellationToken);
         await PrepareUsersForSetupAdminAsync(db, request.AdminUsername, adminEmail, admin.Id, cancellationToken);
@@ -255,6 +282,9 @@ public sealed class InitialSetupService
                                  cancellationToken);
         if (!localPersisted)
             throw new InvalidOperationException("Échec de persistance locale des données de configuration.");
+
+        if (_usernameRegistry is not null && _organizationRegistry?.ActiveOrganizationId is Guid orgId)
+            _usernameRegistry.Register(request.AdminUsername.Trim(), orgId);
 
         var restartNote = requiresRestart
             ? " Redémarrez SBMS pour appliquer le mode serveur / poste client choisi."

@@ -30,8 +30,22 @@ public static class DependencyInjection
 
             services.AddSingleton(sp => OrganizationRegistry.Load(configuration));
             services.AddSingleton<OrganizationConnectionResolver>();
+            services.AddSingleton(sp =>
+            {
+                var registry = sp.GetRequiredService<OrganizationRegistry>();
+                var resolver = sp.GetRequiredService<OrganizationConnectionResolver>();
+                var usernameRegistry = GlobalUsernameRegistry.Load();
+                if (usernameRegistry.TryResolveOrganization("admin") is null
+                    && registry.Organizations.Count > 0)
+                {
+                    usernameRegistry.RebuildFromOrganizations(registry, resolver);
+                }
+
+                return usernameRegistry;
+            });
             services.AddSingleton<OrganizationProvisioningService>();
             services.AddSingleton<OrganizationCloudSyncService>();
+            services.AddSingleton<OrganizationLoginResolver>();
 
             connectionString = localDb.ConnectionString;
             services.AddSingleton(localDb);

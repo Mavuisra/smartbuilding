@@ -235,7 +235,7 @@ class DashboardSyncAlignmentTests(TestCase):
         )
         with patch("api.sync.registry.rematerialize_entity_type", return_value=1) as mock_rebuild:
             rebuilt = ensure_dashboard_orm_materialized()
-        mock_rebuild.assert_called_once_with("RentPayments")
+        mock_rebuild.assert_called_once_with("RentPayments", None)
         self.assertEqual(rebuilt, 1)
 
 

@@ -11,7 +11,7 @@ public partial class CreateTenantViewModel : ObservableObject
 
     [ObservableProperty] private string _tenantName = "";
     [ObservableProperty] private string _city = "";
-    [ObservableProperty] private string _adminUsername = "admin";
+    [ObservableProperty] private string _adminUsername = "";
     [ObservableProperty] private string _adminPassword = "Admin@2026";
     [ObservableProperty] private string _errorMessage = "";
     [ObservableProperty] private bool _isBusy;

@@ -25,17 +25,20 @@ public sealed class OrganizationProvisioningService
 {
     private readonly OrganizationRegistry _registry;
     private readonly OrganizationConnectionResolver _connectionResolver;
+    private readonly GlobalUsernameRegistry _usernameRegistry;
     private readonly DesktopLocalDatabaseConfig _localDb;
     private readonly ILogger<OrganizationProvisioningService>? _logger;
 
     public OrganizationProvisioningService(
         OrganizationRegistry registry,
         OrganizationConnectionResolver connectionResolver,
+        GlobalUsernameRegistry usernameRegistry,
         DesktopLocalDatabaseConfig localDb,
         ILogger<OrganizationProvisioningService>? logger = null)
     {
         _registry = registry;
         _connectionResolver = connectionResolver;
+        _usernameRegistry = usernameRegistry;
         _localDb = localDb;
         _logger = logger;
     }
@@ -54,6 +57,19 @@ public sealed class OrganizationProvisioningService
 
         if ((request.AdminPassword ?? "").Length < 6)
             return new CreateOrganizationResult(false, null, "Le mot de passe doit contenir au moins 6 caractères.");
+
+        if (await _usernameRegistry.IsUsernameTakenGloballyAsync(
+                username,
+                _registry,
+                _connectionResolver,
+                cancellationToken: cancellationToken))
+        {
+            return new CreateOrganizationResult(
+                false,
+                null,
+                $"L'identifiant « {username} » est déjà utilisé dans une autre organisation.\n\n" +
+                "Choisissez un autre nom d'utilisateur (par ex. admin.blooom, jean.dupont).");
+        }
 
         var slug = OrganizationRegistry.Slugify(name);
         var suffix = 1;
@@ -148,6 +164,7 @@ public sealed class OrganizationProvisioningService
 
         _registry.Add(entry);
         _registry.SetActive(entry.Id);
+        _usernameRegistry.Register(username, entry.Id);
 
         return new CreateOrganizationResult(true, entry, "Tenant créé avec succès.");
     }

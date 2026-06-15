@@ -16,22 +16,56 @@ from api.models import (
     Supplier,
     Tenant,
 )
+from api.organization_context import scope_sync_events, scope_sync_store
+from api.services.sync_metrics import filter_to_synced
 from api.sync.registry import SYNC_ENTITY_TYPES
 
 
-def get_data_pipeline_diagnostics() -> dict:
-    """Indique pourquoi le dashboard peut afficher des zéros."""
-    orm = {
-        "premises": Premise.objects.filter(deleted_at__isnull=True).count(),
-        "tenants": Tenant.objects.filter(deleted_at__isnull=True).count(),
-        "leases": LeaseContract.objects.filter(deleted_at__isnull=True).count(),
-        "rentPayments": RentPayment.objects.filter(deleted_at__isnull=True).count(),
-        "employees": Employee.objects.filter(deleted_at__isnull=True).count(),
-        "transactions": FinancialTransaction.objects.filter(deleted_at__isnull=True).count(),
+def _orm_counts(organization_id=None) -> dict:
+    if organization_id is None:
+        return {
+            "premises": Premise.objects.filter(deleted_at__isnull=True).count(),
+            "tenants": Tenant.objects.filter(deleted_at__isnull=True).count(),
+            "leases": LeaseContract.objects.filter(deleted_at__isnull=True).count(),
+            "rentPayments": RentPayment.objects.filter(deleted_at__isnull=True).count(),
+            "employees": Employee.objects.filter(deleted_at__isnull=True).count(),
+            "transactions": FinancialTransaction.objects.filter(deleted_at__isnull=True).count(),
+            "buildings": Building.objects.filter(deleted_at__isnull=True).count(),
+            "suppliers": Supplier.objects.filter(deleted_at__isnull=True).count(),
+        }
+
+    return {
+        "premises": filter_to_synced(
+            Premise.objects.filter(deleted_at__isnull=True), "Premises", organization_id
+        ).count(),
+        "tenants": filter_to_synced(
+            Tenant.objects.filter(deleted_at__isnull=True), "Tenants", organization_id
+        ).count(),
+        "leases": filter_to_synced(
+            LeaseContract.objects.filter(deleted_at__isnull=True), "LeaseContracts", organization_id
+        ).count(),
+        "rentPayments": filter_to_synced(
+            RentPayment.objects.filter(deleted_at__isnull=True), "RentPayments", organization_id
+        ).count(),
+        "employees": filter_to_synced(
+            Employee.objects.filter(deleted_at__isnull=True), "Employees", organization_id
+        ).count(),
+        "transactions": filter_to_synced(
+            FinancialTransaction.objects.filter(deleted_at__isnull=True),
+            "FinancialTransactions",
+            organization_id,
+        ).count(),
         "buildings": Building.objects.filter(deleted_at__isnull=True).count(),
         "suppliers": Supplier.objects.filter(deleted_at__isnull=True).count(),
     }
-    store_qs = SyncedEntityStore.objects.filter(deleted_at__isnull=True)
+
+
+def get_data_pipeline_diagnostics(organization_id=None) -> dict:
+    """Indique pourquoi le dashboard peut afficher des zéros."""
+    orm = _orm_counts(organization_id)
+    store_qs = scope_sync_store(
+        SyncedEntityStore.objects.filter(deleted_at__isnull=True), organization_id
+    )
     store_total = store_qs.count()
     store_by_type = {}
     for et in SYNC_ENTITY_TYPES:
@@ -64,7 +98,8 @@ def get_data_pipeline_diagnostics() -> dict:
                 }
             )
 
-    last_event = ServerSyncEvent.objects.order_by("-created_at").first()
+    event_qs = scope_sync_events(ServerSyncEvent.objects.all(), organization_id)
+    last_event = event_qs.order_by("-created_at").first()
     orm_business = sum(orm.values()) - orm.get("employees", 0)
     has_orm = orm_business > 0
     has_store = store_total > 0

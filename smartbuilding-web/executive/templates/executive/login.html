@@ -220,6 +220,12 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
     }
 
     localStorage.setItem('sbms_token', json.data.token);
+    if (json.data.organizationId) {
+      localStorage.setItem('sbms_organization_id', json.data.organizationId);
+    }
+    if (Array.isArray(json.data.organizations)) {
+      localStorage.setItem('sbms_organizations', JSON.stringify(json.data.organizations));
+    }
     localStorage.setItem('sbms_user', JSON.stringify({
       userId: json.data.userId,
       username: json.data.username,

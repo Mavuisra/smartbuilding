@@ -25,12 +25,15 @@ from api.services.sync_metrics import (
     ensure_dashboard_orm_materialized,
     expenses_all_time_totals,
     expenses_month_totals,
+    filter_to_synced,
     occupancy_totals,
     rent_all_time_collected,
     rent_month_totals,
     revenue_chart_totals,
     sync_store_count,
+    synced_id_set,
 )
+from api.organization_context import scope_sync_events
 
 
 def _fc(amount) -> str:
@@ -38,44 +41,43 @@ def _fc(amount) -> str:
 
 
 def get_executive_summary(organization_id=None) -> dict:
-    ensure_dashboard_orm_materialized()
+    ensure_dashboard_orm_materialized(organization_id)
 
     today = timezone.localdate()
     month_start = today.replace(day=1)
 
     rent_collected, rent_planned, late_count, rent_late_amount = rent_month_totals(
-        today.year, today.month
+        today.year, today.month, organization_id=organization_id
     )
-    rent_collected_total = rent_all_time_collected()
+    rent_collected_total = rent_all_time_collected(organization_id=organization_id)
 
-    expenses_month = expenses_month_totals(month_start)
-    expenses_total = expenses_all_time_totals()
+    expenses_month = expenses_month_totals(month_start, organization_id=organization_id)
+    expenses_total = expenses_all_time_totals(organization_id=organization_id)
     available_balance = rent_collected_total - expenses_total
     available_this_month = rent_collected - expenses_month
 
-    total_premises, occupied = occupancy_totals()
+    total_premises, occupied = occupancy_totals(organization_id=organization_id)
     occupancy = (occupied / total_premises * 100) if total_premises else 0
 
     closed_statuses = {"Clôturé", "Cloture", "Résolu", "Resolu", "4", "3"}
-    open_incidents = (
-        Incident.objects.filter(deleted_at__isnull=True)
-        .exclude(status__in=closed_statuses)
-        .count()
+    open_incidents = _count_open_incidents(closed_statuses, organization_id)
+
+    active_leases = count_active_leases(organization_id=organization_id)
+    total_tenants = count_tenants_total(organization_id=organization_id)
+
+    sync_qs = scope_sync_events(
+        ServerSyncEvent.objects.filter(success=True), organization_id
     )
-
-    active_leases = count_active_leases()
-    total_tenants = count_tenants_total()
-
     recent_syncs = list(
-        ServerSyncEvent.objects.filter(success=True)
-        .order_by("-created_at")[:10]
-        .values("username", "user_role", "entity_type", "records_count", "created_at")
+        sync_qs.order_by("-created_at")[:10].values(
+            "username", "user_role", "entity_type", "records_count", "created_at"
+        )
     )
 
     month_starts = calendar_month_starts(today)
-    revenue_chart = revenue_chart_totals(month_starts)
+    revenue_chart = revenue_chart_totals(month_starts, organization_id=organization_id)
 
-    recent_movements = _resolve_recent_movements(8)
+    recent_movements = _resolve_recent_movements(8, organization_id=organization_id)
 
     alerts = []
     if rent_late_amount > 0:
@@ -166,9 +168,11 @@ def get_executive_summary(organization_id=None) -> dict:
     }
 
 
-def get_sync_health(window_hours: int = 24) -> dict:
+def get_sync_health(window_hours: int = 24, organization_id=None) -> dict:
     since = timezone.now() - timedelta(hours=window_hours)
-    events = ServerSyncEvent.objects.filter(created_at__gte=since)
+    events = scope_sync_events(
+        ServerSyncEvent.objects.filter(created_at__gte=since), organization_id
+    )
 
     total = events.count()
     successful = events.filter(success=True).count()
@@ -177,7 +181,7 @@ def get_sync_health(window_hours: int = 24) -> dict:
     pull_events = events.filter(direction="pull").count()
     records_synced = events.aggregate(t=Sum("records_count"))["t"] or 0
     last_sync = events.order_by("-created_at").first()
-    pipeline = get_data_pipeline_diagnostics()
+    pipeline = get_data_pipeline_diagnostics(organization_id)
 
     return {
         "windowHours": window_hours,
@@ -269,8 +273,8 @@ def get_executive_overview(organization_id=None) -> dict:
 
     return {
         "summary": summary,
-        "syncHealth": get_sync_health(),
-        "diagnostics": get_data_pipeline_diagnostics(),
+        "syncHealth": get_sync_health(organization_id=organization_id),
+        "diagnostics": get_data_pipeline_diagnostics(organization_id),
         "pendingValidations": validations,
         "recentActivities": recent_activities[:10],
         "notifications": [
@@ -371,15 +375,45 @@ def _resolve_revenue_chart(month_starts: list) -> list[dict]:
     ]
 
 
-def _resolve_recent_movements(limit: int) -> list[dict]:
-    if sync_store_count("FinancialTransactions") > 0:
-        sync_rows = _recent_movements_from_sync_store(limit)
+def _count_open_incidents(closed_statuses: set, organization_id=None) -> int:
+    if organization_id is not None:
+        ids = synced_id_set("Incidents", organization_id)
+        if ids is not None:
+            return (
+                Incident.objects.filter(deleted_at__isnull=True, id__in=ids)
+                .exclude(status__in=closed_statuses)
+                .count()
+            )
+        from api.module_data_utils import pick_sync_value
+
+        count = 0
+        from api.services.sync_metrics import _sync_store_qs
+
+        for row in _sync_store_qs("Incidents", organization_id).iterator():
+            payload = row.json_data if isinstance(row.json_data, dict) else {}
+            status = str(pick_sync_value(payload, "Status", "status", default=""))
+            if status not in closed_statuses and "clôtur" not in status.lower():
+                count += 1
+        return count
+
+    return (
+        Incident.objects.filter(deleted_at__isnull=True)
+        .exclude(status__in=closed_statuses)
+        .count()
+    )
+
+
+def _resolve_recent_movements(limit: int, organization_id=None) -> list[dict]:
+    if sync_store_count("FinancialTransactions", organization_id) > 0:
+        sync_rows = _recent_movements_from_sync_store(limit, organization_id=organization_id)
         if sync_rows:
             return sync_rows
     base = FinancialTransaction.objects.filter(deleted_at__isnull=True).order_by(
         "-transaction_date"
-    )[: limit * 3]
-    deduped = dedupe_financial_transactions(list(base))[:limit]
+    )
+    if organization_id is not None:
+        base = filter_to_synced(base, "FinancialTransactions", organization_id)
+    deduped = dedupe_financial_transactions(list(base[: limit * 3]))[:limit]
     if deduped:
         return [
             {
@@ -392,7 +426,7 @@ def _resolve_recent_movements(limit: int) -> list[dict]:
             }
             for t in deduped
         ]
-    return _recent_movements_from_sync_store(limit)
+    return _recent_movements_from_sync_store(limit, organization_id=organization_id)
 
 
 def _pick_json(data: dict, *keys, default=None):
@@ -460,14 +494,13 @@ def parse_datetime_safe(value):
     return normalize_sync_datetime(value)
 
 
-def _recent_movements_from_sync_store(limit: int) -> list[dict]:
+def _recent_movements_from_sync_store(limit: int, organization_id=None) -> list[dict]:
+    from api.services.sync_metrics import _sync_store_qs
+
     rows = []
-    for store in (
-        SyncedEntityStore.objects.filter(
-            entity_type="FinancialTransactions", deleted_at__isnull=True
-        )
-        .order_by("-updated_at")[:limit]
-    ):
+    for store in _sync_store_qs("FinancialTransactions", organization_id).order_by(
+        "-updated_at"
+    )[:limit]:
         payload = store.json_data if isinstance(store.json_data, dict) else {}
         raw_type = _pick_json(payload, "Type", "type", default=1)
         tx_type = 1

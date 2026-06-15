@@ -37,6 +37,13 @@ public partial class MainWindow : Window
         _loginScope?.Dispose();
         _loginScope = _scopeFactory.CreateScope();
 
+        var session = _services.GetRequiredService<SessionService>();
+        session.Clear();
+
+        var branding = _services.GetRequiredService<AppBrandingState>();
+        branding.CompanyName = "Smart Building MS";
+        branding.AppSubtitle = AppBrandingState.DefaultSubtitle;
+
         ApplyLoginWindowLayout();
 
         DataContext = null;
@@ -53,6 +60,20 @@ public partial class MainWindow : Window
     {
         _loginScope?.Dispose();
         _loginScope = null;
+
+        try
+        {
+            var appConfig = _services.GetRequiredService<AppConfigurationService>();
+            await appConfig.LoadAndApplyAsync();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                $"Connexion réussie, mais le profil société n'a pas pu être chargé.\n\n{ex.Message}",
+                "Smart Building MS",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+        }
 
         ApplyShellWindowLayout();
 

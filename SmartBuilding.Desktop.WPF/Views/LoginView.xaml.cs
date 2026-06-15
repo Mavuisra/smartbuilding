@@ -9,7 +9,21 @@ public partial class LoginView : UserControl
     private TextBox? _passwordTextBox;
     private bool _passwordVisible;
 
-    public LoginView() => InitializeComponent();
+    public LoginView()
+    {
+        InitializeComponent();
+        DataContextChanged += (_, _) => ResetPasswordFields();
+    }
+
+    private void ResetPasswordFields()
+    {
+        PasswordBox.Password = string.Empty;
+        if (_passwordTextBox is not null)
+            _passwordTextBox.Text = string.Empty;
+
+        if (DataContext is ViewModels.LoginViewModel vm)
+            vm.ClearPassword();
+    }
 
     private void PasswordBox_OnPasswordChanged(object sender, RoutedEventArgs e)
     {

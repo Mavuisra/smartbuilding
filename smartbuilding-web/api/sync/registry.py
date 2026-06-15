@@ -153,10 +153,28 @@ def _apply_single_push(entity_type: str, payload: dict, organization_id=None) ->
         return False
 
     try:
-        store = SyncedEntityStore.objects.get(id=entity_id)
-        data = merge_sync_payload(store.json_data, data)
+        if organization_id is not None:
+            store = SyncedEntityStore.objects.get(
+                id=entity_id, organization_id=organization_id
+            )
+            data = merge_sync_payload(store.json_data, data)
+        else:
+            store = SyncedEntityStore.objects.get(id=entity_id)
+            data = merge_sync_payload(store.json_data, data)
     except SyncedEntityStore.DoesNotExist:
+        conflict = SyncedEntityStore.objects.filter(id=entity_id).first()
+        if conflict is not None and organization_id is not None:
+            if conflict.organization_id and conflict.organization_id != organization_id:
+                logger.warning(
+                    "Conflit cross-tenant pour l'entité %s (org %s vs %s)",
+                    entity_id,
+                    conflict.organization_id,
+                    organization_id,
+                )
+                return False
         store = SyncedEntityStore(id=entity_id, entity_type=entity_type)
+        if organization_id is not None:
+            store.organization_id = organization_id
 
     store.entity_type = entity_type
     if organization_id is not None:
@@ -205,16 +223,19 @@ def apply_push(entity_type: str, entities: list[dict], organization_id=None) -> 
     return applied
 
 
-def rematerialize_entity_type(entity_type: str) -> int:
+def rematerialize_entity_type(entity_type: str, organization_id=None) -> int:
     """Rejoue les handlers ORM pour toutes les lignes du magasin sync (type donné)."""
     register_all()
     handler = _HANDLERS.get(entity_type)
     if not handler:
         return 0
     done = 0
-    for row in SyncedEntityStore.objects.filter(
+    rows = SyncedEntityStore.objects.filter(
         entity_type=entity_type, deleted_at__isnull=True
-    ).iterator():
+    )
+    if organization_id is not None:
+        rows = rows.filter(organization_id=organization_id)
+    for row in rows.iterator():
         payload = row.json_data if isinstance(row.json_data, dict) else {}
         if not payload:
             continue

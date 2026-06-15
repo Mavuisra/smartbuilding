@@ -21,31 +21,39 @@ from api.module_data_utils import pick_sync_value
 from api.services.finance_ledger import dedupe_financial_transactions, financial_dedupe_key
 
 
-def sync_store_count(entity_type: str, organization_id=None) -> int:
+from api.organization_context import scope_sync_store
+
+
+def _sync_store_qs(entity_type: str, organization_id=None):
     qs = SyncedEntityStore.objects.filter(
         entity_type=entity_type, deleted_at__isnull=True
     )
-    if organization_id is not None:
-        qs = qs.filter(organization_id=organization_id)
-    return qs.count()
+    return scope_sync_store(qs, organization_id)
 
 
-def has_sync_store_data() -> bool:
-    return SyncedEntityStore.objects.filter(deleted_at__isnull=True).exists()
+def sync_store_count(entity_type: str, organization_id=None) -> int:
+    return _sync_store_qs(entity_type, organization_id).count()
 
 
-def synced_id_set(entity_type: str) -> set | None:
+def entity_has_scoped_sync(entity_type: str, organization_id=None) -> bool:
+    """True si le magasin sync contient des enregistrements pour ce type et cette org."""
+    return sync_store_count(entity_type, organization_id) > 0
+
+
+def has_sync_store_data(organization_id=None) -> bool:
+    qs = SyncedEntityStore.objects.filter(deleted_at__isnull=True)
+    return scope_sync_store(qs, organization_id).exists()
+
+
+def synced_id_set(entity_type: str, organization_id=None) -> set | None:
     """IDs connus du desktop pour ce type ; None si le magasin sync est vide pour ce type."""
-    ids = SyncedEntityStore.objects.filter(
-        entity_type=entity_type, deleted_at__isnull=True
-    ).values_list("id", flat=True)
-    id_list = list(ids)
-    return set(id_list) if id_list else None
+    ids = list(_sync_store_qs(entity_type, organization_id).values_list("id", flat=True))
+    return set(ids) if ids else None
 
 
-def filter_to_synced(qs: QuerySet, entity_type: str) -> QuerySet:
+def filter_to_synced(qs: QuerySet, entity_type: str, organization_id=None) -> QuerySet:
     """Limite l'ORM aux enregistrements poussés par le Desktop (exclut le seed démo)."""
-    ids = synced_id_set(entity_type)
+    ids = synced_id_set(entity_type, organization_id)
     if ids is not None:
         return qs.filter(id__in=ids)
     return qs
@@ -56,9 +64,9 @@ def orm_without_sync_filter(qs: QuerySet) -> QuerySet:
     return qs
 
 
-def prefer_sync_store(entity_type: str, orm_count: int) -> bool:
+def prefer_sync_store(entity_type: str, orm_count: int, organization_id=None) -> bool:
     """Utilise le JSON sync si le magasin est plus complet que l'ORM filtré."""
-    store_count = sync_store_count(entity_type)
+    store_count = sync_store_count(entity_type, organization_id)
     if store_count == 0:
         return False
     if orm_count == 0:
@@ -118,12 +126,12 @@ def _sum_rent_payments(payments: list[RentPayment]) -> tuple[Decimal, Decimal, i
     return collected, planned, late_count, late_amount
 
 
-def rent_from_sync_store(year: int, month: int) -> tuple[Decimal, Decimal, int, Decimal]:
+def rent_from_sync_store(
+    year: int, month: int, organization_id=None
+) -> tuple[Decimal, Decimal, int, Decimal]:
     """Paiements loyer dédupliqués depuis le magasin sync."""
     best: dict[tuple, dict] = {}
-    for row in SyncedEntityStore.objects.filter(
-        entity_type="RentPayments", deleted_at__isnull=True
-    ).iterator():
+    for row in _sync_store_qs("RentPayments", organization_id).iterator():
         payload = row.json_data if isinstance(row.json_data, dict) else {}
         y = int(pick_sync_value(payload, "Year", "year", default=0) or 0)
         m = int(pick_sync_value(payload, "Month", "month", default=0) or 0)
@@ -160,7 +168,7 @@ def rent_from_sync_store(year: int, month: int) -> tuple[Decimal, Decimal, int, 
 
 
 def rent_from_ledger_deduped(
-    year: int, month: int, *, orm_only: bool = False
+    year: int, month: int, *, orm_only: bool = False, organization_id=None
 ) -> tuple[Decimal, Decimal, int, Decimal]:
     """Recettes « Loyers » dédupliquées (secours si RentPayments absent)."""
     from api.sync.utils import normalize_sync_datetime
@@ -192,9 +200,7 @@ def rent_from_ledger_deduped(
         best[key] = amt
 
     if not orm_only:
-        for row in SyncedEntityStore.objects.filter(
-            entity_type="FinancialTransactions", deleted_at__isnull=True
-        ).iterator():
+        for row in _sync_store_qs("FinancialTransactions", organization_id).iterator():
             payload = row.json_data if isinstance(row.json_data, dict) else {}
             raw_type = pick_sync_value(payload, "Type", "type", default=1)
             is_income = raw_type in (1, "1", "Recette") or (
@@ -219,7 +225,7 @@ def rent_from_ledger_deduped(
         deleted_at__isnull=True,
         type=FinancialTransaction.TxType.RECETTE,
     )
-    ids = synced_id_set("FinancialTransactions")
+    ids = synced_id_set("FinancialTransactions", organization_id)
     if ids is not None:
         qs = qs.filter(id__in=ids)
     for tx in dedupe_financial_transactions(list(qs)):
@@ -240,21 +246,44 @@ def rent_from_ledger_deduped(
     return collected, collected, 0, Decimal("0")
 
 
-def rent_all_time_collected() -> Decimal:
+def rent_all_time_collected(organization_id=None) -> Decimal:
     """Somme de tous les loyers encaissés (toutes périodes)."""
     base = RentPayment.objects.filter(deleted_at__isnull=True)
-    ids = synced_id_set("RentPayments")
-    orm_list = list(base.filter(id__in=ids)) if ids is not None else list(base)
-    if not orm_list and ids is not None:
-        orm_list = list(base)
+
+    if organization_id is not None and entity_has_scoped_sync("RentPayments", organization_id):
+        ids = synced_id_set("RentPayments", organization_id)
+        orm_list = list(base.filter(id__in=ids)) if ids is not None else []
+        if orm_list:
+            return _sum_rent_payments(_dedupe_rent_payments_orm(orm_list))[0]
+
+        if sync_store_count("RentPayments", organization_id) > 0:
+            best: dict[tuple, Decimal] = {}
+            for row in _sync_store_qs("RentPayments", organization_id).iterator():
+                payload = row.json_data if isinstance(row.json_data, dict) else {}
+                y = int(pick_sync_value(payload, "Year", "year", default=0) or 0)
+                m = int(pick_sync_value(payload, "Month", "month", default=0) or 0)
+                lease = str(
+                    pick_sync_value(payload, "LeaseContractId", "leaseContractId") or row.id
+                )
+                key = (y, m, lease)
+                paid = Decimal(
+                    str(pick_sync_value(payload, "AmountPaid", "amountPaid", default=0) or 0)
+                )
+                prev = best.get(key)
+                if prev is None or paid >= prev:
+                    best[key] = paid
+            if best:
+                return sum(best.values(), Decimal("0"))
+
+        return Decimal("0")
+
+    orm_list = list(base)
     if orm_list:
         return _sum_rent_payments(_dedupe_rent_payments_orm(orm_list))[0]
 
-    if sync_store_count("RentPayments") > 0:
+    if organization_id is not None and sync_store_count("RentPayments", organization_id) > 0:
         best: dict[tuple, Decimal] = {}
-        for row in SyncedEntityStore.objects.filter(
-            entity_type="RentPayments", deleted_at__isnull=True
-        ).iterator():
+        for row in _sync_store_qs("RentPayments", organization_id).iterator():
             payload = row.json_data if isinstance(row.json_data, dict) else {}
             y = int(pick_sync_value(payload, "Year", "year", default=0) or 0)
             m = int(pick_sync_value(payload, "Month", "month", default=0) or 0)
@@ -271,13 +300,10 @@ def rent_all_time_collected() -> Decimal:
         if best:
             return sum(best.values(), Decimal("0"))
 
-    # Secours : recettes loyer du journal (toutes dates)
     from api.sync.utils import normalize_sync_datetime
 
     ledger_best: dict[tuple, Decimal] = {}
-    for row in SyncedEntityStore.objects.filter(
-        entity_type="FinancialTransactions", deleted_at__isnull=True
-    ).iterator():
+    for row in _sync_store_qs("FinancialTransactions", organization_id).iterator():
         payload = row.json_data if isinstance(row.json_data, dict) else {}
         raw_type = pick_sync_value(payload, "Type", "type", default=1)
         is_receipt = raw_type in (1, "1", "Recette") or (
@@ -298,35 +324,50 @@ def rent_all_time_collected() -> Decimal:
     return sum(ledger_best.values(), Decimal("0"))
 
 
-def rent_month_totals(year: int, month: int) -> tuple[Decimal, Decimal, int, Decimal]:
+def rent_month_totals(
+    year: int, month: int, organization_id=None
+) -> tuple[Decimal, Decimal, int, Decimal]:
     """
     Loyers du mois : RentPayments (priorité Desktop), puis journal Loyers dédupliqué.
+    Si aucune donnée sync taguée pour ce type/org, utilise l'ORM complet (comme les onglets).
     """
     base = RentPayment.objects.filter(
         deleted_at__isnull=True, year=year, month=month
     )
-    ids = synced_id_set("RentPayments")
-    orm_list = list(base.filter(id__in=ids)) if ids is not None else list(base)
-    if not orm_list and ids is not None:
-        orm_list = list(base)
+
+    if organization_id is not None and entity_has_scoped_sync("RentPayments", organization_id):
+        ids = synced_id_set("RentPayments", organization_id)
+        orm_list = list(base.filter(id__in=ids)) if ids is not None else []
+        if orm_list:
+            totals = _sum_rent_payments(_dedupe_rent_payments_orm(orm_list))
+            if totals[0] > 0 or totals[1] > 0:
+                return totals
+
+        totals = rent_from_sync_store(year, month, organization_id=organization_id)
+        if totals[0] > 0 or totals[1] > 0:
+            return totals
+
+        return rent_from_ledger_deduped(year, month, organization_id=organization_id)
+
+    orm_list = list(base)
     if orm_list:
         totals = _sum_rent_payments(_dedupe_rent_payments_orm(orm_list))
         if totals[0] > 0 or totals[1] > 0:
             return totals
 
-    if sync_store_count("RentPayments") > 0:
-        totals = rent_from_sync_store(year, month)
+    if organization_id is not None:
+        totals = rent_from_sync_store(year, month, organization_id=organization_id)
         if totals[0] > 0 or totals[1] > 0:
             return totals
 
-    return rent_from_ledger_deduped(year, month)
+    return rent_from_ledger_deduped(year, month, organization_id=organization_id)
 
 
 def rent_from_orm(year: int, month: int, *, synced_only: bool = False) -> tuple[Decimal, Decimal, int, Decimal]:
     return rent_month_totals(year, month)
 
 
-def _expenses_totals(*, month_start: date | None = None) -> Decimal:
+def _expenses_totals(*, month_start: date | None = None, organization_id=None) -> Decimal:
     """Dépenses dédupliquées (mois ou cumul total)."""
     base = FinancialTransaction.objects.filter(
         deleted_at__isnull=True,
@@ -335,18 +376,52 @@ def _expenses_totals(*, month_start: date | None = None) -> Decimal:
     if month_start is not None:
         base = base.filter(transaction_date__date__gte=month_start)
 
-    ids = synced_id_set("FinancialTransactions")
-    qs = base.filter(id__in=ids) if ids is not None else base
-    deduped = dedupe_financial_transactions(list(qs))
-    if not deduped and ids is not None:
-        deduped = dedupe_financial_transactions(list(base))
+    if organization_id is not None and entity_has_scoped_sync(
+        "FinancialTransactions", organization_id
+    ):
+        ids = synced_id_set("FinancialTransactions", organization_id)
+        qs = base.filter(id__in=ids) if ids is not None else base.none()
+        deduped = dedupe_financial_transactions(list(qs))
+        if deduped:
+            return sum((t.amount for t in deduped), Decimal("0"))
+
+        seen: dict[tuple, Decimal] = {}
+        for row in _sync_store_qs("FinancialTransactions", organization_id).iterator():
+            payload = row.json_data if isinstance(row.json_data, dict) else {}
+            raw_type = pick_sync_value(payload, "Type", "type", default=1)
+            is_expense = raw_type in (2, "2", "Depense", "Dépense") or (
+                isinstance(raw_type, str) and "dep" in str(raw_type).lower()
+            )
+            if not is_expense:
+                continue
+            status = str(pick_sync_value(payload, "Status", "status", default="") or "")
+            if status == "En attente validation PDG":
+                continue
+            from api.sync.utils import normalize_sync_datetime
+
+            dt = normalize_sync_datetime(
+                pick_sync_value(payload, "TransactionDate", "transactionDate")
+            )
+            if month_start is not None and dt and dt.date() < month_start:
+                continue
+            rel = pick_sync_value(payload, "RelatedEntityId", "relatedEntityId")
+            key = financial_dedupe_key(
+                reference=pick_sync_value(payload, "Reference", "reference", default=""),
+                description=pick_sync_value(payload, "Description", "description", default=""),
+                amount=pick_sync_value(payload, "Amount", "amount", default=0),
+                transaction_date=dt,
+                tx_type=2,
+                related_entity_id=str(rel) if rel else None,
+            )
+            seen[key] = Decimal(str(pick_sync_value(payload, "Amount", "amount", default=0) or 0))
+        return sum(seen.values(), Decimal("0"))
+
+    deduped = dedupe_financial_transactions(list(base))
     if deduped:
         return sum((t.amount for t in deduped), Decimal("0"))
 
     seen: dict[tuple, Decimal] = {}
-    for row in SyncedEntityStore.objects.filter(
-        entity_type="FinancialTransactions", deleted_at__isnull=True
-    ).iterator():
+    for row in _sync_store_qs("FinancialTransactions", organization_id).iterator():
         payload = row.json_data if isinstance(row.json_data, dict) else {}
         raw_type = pick_sync_value(payload, "Type", "type", default=1)
         is_expense = raw_type in (2, "2", "Depense", "Dépense") or (
@@ -377,26 +452,51 @@ def _expenses_totals(*, month_start: date | None = None) -> Decimal:
     return sum(seen.values(), Decimal("0"))
 
 
-def expenses_month_totals(month_start: date) -> Decimal:
+def expenses_month_totals(month_start: date, organization_id=None) -> Decimal:
     """Dépenses du mois, écritures dédupliquées."""
-    return _expenses_totals(month_start=month_start)
+    return _expenses_totals(month_start=month_start, organization_id=organization_id)
 
 
-def expenses_all_time_totals() -> Decimal:
+def expenses_all_time_totals(organization_id=None) -> Decimal:
     """Dépenses engagées cumulées (toutes périodes)."""
-    return _expenses_totals(month_start=None)
+    return _expenses_totals(month_start=None, organization_id=organization_id)
 
 
-def occupancy_totals() -> tuple[int, int]:
-    """Locaux total / occupés — ORM puis magasin sync."""
-    total, occupied = occupancy_from_orm(synced_only=False)
+def occupancy_totals(organization_id=None) -> tuple[int, int]:
+    """Locaux total / occupés — ORM puis magasin sync (aligné onglets modules)."""
+    if organization_id is not None and entity_has_scoped_sync("Premises", organization_id):
+        total, occupied = occupancy_from_orm(
+            synced_only=True, organization_id=organization_id
+        )
+        if total > 0:
+            return total, occupied
+
+        total = occupied = 0
+        for row in _sync_store_qs("Premises", organization_id).iterator():
+            payload = row.json_data if isinstance(row.json_data, dict) else {}
+            total += 1
+            if pick_sync_value(payload, "IsOccupied", "isOccupied", default=False) in (
+                True,
+                "true",
+                "True",
+                1,
+                "1",
+            ):
+                occupied += 1
+        if total > 0:
+            return total, occupied
+
+        active = count_active_leases(organization_id=organization_id)
+        if active > 0:
+            return active, active
+        return 0, 0
+
+    total, occupied = occupancy_from_orm(synced_only=False, organization_id=organization_id)
     if total > 0:
         return total, occupied
 
     total = occupied = 0
-    for row in SyncedEntityStore.objects.filter(
-        entity_type="Premises", deleted_at__isnull=True
-    ).iterator():
+    for row in _sync_store_qs("Premises", organization_id).iterator():
         payload = row.json_data if isinstance(row.json_data, dict) else {}
         total += 1
         if pick_sync_value(payload, "IsOccupied", "isOccupied", default=False) in (
@@ -410,45 +510,74 @@ def occupancy_totals() -> tuple[int, int]:
     if total > 0:
         return total, occupied
 
-    active = count_active_leases()
+    active = count_active_leases(organization_id=organization_id)
     if active > 0:
         return active, active
     return 0, 0
 
 
-def count_active_leases() -> int:
+def count_active_leases(organization_id=None) -> int:
+    base = LeaseContract.objects.filter(deleted_at__isnull=True)
+
+    if organization_id is not None and entity_has_scoped_sync("LeaseContracts", organization_id):
+        ids = synced_id_set("LeaseContracts", organization_id)
+        scoped = base.filter(id__in=ids) if ids is not None else base.none()
+        active = sum(
+            1
+            for c in scoped.iterator()
+            if _is_active_lease_status(c.status)
+        )
+        if active > 0:
+            return active
+
+        count = 0
+        for row in _sync_store_qs("LeaseContracts", organization_id).iterator():
+            payload = row.json_data if isinstance(row.json_data, dict) else {}
+            if _is_active_lease_status(pick_sync_value(payload, "Status", "status")):
+                count += 1
+        return count
+
     active = sum(
         1
-        for c in LeaseContract.objects.filter(deleted_at__isnull=True).iterator()
+        for c in base.iterator()
         if _is_active_lease_status(c.status)
     )
     if active > 0:
         return active
 
     count = 0
-    for row in SyncedEntityStore.objects.filter(
-        entity_type="LeaseContracts", deleted_at__isnull=True
-    ).iterator():
+    for row in _sync_store_qs("LeaseContracts", organization_id).iterator():
         payload = row.json_data if isinstance(row.json_data, dict) else {}
         if _is_active_lease_status(pick_sync_value(payload, "Status", "status")):
             count += 1
     return count
 
 
-def count_tenants_total() -> int:
-    n = Tenant.objects.filter(deleted_at__isnull=True).count()
+def count_tenants_total(organization_id=None) -> int:
+    base = Tenant.objects.filter(deleted_at__isnull=True)
+
+    if organization_id is not None and entity_has_scoped_sync("Tenants", organization_id):
+        ids = synced_id_set("Tenants", organization_id)
+        if ids is not None:
+            n = base.filter(id__in=ids).count()
+            if n > 0:
+                return n
+        n = _sync_store_qs("Tenants", organization_id).count()
+        if n > 0:
+            return n
+        return 0
+
+    n = base.count()
     if n > 0:
         return n
-    return SyncedEntityStore.objects.filter(
-        entity_type="Tenants", deleted_at__isnull=True
-    ).count()
+    return _sync_store_qs("Tenants", organization_id).count()
 
 
-def revenue_chart_totals(month_starts: list[date]) -> list[dict]:
+def revenue_chart_totals(month_starts: list[date], organization_id=None) -> list[dict]:
     return [
         {
             "label": ms.strftime("%b %Y"),
-            "value": float(rent_month_totals(ms.year, ms.month)[0]),
+            "value": float(rent_month_totals(ms.year, ms.month, organization_id=organization_id)[0]),
         }
         for ms in month_starts
     ]
@@ -464,9 +593,13 @@ def expenses_from_orm(month_start: date, *, synced_only: bool = False) -> Decima
     return qs.aggregate(t=Sum("amount"))["t"] or Decimal("0")
 
 
-def occupancy_from_orm(*, synced_only: bool = False) -> tuple[int, int]:
+def occupancy_from_orm(*, synced_only: bool = False, organization_id=None) -> tuple[int, int]:
     base = Premise.objects.filter(deleted_at__isnull=True)
-    qs = filter_to_synced(base, "Premises") if synced_only else base
+    qs = (
+        filter_to_synced(base, "Premises", organization_id)
+        if synced_only
+        else base
+    )
     total = qs.count()
     occupied = qs.filter(is_occupied=True).count()
     return total, occupied
@@ -507,12 +640,12 @@ DASHBOARD_ENTITY_TYPES = (
 )
 
 
-def ensure_dashboard_orm_materialized() -> int:
+def ensure_dashboard_orm_materialized(organization_id=None) -> int:
     """Rejoue les matérialiseurs uniquement si l'ORM est en retard sur le magasin sync."""
     from api.services.diagnostics import get_data_pipeline_diagnostics
     from api.sync.registry import rematerialize_entity_type
 
-    diag = get_data_pipeline_diagnostics()
+    diag = get_data_pipeline_diagnostics(organization_id)
     targets = set(DASHBOARD_ENTITY_TYPES)
     to_rebuild: set[str] = set()
     for item in diag.get("mismatches") or []:
@@ -522,5 +655,5 @@ def ensure_dashboard_orm_materialized() -> int:
 
     rebuilt = 0
     for et in to_rebuild:
-        rebuilt += rematerialize_entity_type(et)
+        rebuilt += rematerialize_entity_type(et, organization_id)
     return rebuilt
