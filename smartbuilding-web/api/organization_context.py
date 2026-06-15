@@ -16,6 +16,9 @@ DEFAULT_ORG_SLUG = "organisation-principale"
 DEFAULT_ORG_ID = UUID("00000000-0000-0000-0000-000000000001")
 SLUG_RE = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,78}[a-z0-9])?$")
 
+# Seul ce compte peut parcourir tous les tenants sur le portail web.
+TENANT_SUPER_ADMIN_USERNAMES = frozenset({"jessica"})
+
 _current_org_id: contextvars.ContextVar[UUID | None] = contextvars.ContextVar(
     "current_org_id", default=None
 )
@@ -62,17 +65,20 @@ def parse_organization_id(value) -> UUID | None:
         return None
 
 
-def user_can_list_all_organizations(user) -> bool:
+def user_is_tenant_super_admin(user) -> bool:
+    """Super administrateur multi-tenant (navigation entre tous les tenants)."""
     if not user or not getattr(user, "is_authenticated", False):
         return False
-    if getattr(user, "is_superuser", False):
-        return True
-    role = getattr(user, "role", "") or ""
-    return role in ("Administrateur", "PDG", "ADMIN")
+    username = (getattr(user, "username", "") or "").strip().lower()
+    return username in TENANT_SUPER_ADMIN_USERNAMES
+
+
+def user_can_list_all_organizations(user) -> bool:
+    return user_is_tenant_super_admin(user)
 
 
 def user_can_access_organization(user, organization_id: UUID) -> bool:
-    """PDG/Admin : toutes les orgs. Autres : org sync, propriétaire ou défaut."""
+    """Jessica : toutes les orgs. Autres : orgs assignées via sync ou propriétaire."""
     if not user or not getattr(user, "is_authenticated", False):
         return False
     if user_can_list_all_organizations(user):
@@ -107,11 +113,14 @@ def resolve_organization_id(request, *, require_explicit: bool = False) -> UUID:
             break
 
     if raw is None:
-        if require_explicit and user and user_can_list_all_organizations(user):
+        if require_explicit and user and user_is_tenant_super_admin(user):
             raise PermissionDenied(
                 "Header X-Organization-Id requis pour cette opération."
             )
-        org_id = get_default_organization().id
+        if user and getattr(user, "is_authenticated", False):
+            org_id = default_organization_for_user(user).id
+        else:
+            org_id = get_default_organization().id
     else:
         org_id = raw
 
@@ -173,15 +182,15 @@ def organization_to_dict(org: Organization) -> dict:
 
 def resolve_user_organizations(user) -> list[Organization]:
     """
-    Organisations accessibles après login web.
-    PDG/Admin : toutes. Autres : orgs où l'utilisateur est présent dans le magasin sync.
+    Organisations visibles pour l'utilisateur.
+    Jessica (super admin) : toutes. Autres : uniquement le(s) tenant(s) sync où ils existent.
     """
     from api.models import SyncedEntityStore
 
     if not user or not getattr(user, "is_authenticated", False):
         return []
 
-    if user_can_list_all_organizations(user):
+    if user_is_tenant_super_admin(user):
         return list(
             Organization.objects.filter(deleted_at__isnull=True, is_active=True).order_by("name")
         )
@@ -211,12 +220,14 @@ def resolve_user_organizations(user) -> list[Organization]:
             is_active=True,
         ).order_by("name")
     )
-    if owner_orgs:
-        return owner_orgs
-
-    return [get_default_organization()]
+    return owner_orgs
 
 
 def default_organization_for_user(user) -> Organization:
     orgs = resolve_user_organizations(user)
-    return orgs[0] if orgs else get_default_organization()
+    if not orgs:
+        raise PermissionDenied(
+            "Aucune organisation n'est associée à ce compte. "
+            "Synchronisez l'utilisateur depuis le desktop ou contactez Jessica."
+        )
+    return orgs[0]

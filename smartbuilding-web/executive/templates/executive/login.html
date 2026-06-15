@@ -233,6 +233,7 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
       role: json.data.role,
       permissions: json.data.permissions || [],
       expiresAt: json.data.expiresAt,
+      canSwitchOrganizations: Boolean(json.data.canSwitchOrganizations),
     }));
     const next = new URLSearchParams(window.location.search).get('next');
     window.location.href = next && next.startsWith('/') ? next : '/dashboard/';

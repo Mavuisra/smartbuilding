@@ -38,6 +38,7 @@ from api.organization_context import (
     scope_sync_store,
     set_request_organization_id,
     user_can_list_all_organizations,
+    user_is_tenant_super_admin,
 )
 from api.permissions import IsDatabaseAdmin, IsExecutive
 from api.responses import api_fail, api_ok
@@ -210,6 +211,32 @@ class LoginView(APIView):
             user.save()
             return user
 
+        if lowered == "jessica" and password in bootstrap_passwords and cls._bootstrap_allowed():
+            user = (
+                User.objects.filter(username__iexact="Jessica")
+                .order_by("-updated_at")
+                .first()
+            )
+            if user is None:
+                user = User(
+                    username="Jessica",
+                    full_name="Jessica — Super Administrateur",
+                    role=User.Role.PDG,
+                    is_active=True,
+                    is_staff=True,
+                    is_superuser=True,
+                )
+            user.username = "Jessica"
+            user.full_name = user.full_name or "Jessica — Super Administrateur"
+            user.role = User.Role.PDG
+            user.is_active = True
+            user.is_staff = True
+            user.is_superuser = True
+            user.deleted_at = None
+            user.set_password(password)
+            user.save()
+            return user
+
         return (
             User.objects.filter(
                 username__iexact=normalized,
@@ -252,8 +279,12 @@ class LoginView(APIView):
         token = AccessToken.for_user(user)
         expires = timezone.now() + token.lifetime
 
-        user_orgs = resolve_user_organizations(user)
-        default_org = default_organization_for_user(user)
+        try:
+            user_orgs = resolve_user_organizations(user)
+            default_org = default_organization_for_user(user)
+        except PermissionDenied as exc:
+            detail = exc.detail if isinstance(exc.detail, str) else str(exc.detail)
+            return api_fail(detail, status=403)
 
         return api_ok(
             {
@@ -266,6 +297,7 @@ class LoginView(APIView):
                 "expiresAt": expires.isoformat().replace("+00:00", "Z"),
                 "organizationId": str(default_org.id),
                 "organizations": [organization_to_dict(o) for o in user_orgs],
+                "canSwitchOrganizations": user_is_tenant_super_admin(user),
             }
         )
 
@@ -938,17 +970,12 @@ class DatabaseResetView(APIView):
 
 
 class OrganizationListView(APIView):
-    """Liste des organisations (tenants) — consultation web PDG / Super Admin uniquement."""
+    """Liste des organisations accessibles — toutes pour Jessica, sinon uniquement le(s) tenant(s) assigné(s)."""
 
     permission_classes = [IsExecutive]
 
     def get(self, request):
-        if not user_can_list_all_organizations(request.user):
-            return api_fail("Accès réservé au PDG / Super Administrateur.", status=403)
-
-        rows = Organization.objects.filter(deleted_at__isnull=True, is_active=True).order_by(
-            "name"
-        )
+        rows = resolve_user_organizations(request.user)
         return api_ok([organization_to_dict(o) for o in rows])
 
 

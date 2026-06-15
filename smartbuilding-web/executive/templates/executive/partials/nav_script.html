@@ -50,10 +50,11 @@
 
   async function loadOrganizations() {
     const user = Sbms.getUser();
-    const isSuper = user.role === 'Administrateur' || user.role === 'PDG';
+    if (!user.canSwitchOrganizations) return;
+
     const wrap = document.getElementById('org-selector-wrap');
     const select = document.getElementById('org-selector');
-    if (!wrap || !select || !isSuper) return;
+    if (!wrap || !select) return;
 
     try {
       const orgs = await Sbms.apiFetch('/api/organizations/');

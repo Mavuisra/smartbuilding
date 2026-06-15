@@ -13,13 +13,14 @@ from api.sync.registry import apply_push, get_changes_since
 class OrganizationApiTests(TestCase):
     def setUp(self):
         self.client = APIClient()
-        self.admin = User.objects.create_user(
-            username="admin",
+        self.jessica = User.objects.create_user(
+            username="Jessica",
             password="Admin@2026",
-            role=User.Role.ADMIN,
+            role=User.Role.PDG,
             is_staff=True,
+            is_superuser=True,
         )
-        self.client.force_authenticate(user=self.admin)
+        self.client.force_authenticate(user=self.jessica)
         self.org_a = Organization.objects.create(
             id=uuid.uuid4(),
             name="Résidence Kinshasa",
@@ -35,7 +36,7 @@ class OrganizationApiTests(TestCase):
             is_active=True,
         )
 
-    def test_list_organizations_pdg_only(self):
+    def test_list_organizations_super_admin_only(self):
         res = self.client.get("/api/organizations/")
         self.assertEqual(res.status_code, 200)
         body = res.json()
@@ -91,7 +92,7 @@ class OrganizationApiTests(TestCase):
 
         factory = RequestFactory()
         request = factory.get("/", HTTP_X_ORGANIZATION_ID=str(self.org_b.id))
-        request.user = self.admin
+        request.user = self.jessica
         resolved = resolve_organization_id(request)
         self.assertEqual(resolved, self.org_b.id)
 
@@ -103,6 +104,12 @@ class OrganizationApiTests(TestCase):
             username="comptable",
             password="secret",
             role=User.Role.COMPTABLE,
+        )
+        SyncedEntityStore.objects.create(
+            id=user.id,
+            entity_type="Users",
+            organization_id=self.org_a.id,
+            json_data='{"Username": "comptable"}',
         )
         factory = RequestFactory()
         request = factory.get("/", HTTP_X_ORGANIZATION_ID=str(self.org_b.id))

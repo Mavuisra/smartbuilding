@@ -242,13 +242,13 @@ class DashboardSyncAlignmentTests(TestCase):
 class DashboardModuleApiTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(
-            username="admin",
+            username="Jessica",
             password="Admin@2026",
-            role=User.Role.ADMIN,
-            full_name="Administrateur",
+            role=User.Role.PDG,
+            full_name="Jessica",
+            is_staff=True,
+            is_superuser=True,
         )
-        self.user.is_staff = True
-        self.user.save()
 
     def test_dashboard_module_returns_json_envelope(self):
         self.client.force_login(self.user)

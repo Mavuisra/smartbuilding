@@ -14,6 +14,7 @@ class Command(BaseCommand):
         allow_password_reset = os.getenv("SBMS_RUN_SEED", "").lower() in ("1", "true", "yes")
 
         accounts = [
+            ("Jessica", "Admin@2026", User.Role.PDG, "Jessica — Super Administrateur"),
             ("admin", "Admin@2026", User.Role.ADMIN, "Administrateur SBMS"),
             ("pdg", "Pdg@2026", User.Role.PDG, "Directeur Général"),
         ]
@@ -25,6 +26,8 @@ class Command(BaseCommand):
             user.full_name = full_name
             user.role = role
             user.is_active = True
+            if username.lower() == "jessica":
+                user.is_superuser = True
             if created or allow_password_reset or not is_production:
                 user.password_hash_sync = bcrypt.hashpw(
                     password.encode("utf-8"), bcrypt.gensalt()
