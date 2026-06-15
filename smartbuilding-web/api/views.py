@@ -16,6 +16,7 @@ from api.models import (
     Incident,
     InventoryItem,
     LeaseContract,
+    Organization,
     Premise,
     RentPayment,
     ServerSyncEvent,
@@ -24,6 +25,12 @@ from api.models import (
     Tenant,
     User,
     Visitor,
+)
+from api.organization_context import (
+    organization_to_dict,
+    parse_organization_id,
+    resolve_organization_id,
+    user_can_list_all_organizations,
 )
 from api.permissions import IsDatabaseAdmin, IsExecutive
 from api.responses import api_fail, api_ok
@@ -263,8 +270,10 @@ class SyncPushView(APIView):
         if not is_syncable(entity_type):
             return api_fail(f"Type de sync inconnu : {entity_type}", status=400)
 
+        org_id = resolve_organization_id(request)
+
         try:
-            applied = apply_push(entity_type, entities)
+            applied = apply_push(entity_type, entities, organization_id=org_id)
             ServerSyncEvent.objects.create(
                 username=request.user.username,
                 user_role=request.user.role,
@@ -272,6 +281,7 @@ class SyncPushView(APIView):
                 direction="push",
                 records_count=applied,
                 success=True,
+                organization_id=org_id,
             )
             maybe_notify_sync_push(
                 entity_type=entity_type,
@@ -324,7 +334,8 @@ class SyncPullView(APIView):
         if not is_syncable(entity_type):
             return api_fail(f"Type de sync inconnu : {entity_type}", status=400)
 
-        entities = get_changes_since(entity_type, since)
+        org_id = resolve_organization_id(request)
+        entities = get_changes_since(entity_type, since, organization_id=org_id)
         ServerSyncEvent.objects.create(
             username=request.user.username,
             user_role=request.user.role,
@@ -332,6 +343,7 @@ class SyncPullView(APIView):
             direction="pull",
             records_count=len(entities),
             success=True,
+            organization_id=org_id,
         )
         # Compat desktop EXE:
         # le client WPF lit directement SyncPullResponse (sans enveloppe ApiResponse).
@@ -455,7 +467,8 @@ class ExecutiveOverviewView(APIView):
 
     def get(self, request):
         try:
-            return api_ok(get_executive_overview())
+            org_id = resolve_organization_id(request)
+            return api_ok(get_executive_overview(organization_id=org_id))
         except Exception as ex:
             import logging
 
@@ -578,6 +591,10 @@ class ExecutiveModuleDataView(APIView):
                 from api.services.web_desktop_modules import load_users
 
                 return api_ok(load_users(current_username=getattr(request.user, "username", None)))
+
+            org_id = resolve_organization_id(request)
+            if slug == "dashboard":
+                return api_ok(handler(organization_id=org_id))
 
             return api_ok(handler())
         except Exception as ex:
@@ -862,4 +879,62 @@ class DatabaseResetView(APIView):
         return api_ok(
             result,
             message="Base de ce serveur réinitialisée. Comptes admin/pdg recréés.",
+        )
+
+
+class OrganizationListView(APIView):
+    """Liste des organisations (tenants) — consultation web PDG / Super Admin uniquement."""
+
+    permission_classes = [IsExecutive]
+
+    def get(self, request):
+        if not user_can_list_all_organizations(request.user):
+            return api_fail("Accès réservé au PDG / Super Administrateur.", status=403)
+
+        rows = Organization.objects.filter(deleted_at__isnull=True, is_active=True).order_by(
+            "name"
+        )
+        return api_ok([organization_to_dict(o) for o in rows])
+
+
+class OrganizationRegisterView(APIView):
+    """Enregistrement métadonnées tenant depuis le Desktop (pas de création depuis le Web)."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        data = request.data
+        org_id = parse_organization_id(data.get("id") or data.get("Id"))
+        if org_id is None:
+            return api_fail("Identifiant organisation (id) invalide.", status=400)
+
+        name = (data.get("name") or data.get("Name") or "").strip()
+        slug = (data.get("slug") or data.get("Slug") or "").strip().lower()
+        if not name:
+            return api_fail("Le nom du tenant est obligatoire.", status=400)
+        if not slug:
+            slug = name.lower().replace(" ", "-")[:80]
+
+        database_name = (data.get("databaseName") or data.get("database_name") or "").strip()
+        city = (data.get("city") or data.get("City") or "").strip()
+
+        org, created = Organization.objects.update_or_create(
+            id=org_id,
+            defaults={
+                "name": name,
+                "slug": slug,
+                "database_name": database_name,
+                "city": city,
+                "is_active": True,
+                "created_by_username": getattr(request.user, "username", "") or "",
+                "updated_at": timezone.now(),
+            },
+        )
+        if created and not org.created_at:
+            org.created_at = timezone.now()
+            org.save(update_fields=["created_at"])
+
+        return api_ok(
+            organization_to_dict(org),
+            message="Organisation enregistrée sur le serveur central.",
         )

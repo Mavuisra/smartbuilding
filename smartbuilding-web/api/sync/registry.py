@@ -136,7 +136,7 @@ def _preflight_rent_payment_parents(entities: list[dict]) -> None:
             ensure_entity_materialized("LeaseContracts", lid)
 
 
-def _apply_single_push(entity_type: str, payload: dict) -> bool:
+def _apply_single_push(entity_type: str, payload: dict, organization_id=None) -> bool:
     """Applique un enregistrement (magasin sync + ORM). Retourne True si OK."""
     entity_id = parse_uuid(payload.get("id") or payload.get("Id"))
     if not entity_id:
@@ -159,6 +159,8 @@ def _apply_single_push(entity_type: str, payload: dict) -> bool:
         store = SyncedEntityStore(id=entity_id, entity_type=entity_type)
 
     store.entity_type = entity_type
+    if organization_id is not None:
+        store.organization_id = organization_id
     store.json_data = data
     store.updated_at = updated_at
     store.deleted_at = deleted_at
@@ -173,7 +175,7 @@ def _apply_single_push(entity_type: str, payload: dict) -> bool:
     return True
 
 
-def apply_push(entity_type: str, entities: list[dict]) -> int:
+def apply_push(entity_type: str, entities: list[dict], organization_id=None) -> int:
     if not is_syncable(entity_type):
         return 0
 
@@ -186,7 +188,7 @@ def apply_push(entity_type: str, entities: list[dict]) -> int:
     for payload in entities:
         try:
             with transaction.atomic():
-                if _apply_single_push(entity_type, payload):
+                if _apply_single_push(entity_type, payload, organization_id):
                     applied += 1
         except Exception:
             logger.exception(
@@ -226,18 +228,19 @@ def rematerialize_entity_type(entity_type: str) -> int:
     return done
 
 
-def get_changes_since(entity_type: str, since) -> list[dict[str, Any]]:
+def get_changes_since(entity_type: str, since, organization_id=None) -> list[dict[str, Any]]:
     if not is_syncable(entity_type):
         return []
 
     since = normalize_sync_datetime(since, MIN_SYNC_DATETIME) or MIN_SYNC_DATETIME
 
-    rows = (
-        SyncedEntityStore.objects.filter(
-            entity_type=entity_type, updated_at__gt=since
-        )
-        .order_by("updated_at")[:500]
+    rows = SyncedEntityStore.objects.filter(
+        entity_type=entity_type, updated_at__gt=since
     )
+    if organization_id is not None:
+        rows = rows.filter(organization_id=organization_id)
+
+    rows = rows.order_by("updated_at")[:500]
 
     return [
         {

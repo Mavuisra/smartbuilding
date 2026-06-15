@@ -18,6 +18,8 @@ from api.views import (
     HealthView,
     LoginView,
     LogoutView,
+    OrganizationListView,
+    OrganizationRegisterView,
     SessionCheckView,
     SyncStatusView,
     SyncPullView,
@@ -69,4 +71,8 @@ urlpatterns = [
     path("executive/admin/database-info", DatabaseInfoView.as_view()),
     path("executive/admin/reset-database/", DatabaseResetView.as_view(), name="database-reset"),
     path("executive/admin/reset-database", DatabaseResetView.as_view()),
+    path("organizations/", OrganizationListView.as_view(), name="organizations-list"),
+    path("organizations", OrganizationListView.as_view()),
+    path("organizations/register/", OrganizationRegisterView.as_view(), name="organizations-register"),
+    path("organizations/register", OrganizationRegisterView.as_view()),
 ]

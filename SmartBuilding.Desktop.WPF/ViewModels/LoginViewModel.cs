@@ -1,8 +1,13 @@
+using System.Collections.ObjectModel;
 using System.IO;
+using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.DependencyInjection;
 using SmartBuilding.Application.Interfaces;
 using SmartBuilding.Desktop.WPF.Services;
+using SmartBuilding.Desktop.WPF.Views;
+using SmartBuilding.Infrastructure.Persistence;
 using SmartBuilding.Infrastructure.Services;
 using SmartBuilding.Infrastructure.Sync;
 using SmartBuilding.Shared.DTOs.Auth;
@@ -11,9 +16,11 @@ namespace SmartBuilding.Desktop.WPF.ViewModels;
 
 public partial class LoginViewModel : BaseViewModel
 {
-    private readonly IAuthService _authService;
-    private readonly ISyncService _syncService;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly CloudIdentityService _cloudIdentity;
+    private readonly OrganizationRegistry _organizationRegistry;
+    private readonly OrganizationCloudSyncService _organizationCloudSync;
+    private readonly IServiceProvider _services;
     private readonly SessionService _session;
     private readonly Action _onLoginSuccess;
 
@@ -24,24 +31,60 @@ public partial class LoginViewModel : BaseViewModel
     [ObservableProperty] private bool _isErrorDialogVisible;
     [ObservableProperty] private string? _errorDialogMessage;
     [ObservableProperty] private string _loginProgressText = "Connexion en cours…";
+    [ObservableProperty] private OrganizationEntry? _selectedOrganization;
+
+    public ObservableCollection<OrganizationEntry> Organizations { get; } = [];
 
     public AppBrandingState Branding { get; }
 
     public LoginViewModel(
-        IAuthService authService,
-        ISyncService syncService,
+        IServiceScopeFactory scopeFactory,
         CloudIdentityService cloudIdentity,
+        OrganizationRegistry organizationRegistry,
+        OrganizationCloudSyncService organizationCloudSync,
+        IServiceProvider services,
         SessionService session,
         AppBrandingState branding,
         Action onLoginSuccess)
     {
-        _authService = authService;
-        _syncService = syncService;
+        _scopeFactory = scopeFactory;
         _cloudIdentity = cloudIdentity;
+        _organizationRegistry = organizationRegistry;
+        _organizationCloudSync = organizationCloudSync;
+        _services = services;
         _session = session;
         Branding = branding;
         _onLoginSuccess = onLoginSuccess;
         Username = LoadRememberedUsername() ?? "admin";
+        ReloadOrganizations();
+    }
+
+    partial void OnSelectedOrganizationChanged(OrganizationEntry? value)
+    {
+        if (value is not null)
+            _organizationRegistry.SetActive(value.Id);
+    }
+
+    private void ReloadOrganizations()
+    {
+        Organizations.Clear();
+        foreach (var org in _organizationRegistry.Organizations)
+            Organizations.Add(org);
+        SelectedOrganization = _organizationRegistry.Active;
+    }
+
+    [RelayCommand]
+    private void CreateTenant()
+    {
+        var window = new CreateTenantWindow(_services)
+        {
+            Owner = System.Windows.Application.Current?.MainWindow
+        };
+        if (window.ShowDialog() == true)
+        {
+            ReloadOrganizations();
+            SelectedOrganization = _organizationRegistry.Active;
+        }
     }
 
     [RelayCommand]
@@ -53,6 +96,15 @@ public partial class LoginViewModel : BaseViewModel
 
         try
         {
+            if (SelectedOrganization is null)
+            {
+                ShowLoginError("Sélectionnez une organisation (tenant).");
+                return;
+            }
+
+            _organizationRegistry.SetActive(SelectedOrganization.Id);
+            _session.SetOrganization(SelectedOrganization);
+
             if (string.IsNullOrWhiteSpace(Username))
             {
                 ShowLoginError("Veuillez saisir votre nom d'utilisateur.");
@@ -65,7 +117,11 @@ public partial class LoginViewModel : BaseViewModel
                 return;
             }
 
-            var result = await _authService.LoginAsync(new LoginRequest
+            using var loginScope = _scopeFactory.CreateScope();
+            var authService = loginScope.ServiceProvider.GetRequiredService<IAuthService>();
+            var syncService = loginScope.ServiceProvider.GetRequiredService<ISyncService>();
+
+            var result = await authService.LoginAsync(new LoginRequest
             {
                 Username = Username.Trim(),
                 Password = Password
@@ -84,7 +140,8 @@ public partial class LoginViewModel : BaseViewModel
 
             _session.SetUser(result);
 
-            await PublishAndSyncToCloudAsync(Username.Trim(), Password);
+            await _organizationCloudSync.RegisterActiveOrganizationAsync(Username.Trim(), Password);
+            await PublishAndSyncToCloudAsync(syncService, Username.Trim(), Password);
 
             LoginProgressText = "Ouverture de l'application…";
 
@@ -143,17 +200,17 @@ public partial class LoginViewModel : BaseViewModel
         catch { return null; }
     }
 
-    private async Task PublishAndSyncToCloudAsync(string username, string password)
+    private async Task PublishAndSyncToCloudAsync(ISyncService syncService, string username, string password)
     {
         try
         {
-            if (await _syncService.NeedsInitialCloudPullAsync())
+            if (await syncService.NeedsInitialCloudPullAsync())
             {
                 await EnsureCloudSessionAsync(username, password);
                 if (!_session.IsCloudIdentityLinked)
                     return;
 
-                await RunInitialCloudPullAsync();
+                await RunInitialCloudPullAsync(syncService);
                 return;
             }
 
@@ -175,17 +232,17 @@ public partial class LoginViewModel : BaseViewModel
 
             CloudIdentityStore.MarkLinked(username, identity.Message);
 
-            if (await _syncService.IsCloudStoreEmptyAsync())
+            if (await syncService.IsCloudStoreEmptyAsync())
             {
                 LoginProgressText = "Publication complète des données locales vers le cloud…";
-                await _syncService.MarkAllLocalDataForPushAsync();
-                var pushResult = await _syncService.SyncAsync(manual: false);
+                await syncService.MarkAllLocalDataForPushAsync();
+                var pushResult = await syncService.SyncAsync(manual: false);
                 if (pushResult.Success)
                     InitialSyncStore.MarkCompleted();
             }
             else
             {
-                await _syncService.SyncAsync(manual: false);
+                await syncService.SyncAsync(manual: false);
                 InitialSyncStore.MarkCompleted();
             }
         }
@@ -208,10 +265,10 @@ public partial class LoginViewModel : BaseViewModel
             CloudIdentityStore.MarkLinked(username, identity.Message);
     }
 
-    private async Task RunInitialCloudPullAsync()
+    private async Task RunInitialCloudPullAsync(ISyncService syncService)
     {
         LoginProgressText = "Synchronisation initiale — téléchargement depuis le cloud…";
-        var pullResult = await _syncService.PerformInitialCloudPullAsync();
+        var pullResult = await syncService.PerformInitialCloudPullAsync();
 
         if (pullResult.Success)
         {

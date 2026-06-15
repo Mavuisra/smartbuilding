@@ -21,10 +21,13 @@ from api.module_data_utils import pick_sync_value
 from api.services.finance_ledger import dedupe_financial_transactions, financial_dedupe_key
 
 
-def sync_store_count(entity_type: str) -> int:
-    return SyncedEntityStore.objects.filter(
+def sync_store_count(entity_type: str, organization_id=None) -> int:
+    qs = SyncedEntityStore.objects.filter(
         entity_type=entity_type, deleted_at__isnull=True
-    ).count()
+    )
+    if organization_id is not None:
+        qs = qs.filter(organization_id=organization_id)
+    return qs.count()
 
 
 def has_sync_store_data() -> bool:

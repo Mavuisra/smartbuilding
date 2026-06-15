@@ -37,7 +37,7 @@ def _fc(amount) -> str:
     return f"$ {amount:,.2f}"
 
 
-def get_executive_summary() -> dict:
+def get_executive_summary(organization_id=None) -> dict:
     ensure_dashboard_orm_materialized()
 
     today = timezone.localdate()
@@ -195,8 +195,8 @@ def get_sync_health(window_hours: int = 24) -> dict:
     }
 
 
-def get_executive_overview() -> dict:
-    summary = get_executive_summary()
+def get_executive_overview(organization_id=None) -> dict:
+    summary = get_executive_summary(organization_id=organization_id)
     pending_contracts = list(
         LeaseContract.objects.filter(deleted_at__isnull=True)
         .exclude(status__icontains="actif")

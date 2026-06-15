@@ -12,6 +12,16 @@ Sbms.getUser = () => {
   catch { return {}; }
 };
 
+Sbms.getOrganizationId = () => {
+  const id = localStorage.getItem('sbms_organization_id');
+  return id && id !== 'null' && id !== 'undefined' ? id : null;
+};
+
+Sbms.setOrganizationId = (id) => {
+  if (id) localStorage.setItem('sbms_organization_id', id);
+  else localStorage.removeItem('sbms_organization_id');
+};
+
 Sbms.hasPermission = (code) => {
   const user = Sbms.getUser();
   if (user.role === 'Administrateur' || user.role === 'PDG') return true;
@@ -69,6 +79,8 @@ Sbms.apiFetch = async (path, options = {}) => {
     Accept: 'application/json',
     ...(options.headers || {}),
   };
+  const orgId = Sbms.getOrganizationId();
+  if (orgId) headers['X-Organization-Id'] = orgId;
   if (token) {
     headers.Authorization = 'Bearer ' + token;
   }

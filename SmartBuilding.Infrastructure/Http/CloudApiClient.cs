@@ -53,6 +53,13 @@ public sealed class CloudApiClient : IDisposable
             : new AuthenticationHeaderValue("Bearer", token);
     }
 
+    public void SetOrganizationId(string? organizationId)
+    {
+        _http.DefaultRequestHeaders.Remove("X-Organization-Id");
+        if (!string.IsNullOrWhiteSpace(organizationId))
+            _http.DefaultRequestHeaders.Add("X-Organization-Id", organizationId.Trim());
+    }
+
     public async Task<HttpResult> PostJsonAsync<T>(string path, T body, CancellationToken cancellationToken = default)
     {
         var json = JsonSerializer.Serialize(body, JsonOptions);

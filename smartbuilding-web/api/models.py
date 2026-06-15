@@ -242,10 +242,34 @@ class InventoryItem(BaseEntity):
     location = models.CharField(max_length=200, blank=True, default="")
 
 
+class Organization(BaseEntity):
+    """Organisation multi-tenant (bâtiment / résidence / site) — registre central."""
+
+    name = models.CharField(max_length=200)
+    slug = models.SlugField(max_length=80, unique=True)
+    database_name = models.CharField(max_length=120, blank=True, default="")
+    city = models.CharField(max_length=100, blank=True, default="")
+    description = models.TextField(blank=True, default="")
+    is_active = models.BooleanField(default=True)
+    created_by_username = models.CharField(max_length=150, blank=True, default="")
+
+    class Meta:
+        ordering = ["name"]
+        verbose_name = "Organisation (tenant)"
+        verbose_name_plural = "Organisations (tenants)"
+
+
 class SyncedEntityStore(models.Model):
     """Copie JSON générique — miroir exact des payloads desktop."""
 
     id = models.UUIDField(primary_key=True)
+    organization = models.ForeignKey(
+        Organization,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="synced_entities",
+    )
     entity_type = models.CharField(max_length=64, db_index=True)
     json_data = models.JSONField(default=dict)
     created_at = models.DateTimeField(default=timezone.now)
@@ -254,6 +278,7 @@ class SyncedEntityStore(models.Model):
 
     class Meta:
         indexes = [
+            models.Index(fields=["organization", "entity_type", "updated_at"]),
             models.Index(fields=["entity_type", "updated_at"]),
         ]
 
@@ -262,6 +287,13 @@ class SyncedDocument(models.Model):
     """Fichiers PDF/documents poussés par le desktop — octets originaux conservés."""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(
+        Organization,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="synced_documents",
+    )
     entity_type = models.CharField(max_length=64, db_index=True)
     entity_id = models.UUIDField(db_index=True)
     category = models.CharField(max_length=32, db_index=True, default="rapports")
@@ -285,6 +317,13 @@ class ServerSyncEvent(models.Model):
     """Journal côté serveur : chaque push/pull des gérants."""
 
     id = models.BigAutoField(primary_key=True)
+    organization = models.ForeignKey(
+        Organization,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="sync_events",
+    )
     username = models.CharField(max_length=150, blank=True, default="")
     user_role = models.CharField(max_length=32, blank=True, default="")
     entity_type = models.CharField(max_length=64, db_index=True)

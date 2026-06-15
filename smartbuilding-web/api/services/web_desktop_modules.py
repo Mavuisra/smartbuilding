@@ -113,9 +113,9 @@ def _initials(name: str) -> str:
     return (parts[0][0] + parts[-1][0]).upper()
 
 
-def load_dashboard_page() -> dict:
+def load_dashboard_page(organization_id=None) -> dict:
     """Tableau de bord web — synthèse explicative avec graphiques (parité desktop PDG)."""
-    overview = get_executive_overview()
+    overview = get_executive_overview(organization_id=organization_id)
     summary = overview["summary"]
     sync = overview["syncHealth"]
     diag = overview.get("diagnostics") or {}
@@ -140,7 +140,7 @@ def load_dashboard_page() -> dict:
     entity_rows = [
         {
             "Type entité": et,
-            "Enregistrements sync": sync_store_count(et),
+            "Enregistrements sync": sync_store_count(et, organization_id=organization_id),
             "Source": "Magasin sync desktop → cloud Render",
         }
         for et in entity_types

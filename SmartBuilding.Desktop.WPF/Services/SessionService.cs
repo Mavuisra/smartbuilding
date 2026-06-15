@@ -1,3 +1,4 @@
+using SmartBuilding.Infrastructure.Persistence;
 using SmartBuilding.Shared.Constants;
 using SmartBuilding.Shared.DTOs.Auth;
 
@@ -6,6 +7,7 @@ namespace SmartBuilding.Desktop.WPF.Services;
 public class SessionService
 {
     public LoginResponse? CurrentUser { get; private set; }
+    public OrganizationEntry? CurrentOrganization { get; private set; }
 
     /// <summary>Dernier message de liaison identifiants local ↔ cloud.</summary>
     public string? CloudIdentityMessage { get; private set; }
@@ -16,6 +18,9 @@ public class SessionService
 
     public void SetUser(LoginResponse user) => CurrentUser = user;
 
+    public void SetOrganization(OrganizationEntry? organization) =>
+        CurrentOrganization = organization;
+
     public void SetCloudIdentityStatus(bool linked, string? message)
     {
         IsCloudIdentityLinked = linked;
@@ -25,6 +30,7 @@ public class SessionService
     public void Clear()
     {
         CurrentUser = null;
+        CurrentOrganization = null;
         CloudIdentityMessage = null;
         IsCloudIdentityLinked = false;
     }

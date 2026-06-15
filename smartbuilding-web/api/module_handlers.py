@@ -494,10 +494,10 @@ def finances():
     )
 
 
-def dashboard():
+def dashboard(organization_id=None):
     from api.services.web_desktop_modules import load_dashboard_page
 
-    return load_dashboard_page()
+    return load_dashboard_page(organization_id=organization_id)
 
 
 def documents():
