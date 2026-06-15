@@ -1,4 +1,4 @@
-"""Tests connexion cloud pour utilisateurs synchronisés depuis le desktop."""
+"""Tests connexion cloud — modèle standard multi-tenant (database_name + organization_id)."""
 
 import uuid
 
@@ -6,7 +6,12 @@ from django.test import TestCase, override_settings
 
 from api.models import Organization, SyncedEntityStore, User
 from api.organization_context import resolve_user_organizations
-from api.services.cloud_login import resolve_cloud_login_user
+from api.services.cloud_login import (
+    ensure_user_tenant_membership,
+    organization_ids_for_database_names,
+    repair_orphan_user_sync_links,
+    resolve_cloud_login_user,
+)
 
 
 def _bcrypt_hash(password: str) -> str:
@@ -15,23 +20,31 @@ def _bcrypt_hash(password: str) -> str:
     return probe.password_hash_sync
 
 
-class CloudTenantUserLoginTests(TestCase):
-    def setUp(self):
-        self.org = Organization.objects.create(
+class StandardTenantMembershipTests(TestCase):
+    def _create_org(self, name: str, database_name: str) -> Organization:
+        slug = database_name.replace("sbms_", "").replace("_", "-")
+        return Organization.objects.create(
             id=uuid.uuid4(),
-            name="Résidence Blooom",
-            slug="blooom",
-            database_name="sbms_blooom",
+            name=name,
+            slug=slug,
+            database_name=database_name,
             is_active=True,
         )
-        self.desktop_user_id = uuid.uuid4()
 
-    def _store_user(self, username: str, password: str, *, user_id=None):
+    def _store_user(
+        self,
+        org: Organization,
+        username: str,
+        password: str,
+        *,
+        user_id=None,
+        tag_organization: bool = True,
+    ):
         password_hash = _bcrypt_hash(password)
         SyncedEntityStore.objects.create(
-            id=user_id or self.desktop_user_id,
+            id=user_id or uuid.uuid4(),
             entity_type="Users",
-            organization_id=self.org.id,
+            organization_id=org.id if tag_organization else None,
             json_data={
                 "Username": username,
                 "PasswordHash": password_hash,
@@ -41,38 +54,49 @@ class CloudTenantUserLoginTests(TestCase):
             },
         )
 
+    def test_organization_ids_for_database_names_is_generic(self):
+        org_a = self._create_org("Tenant A", "sbms_tenant_a")
+        org_b = self._create_org("Tenant B", "sbms_tenant_b")
+        ids = organization_ids_for_database_names(["sbms_tenant_a", "sbms_unknown"])
+        self.assertEqual(ids, [org_a.id])
+        self.assertNotIn(org_b.id, ids)
+
     @override_settings(DEBUG=False)
-    def test_login_materializes_user_from_sync_store_only(self):
-        self._store_user("comptable_blooom", "Secret@2026")
-        self.assertFalse(User.objects.filter(username__iexact="comptable_blooom").exists())
+    def test_login_works_for_any_registered_tenant_database(self):
+        org = self._create_org("Immeuble Alpha", "sbms_alpha")
+        self._store_user(org, "comptable_alpha", "Secret@2026")
 
         res = self.client.post(
             "/api/auth/login/",
-            {"username": "comptable_blooom", "password": "Secret@2026"},
+            {"username": "comptable_alpha", "password": "Secret@2026"},
             format="json",
         )
         self.assertEqual(res.status_code, 200, res.content)
         body = res.json()
-        self.assertTrue(body["success"])
-        self.assertFalse(body["data"]["canSwitchOrganizations"])
-        self.assertEqual(body["data"]["organizationId"], str(self.org.id))
+        self.assertEqual(body["data"]["organizationId"], str(org.id))
 
-    def test_org_resolution_uses_username_when_uuid_differs(self):
-        self._store_user("gestionnaire1", "Pass@2026")
-        cloud_user = User.objects.create_user(
-            username="gestionnaire1",
-            password="ignored",
-            role=User.Role.GESTIONNAIRE,
+    def test_repair_orphan_user_links_when_single_tenant_has_sync_data(self):
+        org = self._create_org("Immeuble Beta", "sbms_beta")
+        self._store_user(org, "gestionnaire_beta", "Pass@2026", tag_organization=False)
+        SyncedEntityStore.objects.create(
+            id=uuid.uuid4(),
+            entity_type="Tenants",
+            organization_id=org.id,
+            json_data={"Name": "Locataire beta"},
         )
-        cloud_user.password_hash_sync = ""
-        cloud_user.save()
 
-        orgs = resolve_user_organizations(cloud_user)
-        self.assertEqual(len(orgs), 1)
-        self.assertEqual(orgs[0].id, self.org.id)
-
-    def test_resolve_cloud_login_user_finds_sync_only_account(self):
-        self._store_user("tech_tenant", "Tech@2026")
-        user = resolve_cloud_login_user("tech_tenant")
+        repaired = repair_orphan_user_sync_links("gestionnaire_beta")
+        self.assertEqual(repaired, 1)
+        user = resolve_cloud_login_user("gestionnaire_beta")
         self.assertIsNotNone(user)
-        self.assertEqual(user.username.lower(), "tech_tenant")
+        ensure_user_tenant_membership(user)
+        orgs = resolve_user_organizations(user)
+        self.assertEqual(len(orgs), 1)
+        self.assertEqual(orgs[0].database_name, "sbms_beta")
+
+    def test_resolve_cloud_login_user_any_tenant(self):
+        org = self._create_org("Immeuble Gamma", "sbms_gamma")
+        self._store_user(org, "tech_gamma", "Tech@2026")
+        user = resolve_cloud_login_user("tech_gamma")
+        self.assertIsNotNone(user)
+        self.assertEqual(resolve_user_organizations(user)[0].id, org.id)

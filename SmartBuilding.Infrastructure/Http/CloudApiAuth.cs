@@ -7,6 +7,7 @@ public static class CloudApiAuth
     /// <summary>Compte bootstrap cloud (portail Render) — admin / Admin@2026.</summary>
     private static readonly (string Username, string Password)[] LoginFallbacks =
     [
+        ("Jessica", "Admin@2026"),
         ("admin", "Admin@2026"),
     ];
 

@@ -271,6 +271,10 @@ class LoginView(APIView):
             notify_login_failure(username)
             return api_fail("Identifiants invalides.", status=401)
 
+        from api.services.cloud_login import ensure_user_tenant_membership
+
+        ensure_user_tenant_membership(user)
+
         user.last_login_at = timezone.now()
         user.save(update_fields=["last_login_at"])
 
