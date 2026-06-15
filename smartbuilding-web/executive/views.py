@@ -21,6 +21,10 @@ DESKTOP_TEMPLATES = {
 }
 
 
+from django.views.decorators.csrf import ensure_csrf_cookie
+
+
+@ensure_csrf_cookie
 def login_page(request):
     return render(request, "executive/login.html")
 

@@ -120,6 +120,7 @@ class HealthView(APIView):
 
 class LogoutView(APIView):
     permission_classes = [AllowAny]
+    authentication_classes = ()
 
     def post(self, request):
         from django.contrib.auth import logout as django_logout
@@ -147,6 +148,8 @@ class SessionCheckView(APIView):
 
 class LoginView(APIView):
     permission_classes = [AllowAny]
+    # Connexion JWT : pas de SessionAuthentication → pas de CSRF obligatoire sur ce POST.
+    authentication_classes = ()
 
     @staticmethod
     def _login_payload(request):
