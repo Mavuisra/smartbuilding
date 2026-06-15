@@ -765,16 +765,16 @@ def activities():
     return load_activity_log()
 
 
-def users():
+def users(organization_id=None):
     from api.services.web_desktop_modules import load_users
 
-    return load_users()
+    return load_users(organization_id=organization_id)
 
 
-def reports(date_from=None, date_to=None):
+def reports(date_from=None, date_to=None, organization_id=None):
     from api.services.web_desktop_modules import load_rapports
 
-    return load_rapports(date_from=date_from, date_to=date_to)
+    return load_rapports(date_from=date_from, date_to=date_to, organization_id=organization_id)
 
 
 def sync_module():

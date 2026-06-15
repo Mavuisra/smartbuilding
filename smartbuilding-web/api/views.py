@@ -673,13 +673,18 @@ class ExecutiveModuleDataView(APIView):
                     dt = request.query_params.get("dateTo")
                     date_from = date_cls.fromisoformat(df) if df else None
                     date_to = date_cls.fromisoformat(dt) if dt else None
-                    return api_ok(handler(date_from=date_from, date_to=date_to))
+                    return api_ok(
+                        handler(date_from=date_from, date_to=date_to, organization_id=org_id)
+                    )
 
                 if slug == "utilisateurs":
                     from api.services.web_desktop_modules import load_users
 
                     return api_ok(
-                        load_users(current_username=getattr(request.user, "username", None))
+                        load_users(
+                            current_username=getattr(request.user, "username", None),
+                            organization_id=org_id,
+                        )
                     )
 
                 if slug == "dashboard":

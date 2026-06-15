@@ -7,7 +7,7 @@ from __future__ import annotations
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 
-from django.db.models import Count, Sum
+from django.db.models import Count, Q, Sum
 from django.utils import timezone
 
 from api.models import (
@@ -29,14 +29,67 @@ from api.models import (
 from api.permission_codes import ALL_PERMISSION_CODES, permissions_for_role
 from api.module_data_utils import pick_sync_value, rows_from_sync_store
 from api.services.dashboard import get_executive_overview, get_sync_health
-from api.services.sync_metrics import filter_to_synced
 from api.services.sync_metrics import (
     calendar_month_starts,
     expenses_month_totals,
+    filter_to_synced,
     sync_store_count,
+    synced_id_set,
 )
 from api.services.database_reset import database_info
-from api.services.sync_metrics import filter_to_synced, sync_store_count
+from api.sync.utils import pick
+
+
+def _ensure_org_users_materialized(organization_id) -> None:
+    """Matérialise les comptes Users du tenant avant affichage du module."""
+    if not organization_id:
+        return
+    from api.sync.materializers import materialize_user
+    from api.sync.utils import inject_entity_id
+
+    stores = SyncedEntityStore.objects.filter(
+        entity_type="Users",
+        organization_id=organization_id,
+        deleted_at__isnull=True,
+    )
+    for row in stores.iterator():
+        data = row.json_data if isinstance(row.json_data, dict) else {}
+        if data:
+            materialize_user(inject_entity_id(data, row.id))
+
+
+def _scoped_users_qs(organization_id=None):
+    """Utilisateurs du tenant actif (magasin sync Users + correspondance username)."""
+    from api.organization_context import allows_legacy_orm_fallback, get_request_organization_id
+
+    if organization_id is None:
+        organization_id = get_request_organization_id()
+
+    base = User.objects.filter(deleted_at__isnull=True)
+    if organization_id is None:
+        return base
+
+    ids = synced_id_set("Users", organization_id)
+    if ids is not None:
+        stores = SyncedEntityStore.objects.filter(
+            entity_type="Users",
+            organization_id=organization_id,
+            deleted_at__isnull=True,
+        )
+        usernames = []
+        for row in stores.only("json_data"):
+            data = row.json_data if isinstance(row.json_data, dict) else {}
+            un = (pick(data, "Username", "username") or "").strip()
+            if un:
+                usernames.append(un)
+        clause = Q(id__in=ids)
+        if usernames:
+            clause |= Q(username__in=usernames)
+        return base.filter(clause).distinct()
+
+    if allows_legacy_orm_fallback(organization_id):
+        return base
+    return base.none()
 
 
 def _iso(dt) -> str | None:
@@ -305,7 +358,11 @@ def load_dashboard_page(organization_id=None) -> dict:
     }
 
 
-def load_rapports(date_from: date | None = None, date_to: date | None = None) -> dict:
+def load_rapports(
+    date_from: date | None = None,
+    date_to: date | None = None,
+    organization_id=None,
+) -> dict:
     today = timezone.localdate()
     if date_to is None:
         date_to = today
@@ -315,8 +372,14 @@ def load_rapports(date_from: date | None = None, date_to: date | None = None) ->
     start = timezone.make_aware(datetime.combine(date_from, datetime.min.time()))
     end = timezone.make_aware(datetime.combine(date_to, datetime.max.time()))
 
+    from api.organization_context import scope_sync_events
+
     personnel = []
-    for e in Employee.objects.filter(deleted_at__isnull=True).order_by("full_name")[:500]:
+    for e in filter_to_synced(
+        Employee.objects.filter(deleted_at__isnull=True),
+        "Employees",
+        organization_id,
+    ).order_by("full_name")[:500]:
         personnel.append({
             "Matricule": _full_text(e.employee_number),
             "Nom complet": _full_text(e.full_name),
@@ -334,6 +397,7 @@ def load_rapports(date_from: date | None = None, date_to: date | None = None) ->
             "lease_contract", "lease_contract__tenant", "lease_contract__premise"
         ),
         "RentPayments",
+        organization_id,
     )
     loyers = []
     for p in rent_qs.order_by("-year", "-month")[:500]:
@@ -358,11 +422,15 @@ def load_rapports(date_from: date | None = None, date_to: date | None = None) ->
         })
 
     depenses = []
-    for t in FinancialTransaction.objects.filter(
-        deleted_at__isnull=True,
-        type=FinancialTransaction.TxType.DEPENSE,
-        transaction_date__gte=start,
-        transaction_date__lte=end,
+    for t in filter_to_synced(
+        FinancialTransaction.objects.filter(
+            deleted_at__isnull=True,
+            type=FinancialTransaction.TxType.DEPENSE,
+            transaction_date__gte=start,
+            transaction_date__lte=end,
+        ),
+        "FinancialTransactions",
+        organization_id,
     ).order_by("-transaction_date")[:500]:
         depenses.append({
             "Date transaction": _fmt_datetime(t.transaction_date),
@@ -381,7 +449,11 @@ def load_rapports(date_from: date | None = None, date_to: date | None = None) ->
         })
 
     consommations = []
-    for c in ConsumptionRecord.objects.filter(deleted_at__isnull=True).order_by("-period_end")[:500]:
+    for c in filter_to_synced(
+        ConsumptionRecord.objects.filter(deleted_at__isnull=True),
+        "ConsumptionRecords",
+        organization_id,
+    ).order_by("-period_end")[:500]:
         consommations.append({
             "Type consommation": _full_text(c.consumption_type),
             "Période début": _fmt_date(c.period_start),
@@ -391,16 +463,21 @@ def load_rapports(date_from: date | None = None, date_to: date | None = None) ->
             **_audit_row(c),
         })
 
-    recettes = FinancialTransaction.objects.filter(
-        deleted_at__isnull=True, type=FinancialTransaction.TxType.RECETTE
-    ).aggregate(t=Sum("amount"))["t"] or Decimal(0)
-    dep_total = FinancialTransaction.objects.filter(
-        deleted_at__isnull=True, type=FinancialTransaction.TxType.DEPENSE
-    ).aggregate(t=Sum("amount"))["t"] or Decimal(0)
+    ft_qs = filter_to_synced(
+        FinancialTransaction.objects.filter(deleted_at__isnull=True),
+        "FinancialTransactions",
+        organization_id,
+    )
+    recettes = ft_qs.filter(type=FinancialTransaction.TxType.RECETTE).aggregate(
+        t=Sum("amount")
+    )["t"] or Decimal(0)
+    dep_total = ft_qs.filter(type=FinancialTransaction.TxType.DEPENSE).aggregate(
+        t=Sum("amount")
+    )["t"] or Decimal(0)
     rent_paid = rent_qs.aggregate(t=Sum("amount_paid"))["t"] or Decimal(0)
 
     financier_lignes = []
-    for t in FinancialTransaction.objects.filter(deleted_at__isnull=True).order_by("-transaction_date")[:500]:
+    for t in ft_qs.order_by("-transaction_date")[:500]:
         financier_lignes.append({
             "Date transaction": _fmt_datetime(t.transaction_date),
             "Type": "Recette" if t.type == FinancialTransaction.TxType.RECETTE else "Dépense",
@@ -418,8 +495,12 @@ def load_rapports(date_from: date | None = None, date_to: date | None = None) ->
         })
 
     contrats = []
-    for c in LeaseContract.objects.filter(deleted_at__isnull=True).select_related(
-        "premise", "tenant"
+    for c in filter_to_synced(
+        LeaseContract.objects.filter(deleted_at__isnull=True).select_related(
+            "premise", "tenant"
+        ),
+        "LeaseContracts",
+        organization_id,
     ).order_by("-start_date")[:500]:
         contrats.append({
             "N° contrat": _full_text(c.contract_number),
@@ -436,7 +517,11 @@ def load_rapports(date_from: date | None = None, date_to: date | None = None) ->
         })
 
     incidents = []
-    for i in Incident.objects.filter(deleted_at__isnull=True).order_by("-reported_at")[:500]:
+    for i in filter_to_synced(
+        Incident.objects.filter(deleted_at__isnull=True),
+        "Incidents",
+        organization_id,
+    ).order_by("-reported_at")[:500]:
         incidents.append({
             "Code": _full_text(i.code),
             "Titre": _full_text(i.title),
@@ -452,7 +537,11 @@ def load_rapports(date_from: date | None = None, date_to: date | None = None) ->
         })
 
     visites = []
-    for v in Visitor.objects.filter(deleted_at__isnull=True).order_by("-check_in_at")[:500]:
+    for v in filter_to_synced(
+        Visitor.objects.filter(deleted_at__isnull=True),
+        "Visitors",
+        organization_id,
+    ).order_by("-check_in_at")[:500]:
         visites.append({
             "Visiteur": _full_text(v.full_name),
             "Société": _full_text(v.company),
@@ -463,7 +552,10 @@ def load_rapports(date_from: date | None = None, date_to: date | None = None) ->
         })
 
     activites = []
-    for e in ServerSyncEvent.objects.order_by("-created_at")[:500]:
+    for e in scope_sync_events(
+        ServerSyncEvent.objects.order_by("-created_at"),
+        organization_id,
+    )[:500]:
         activites.append({
             "ID événement": str(e.id),
             "Date/heure": _fmt_datetime(e.created_at),
@@ -519,14 +611,13 @@ def load_rapports(date_from: date | None = None, date_to: date | None = None) ->
     }
 
 
-def load_users(current_username: str | None = None) -> dict:
+def load_users(current_username: str | None = None, organization_id=None) -> dict:
     today = timezone.localdate()
     yesterday = today - timedelta(days=1)
     online_threshold = timezone.now() - timedelta(minutes=30)
 
-    users = list(
-        User.objects.filter(deleted_at__isnull=True).order_by("-created_at")
-    )
+    _ensure_org_users_materialized(organization_id)
+    users = list(_scoped_users_qs(organization_id).order_by("-created_at"))
     items = []
     table_rows = []
     for u in users:

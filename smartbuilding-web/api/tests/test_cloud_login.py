@@ -100,3 +100,40 @@ class StandardTenantMembershipTests(TestCase):
         user = resolve_cloud_login_user("tech_gamma")
         self.assertIsNotNone(user)
         self.assertEqual(resolve_user_organizations(user)[0].id, org.id)
+
+    def test_super_admin_modules_respect_selected_organization(self):
+        from api.services.web_desktop_modules import load_rapports, load_users
+
+        org_a = self._create_org("Tenant A", "sbms_tenant_a")
+        org_b = self._create_org("Tenant B", "sbms_tenant_b")
+        self._store_user(org_a, "user_a", "Pass@2026")
+        self._store_user(org_b, "user_b", "Pass@2026")
+
+        SyncedEntityStore.objects.create(
+            id=uuid.uuid4(),
+            entity_type="Tenants",
+            organization_id=org_a.id,
+            json_data={"Name": "Locataire A seul"},
+        )
+        SyncedEntityStore.objects.create(
+            id=uuid.uuid4(),
+            entity_type="Tenants",
+            organization_id=org_b.id,
+            json_data={"Name": "Locataire B seul"},
+        )
+
+        users_a = load_users(organization_id=org_a.id)
+        users_b = load_users(organization_id=org_b.id)
+        self.assertEqual(users_a["totalCount"], 1)
+        self.assertEqual(users_b["totalCount"], 1)
+        self.assertEqual(users_a["users"][0]["username"], "user_a")
+        self.assertEqual(users_b["users"][0]["username"], "user_b")
+
+        rapports_a = load_rapports(organization_id=org_a.id)
+        rapports_b = load_rapports(organization_id=org_b.id)
+        sections_a = {s["label"]: s["rows"] for s in rapports_a["sections"]}
+        sections_b = {s["label"]: s["rows"] for s in rapports_b["sections"]}
+        self.assertEqual(len(sections_a.get("Loyers", [])), 0)
+        self.assertEqual(len(sections_b.get("Loyers", [])), 0)
+        self.assertEqual(rapports_a["financierSummary"]["loyersEncaisses"], 0.0)
+        self.assertEqual(rapports_b["financierSummary"]["loyersEncaisses"], 0.0)
