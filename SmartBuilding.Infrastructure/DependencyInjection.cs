@@ -28,6 +28,25 @@ public static class DependencyInjection
                     "SBMS desktop requiert MySQL (XAMPP). La base SQLite n'est plus prise en charge.");
             }
 
+            services.AddSingleton(sp => OrganizationRegistry.Load(configuration));
+            services.AddSingleton<OrganizationConnectionResolver>();
+            services.AddSingleton(sp =>
+            {
+                var registry = sp.GetRequiredService<OrganizationRegistry>();
+                var resolver = sp.GetRequiredService<OrganizationConnectionResolver>();
+                var usernameRegistry = GlobalUsernameRegistry.Load();
+                if (usernameRegistry.TryResolveOrganization("admin") is null
+                    && registry.Organizations.Count > 0)
+                {
+                    usernameRegistry.RebuildFromOrganizations(registry, resolver);
+                }
+
+                return usernameRegistry;
+            });
+            services.AddSingleton<OrganizationProvisioningService>();
+            services.AddSingleton<OrganizationCloudSyncService>();
+            services.AddSingleton<OrganizationLoginResolver>();
+
             connectionString = localDb.ConnectionString;
             services.AddSingleton(localDb);
         }
@@ -37,32 +56,36 @@ public static class DependencyInjection
                                ?? throw new InvalidOperationException("Connection string PostgreSQL requise.");
         }
 
-        void ConfigureDbContext(DbContextOptionsBuilder options)
+        if (isDesktop)
         {
-            if (isDesktop)
+            services.AddDbContext<SmartBuildingDbContext>((sp, options) =>
             {
+                var resolver = sp.GetRequiredService<OrganizationConnectionResolver>();
                 var serverVersion = ServerVersion.Parse("8.0.36-mysql");
-                options.UseMySql(connectionString, serverVersion, mySql =>
+                options.UseMySql(resolver.ConnectionString, serverVersion, mySql =>
                     mySql.EnableStringComparisonTranslations());
-            }
-            else
+                options.AddInterceptors(sp.GetRequiredService<LocalChangeSyncSaveInterceptor>());
+            });
+            services.AddDbContextFactory<SmartBuildingDbContext>((sp, options) =>
+            {
+                var resolver = sp.GetRequiredService<OrganizationConnectionResolver>();
+                var serverVersion = ServerVersion.Parse("8.0.36-mysql");
+                options.UseMySql(resolver.ConnectionString, serverVersion, mySql =>
+                    mySql.EnableStringComparisonTranslations());
+                options.AddInterceptors(sp.GetRequiredService<LocalChangeSyncSaveInterceptor>());
+            });
+        }
+        else
+        {
+            services.AddDbContext<SmartBuildingDbContext>((sp, options) =>
             {
                 options.UseNpgsql(connectionString);
-            }
+            });
+            services.AddDbContextFactory<SmartBuildingDbContext>((sp, options) =>
+            {
+                options.UseNpgsql(connectionString);
+            });
         }
-
-        services.AddDbContext<SmartBuildingDbContext>((sp, options) =>
-        {
-            ConfigureDbContext(options);
-            if (isDesktop)
-                options.AddInterceptors(sp.GetRequiredService<LocalChangeSyncSaveInterceptor>());
-        });
-        services.AddDbContextFactory<SmartBuildingDbContext>((sp, options) =>
-        {
-            ConfigureDbContext(options);
-            if (isDesktop)
-                options.AddInterceptors(sp.GetRequiredService<LocalChangeSyncSaveInterceptor>());
-        });
 
         if (isDesktop)
         {

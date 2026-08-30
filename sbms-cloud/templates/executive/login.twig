@@ -170,6 +170,7 @@
 
       <div id="error" class="alert alert-danger d-none"></div>
       <form id="login-form">
+        {% csrf_token %}
         <div class="mb-3">
           <label class="sb-label" for="username">Nom d'utilisateur</label>
           <input type="text" class="form-control sb-input" id="username" value="admin" required>
@@ -191,15 +192,26 @@
 {% endblock %}
 {% block scripts %}
 <script>
+function sbmsCsrfToken() {
+  const input = document.querySelector('#login-form input[name="csrfmiddlewaretoken"]');
+  if (input && input.value) return input.value;
+  const m = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+  return m ? decodeURIComponent(m[1]) : '';
+}
+
 document.getElementById('login-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const err = document.getElementById('error');
   err.classList.add('d-none');
   try {
+    const headers = { 'Content-Type': 'application/json', Accept: 'application/json' };
+    const csrf = sbmsCsrfToken();
+    if (csrf) headers['X-CSRFToken'] = csrf;
+
     const res = await fetch('/api/auth/login/', {
       method: 'POST',
       credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      headers,
       body: JSON.stringify({
         username: document.getElementById('username').value,
         password: document.getElementById('password').value
@@ -220,6 +232,12 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
     }
 
     localStorage.setItem('sbms_token', json.data.token);
+    if (json.data.organizationId) {
+      localStorage.setItem('sbms_organization_id', json.data.organizationId);
+    }
+    if (Array.isArray(json.data.organizations)) {
+      localStorage.setItem('sbms_organizations', JSON.stringify(json.data.organizations));
+    }
     localStorage.setItem('sbms_user', JSON.stringify({
       userId: json.data.userId,
       username: json.data.username,
@@ -227,6 +245,7 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
       role: json.data.role,
       permissions: json.data.permissions || [],
       expiresAt: json.data.expiresAt,
+      canSwitchOrganizations: Boolean(json.data.canSwitchOrganizations),
     }));
     const next = new URLSearchParams(window.location.search).get('next');
     window.location.href = next && next.startsWith('/') ? next : '/dashboard/';

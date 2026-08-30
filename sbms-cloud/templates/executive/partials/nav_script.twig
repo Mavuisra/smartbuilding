@@ -48,7 +48,35 @@
     }
   }
 
+  async function loadOrganizations() {
+    const user = Sbms.getUser();
+    if (!user.canSwitchOrganizations) return;
+
+    const wrap = document.getElementById('org-selector-wrap');
+    const select = document.getElementById('org-selector');
+    if (!wrap || !select) return;
+
+    try {
+      const orgs = await Sbms.apiFetch('/api/organizations/');
+      if (!Array.isArray(orgs) || orgs.length === 0) return;
+
+      wrap.classList.remove('d-none');
+      const current = Sbms.getOrganizationId() || orgs[0].id;
+      Sbms.setOrganizationId(current);
+      select.innerHTML = orgs.map(o =>
+        `<option value="${o.id}"${o.id === current ? ' selected' : ''}>${o.name}</option>`
+      ).join('');
+      select.addEventListener('change', () => {
+        Sbms.setOrganizationId(select.value);
+        window.location.reload();
+      });
+    } catch (e) {
+      console.warn('Organisations:', e);
+    }
+  }
+
   window.sbmsLoadNavigation = loadNav;
+  await loadOrganizations();
   loadNav();
 })();
 </script>

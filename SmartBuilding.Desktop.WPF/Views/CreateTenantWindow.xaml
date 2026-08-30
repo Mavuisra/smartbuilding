@@ -1,0 +1,46 @@
+<Window x:Class="SmartBuilding.Desktop.WPF.Views.CreateTenantWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Créer un nouveau tenant"
+        Width="480" Height="520"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        Background="#F8FAFC">
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,16">
+            <TextBlock Text="Nouvelle organisation" FontSize="22" FontWeight="Bold" Foreground="#0F172A"/>
+            <TextBlock Text="Une base MySQL dédiée sera créée. Les métadonnées seront synchronisées avec le cloud."
+                       TextWrapping="Wrap" Foreground="#64748B" Margin="0,8,0,0"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="1">
+            <TextBlock Text="Nom du tenant *" FontWeight="SemiBold" Margin="0,0,0,6"/>
+            <TextBox Text="{Binding TenantName, UpdateSourceTrigger=PropertyChanged}" Height="36" Margin="0,0,0,12"/>
+
+            <TextBlock Text="Ville" FontWeight="SemiBold" Margin="0,0,0,6"/>
+            <TextBox Text="{Binding City, UpdateSourceTrigger=PropertyChanged}" Height="36" Margin="0,0,0,12"/>
+
+            <TextBlock Text="Identifiant administrateur *" FontWeight="SemiBold" Margin="0,0,0,6"/>
+            <TextBox Text="{Binding AdminUsername, UpdateSourceTrigger=PropertyChanged}" Height="36"/>
+            <TextBlock Text="Doit être unique sur tout le système (ex. admin.blooom, jean.dupont)."
+                       FontSize="11" Foreground="#64748B" TextWrapping="Wrap" Margin="0,4,0,12"/>
+
+            <TextBlock Text="Mot de passe administrateur *" FontWeight="SemiBold" Margin="0,0,0,6"/>
+            <PasswordBox x:Name="AdminPasswordBox" Height="36" Margin="0,0,0,12" PasswordChanged="AdminPasswordBox_OnPasswordChanged"/>
+
+            <TextBlock Text="{Binding ErrorMessage}" Foreground="#DC2626" TextWrapping="Wrap" Margin="0,8,0,0"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+            <Button Content="Annuler" Width="100" Height="36" Margin="0,0,8,0" Click="Cancel_Click"/>
+            <Button Content="Créer le tenant" Width="140" Height="36" Background="#059669" Foreground="White"
+                    FontWeight="SemiBold" Click="Create_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>

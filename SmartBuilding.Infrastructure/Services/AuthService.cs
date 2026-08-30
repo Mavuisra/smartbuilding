@@ -27,10 +27,16 @@ public class AuthService : IAuthService
 
     public async Task<LoginResponse?> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
     {
-        var user = await _context.Users
+        var loginName = request.Username.Trim();
+        var candidates = await _context.Users
+            .IgnoreQueryFilters()
             .Include(u => u.Permissions)
             .ThenInclude(up => up.Permission)
-            .FirstOrDefaultAsync(u => u.Username == request.Username && u.IsActive, cancellationToken);
+            .Where(u => u.IsActive && u.DeletedAt == null)
+            .ToListAsync(cancellationToken);
+
+        var user = candidates.FirstOrDefault(u =>
+            string.Equals(u.Username.Trim(), loginName, StringComparison.OrdinalIgnoreCase));
 
         if (user is null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
             return null;

@@ -10,15 +10,19 @@ namespace SmartBuilding.Infrastructure.Services;
 public class DashboardService : IDashboardService
 {
     private readonly IDbContextFactory<SmartBuildingDbContext> _contextFactory;
+    private readonly OrganizationConnectionResolver? _connectionResolver;
 
-    public DashboardService(IDbContextFactory<SmartBuildingDbContext> contextFactory)
+    public DashboardService(
+        IDbContextFactory<SmartBuildingDbContext> contextFactory,
+        OrganizationConnectionResolver? connectionResolver = null)
     {
         _contextFactory = contextFactory;
+        _connectionResolver = connectionResolver;
     }
 
     public async Task<DashboardSummaryDto> GetSummaryAsync(CancellationToken cancellationToken = default)
     {
-        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        await using var context = await CreateContextAsync(cancellationToken);
         var financeLedger = new FinanceLedgerService(context);
         await financeLedger.ReconcileAllAsync(cancellationToken);
 
@@ -267,6 +271,21 @@ public class DashboardService : IDashboardService
             RecentActivity = recentActivity,
             QuickStats = quickStats
         };
+    }
+
+    private async Task<SmartBuildingDbContext> CreateContextAsync(CancellationToken cancellationToken)
+    {
+        if (_connectionResolver?.ActiveOrganizationId is Guid orgId)
+        {
+            var connectionString = _connectionResolver.BuildConnectionString(orgId);
+            var serverVersion = ServerVersion.Parse("8.0.36-mysql");
+            var options = new DbContextOptionsBuilder<SmartBuildingDbContext>()
+                .UseMySql(connectionString, serverVersion, mySql => mySql.EnableStringComparisonTranslations())
+                .Options;
+            return new SmartBuildingDbContext(options);
+        }
+
+        return await _contextFactory.CreateDbContextAsync(cancellationToken);
     }
 }
 

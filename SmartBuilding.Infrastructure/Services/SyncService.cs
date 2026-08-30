@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SmartBuilding.Application.Interfaces;
 using SmartBuilding.Domain.Entities.Sync;
@@ -23,6 +24,7 @@ public class SyncService : ISyncService
     private readonly ILogger<SyncService> _logger;
     private readonly ISyncNotifier _notifier;
     private readonly IDocumentCloudUploadService _documentUpload;
+    private readonly IServiceProvider _serviceProvider;
 
     private DateTime? _lastSyncAt;
 
@@ -35,7 +37,8 @@ public class SyncService : ISyncService
         IConfiguration configuration,
         ILogger<SyncService> logger,
         ISyncNotifier notifier,
-        IDocumentCloudUploadService documentUpload)
+        IDocumentCloudUploadService documentUpload,
+        IServiceProvider serviceProvider)
     {
         _contextFactory = contextFactory;
         _network = network;
@@ -43,6 +46,14 @@ public class SyncService : ISyncService
         _logger = logger;
         _notifier = notifier;
         _documentUpload = documentUpload;
+        _serviceProvider = serviceProvider;
+    }
+
+    private void ApplyOrganizationHeader(CloudApiClient api)
+    {
+        var resolver = _serviceProvider.GetService<OrganizationConnectionResolver>();
+        if (resolver?.ActiveOrganizationId is Guid orgId)
+            api.SetOrganizationId(orgId.ToString());
     }
 
     public Task<bool> IsOnlineAsync(CancellationToken cancellationToken = default) =>
@@ -63,6 +74,7 @@ public class SyncService : ISyncService
             return false;
 
         using var api = new CloudApiClient(baseUrl, token);
+        ApplyOrganizationHeader(api);
         var (statusCode, body) = await GetRawWithAuthRetryAsync(api, baseUrl, "api/sync/status/", cancellationToken);
         if (statusCode is < 200 or >= 300 || string.IsNullOrWhiteSpace(body))
             return false;
@@ -213,6 +225,7 @@ public class SyncService : ISyncService
                 }
 
                 using var api = new CloudApiClient(baseUrl, token);
+        ApplyOrganizationHeader(api);
 
                 foreach (var entityType in SyncEntityRegistry.SyncableTypes)
                 {
@@ -367,6 +380,7 @@ public class SyncService : ISyncService
                 }
 
                 using var api = new CloudApiClient(baseUrl, token);
+        ApplyOrganizationHeader(api);
                 var (typePushed, pushFailed) = await PushAllPendingEntityTypesAsync(
                     api, baseUrl, context, failures, cancellationToken);
                 pushed = typePushed;
@@ -566,6 +580,7 @@ public class SyncService : ISyncService
             }
 
             using var api = new CloudApiClient(baseUrl, token);
+        ApplyOrganizationHeader(api);
             var deviceLabel = DesktopSyncDevice.GetDeviceLabel();
             log.Direction = manual ? $"Manual ({deviceLabel})" : $"Auto ({deviceLabel})";
 

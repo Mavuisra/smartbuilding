@@ -79,7 +79,21 @@ public partial class App : System.Windows.Application
 
             var splashStarted = Environment.TickCount64;
 
-            splash.UpdateProgress(5, "Préparation de l'application...");
+            splash.UpdateProgress(5, "Vérification des prérequis système...");
+            await PumpUiAsync();
+
+            var bootstrapConfig = new ConfigurationBuilder()
+                .SetBasePath(AppContext.BaseDirectory)
+                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+#if DEBUG
+                .AddJsonFile("appsettings.Development.json", optional: true, reloadOnChange: true)
+#endif
+                .Build();
+
+            if (!await EnsurePrerequisitesAsync(splash, bootstrapConfig))
+                return;
+
+            splash.UpdateProgress(12, "Préparation de l'application...");
             await PumpUiAsync();
 
             _host = Host.CreateDefaultBuilder()
@@ -211,13 +225,13 @@ public partial class App : System.Windows.Application
 
             var mainWindow = _host.Services.GetRequiredService<MainWindow>();
 
-            splash.UpdateProgress(95, "Chargement du profil société...");
+            splash.UpdateProgress(95, "Préparation de l'interface...");
             await PumpUiAsync();
 
-            var appConfig = _host.Services.GetRequiredService<AppConfigurationService>();
-            await appConfig.LoadAndApplyAsync();
-
+            // Branding neutre avant login — le profil société est chargé après authentification.
             var branding = _host.Services.GetRequiredService<AppBrandingState>();
+            branding.CompanyName = "Smart Building MS";
+            branding.AppSubtitle = AppBrandingState.DefaultSubtitle;
             splash.ApplyBranding(branding.CompanyName, branding.AppSubtitle);
             Resources["Branding"] = branding;
 
@@ -237,12 +251,43 @@ public partial class App : System.Windows.Application
         catch (Exception ex)
         {
             splash.Close();
+            var detail = DbSaveExceptionTranslator.ToDetailedMessage(ex);
+            if (detail.Contains("MySQL", StringComparison.OrdinalIgnoreCase)
+                || detail.Contains("XAMPP", StringComparison.OrdinalIgnoreCase))
+            {
+                detail += "\n\nOuvrez Smart Building MS à nouveau pour afficher l'assistant des prérequis (XAMPP / MySQL).";
+            }
+
             MessageBox.Show(
-                $"Impossible de démarrer l'application.\n\n{ex.Message}",
+                $"Impossible de démarrer l'application.\n\n{detail}",
                 BuildingInfoDefaults.CompanyName,
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
             Shutdown(1);
+        }
+    }
+
+    private static async Task<bool> EnsurePrerequisitesAsync(SplashWindow splash, IConfiguration configuration)
+    {
+        while (true)
+        {
+            var check = DesktopPrerequisiteChecker.Evaluate(configuration);
+            if (check.IsReady)
+                return true;
+
+            await splash.CloseAnimatedAsync();
+
+            var prereqWindow = new PrerequisitesWindow(configuration);
+            if (prereqWindow.ShowDialog() != true)
+            {
+                Current.Shutdown(0);
+                return false;
+            }
+
+            splash = new SplashWindow();
+            splash.Show();
+            splash.UpdateProgress(15, "Prérequis validés, poursuite du démarrage...");
+            await PumpUiAsync();
         }
     }
 

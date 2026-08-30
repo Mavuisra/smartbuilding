@@ -250,9 +250,24 @@ public partial class PersonnelService
             employee.RhStatus = RhConstants.EmployeeStatus.Active;
         employee.IsSynced = false;
 
+        EnsureNewEmployeeIdentity(employee);
+
         _db.Employees.Add(employee);
         await _db.SaveChangesAsync(cancellationToken);
         return string.Empty;
+    }
+
+    private void EnsureNewEmployeeIdentity(Employee employee)
+    {
+        var idInUse = employee.Id != Guid.Empty &&
+            (_db.Employees.Local.Any(e => e.Id == employee.Id) ||
+             _db.ChangeTracker.Entries<Employee>().Any(e => e.Entity.Id == employee.Id));
+
+        if (employee.Id == Guid.Empty || idInUse)
+            employee.Id = Guid.NewGuid();
+
+        employee.CreatedAt = DateTime.UtcNow;
+        employee.UpdatedAt = DateTime.UtcNow;
     }
 
     public async Task<string> GenerateNextMatriculeAsync(CancellationToken cancellationToken = default)
