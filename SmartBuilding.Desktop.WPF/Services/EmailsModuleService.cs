@@ -2,6 +2,7 @@ using System.Globalization;
 using System.IO;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using SmartBuilding.Application.Interfaces;
 using SmartBuilding.Domain.Entities.Email;
 using SmartBuilding.Desktop.WPF.Models;
 using SmartBuilding.Infrastructure.Persistence;
@@ -12,11 +13,13 @@ public class EmailsModuleService
 {
     private static readonly CultureInfo Fr = CultureInfo.GetCultureInfo("fr-FR");
     private readonly SmartBuildingDbContext _db;
+    private readonly IEmailService _emailService;
     private readonly string _rulesPath;
 
-    public EmailsModuleService(SmartBuildingDbContext db)
+    public EmailsModuleService(SmartBuildingDbContext db, IEmailService emailService)
     {
         _db = db;
+        _emailService = emailService;
         var folder = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "SBMS");
@@ -146,6 +149,17 @@ public class EmailsModuleService
     {
         var account = await _db.EmailAccounts.FirstOrDefaultAsync(cancellationToken);
         return account?.Id;
+    }
+
+    public async Task<bool> SendComposeAsync(
+        string to, string subject, string body, CancellationToken cancellationToken = default)
+    {
+        var accountId = await GetDefaultAccountIdAsync(cancellationToken);
+        if (!accountId.HasValue)
+            return false;
+
+        await _emailService.SendEmailAsync(accountId.Value, to, subject, body, cancellationToken);
+        return true;
     }
 
     public async Task<EmailAccountConfig> GetEmailAccountConfigAsync(CancellationToken cancellationToken = default)

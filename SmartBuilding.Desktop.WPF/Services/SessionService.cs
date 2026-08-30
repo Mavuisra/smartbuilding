@@ -14,6 +14,9 @@ public class SessionService
 
     public bool IsCloudIdentityLinked { get; private set; }
 
+    /// <summary>Rediriger vers Paramètres → Profil entreprise après la première connexion.</summary>
+    public bool PendingCompanyProfileSetup { get; private set; }
+
     public bool IsAuthenticated => CurrentUser is not null;
 
     public void SetUser(LoginResponse user) => CurrentUser = user;
@@ -27,12 +30,16 @@ public class SessionService
         CloudIdentityMessage = message;
     }
 
+    public void SetPendingCompanyProfileSetup(bool pending) =>
+        PendingCompanyProfileSetup = pending;
+
     public void Clear()
     {
         CurrentUser = null;
         CurrentOrganization = null;
         CloudIdentityMessage = null;
         IsCloudIdentityLinked = false;
+        PendingCompanyProfileSetup = false;
     }
 
     public bool HasPermission(string code) =>

@@ -245,3 +245,12 @@ public class PersonnelActivityRow
     public string Title { get; init; } = string.Empty;
     public string Description { get; init; } = string.Empty;
 }
+
+public class PersonnelDocumentRow
+{
+    public string Title { get; init; } = string.Empty;
+    public string Category { get; init; } = string.Empty;
+    public string DateDisplay { get; init; } = string.Empty;
+    public string? FilePath { get; init; }
+    public bool HasFile => !string.IsNullOrWhiteSpace(FilePath) && File.Exists(FilePath);
+}

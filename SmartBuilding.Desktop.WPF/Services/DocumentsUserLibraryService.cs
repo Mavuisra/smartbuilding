@@ -15,6 +15,7 @@ public class DocumentsUserLibraryService
     private readonly string _root;
     private readonly string _filesDir;
     private readonly string _indexPath;
+    private readonly string _favoritesPath;
 
     public DocumentsUserLibraryService()
     {
@@ -24,7 +25,51 @@ public class DocumentsUserLibraryService
             "Documents");
         _filesDir = Path.Combine(_root, "files");
         _indexPath = Path.Combine(_root, "library.json");
+        _favoritesPath = Path.Combine(_root, "favorites.json");
         Directory.CreateDirectory(_filesDir);
+    }
+
+    public async Task<IReadOnlySet<Guid>> GetFavoriteIdsAsync(CancellationToken cancellationToken = default)
+    {
+        if (!File.Exists(_favoritesPath))
+            return new HashSet<Guid>();
+
+        await using var stream = File.OpenRead(_favoritesPath);
+        var ids = await JsonSerializer.DeserializeAsync<List<Guid>>(stream, JsonOptions, cancellationToken)
+                  ?? [];
+        return ids.ToHashSet();
+    }
+
+    public async Task SetFavoriteAsync(Guid id, bool isFavorite, CancellationToken cancellationToken = default)
+    {
+        var favorites = (await GetFavoriteIdsAsync(cancellationToken)).ToHashSet();
+        if (isFavorite)
+            favorites.Add(id);
+        else
+            favorites.Remove(id);
+
+        await using var stream = File.Create(_favoritesPath);
+        await JsonSerializer.SerializeAsync(stream, favorites.ToList(), JsonOptions, cancellationToken);
+    }
+
+    public async Task<bool> DeleteItemAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var index = await ReadIndexAsync(cancellationToken);
+        var entry = index.Entries.FirstOrDefault(e => e.Id == id);
+        if (entry is null)
+            return false;
+
+        if (!entry.IsFolder && !string.IsNullOrWhiteSpace(entry.StoredRelativePath))
+        {
+            var path = GetAbsolutePath(entry.StoredRelativePath);
+            if (File.Exists(path))
+                File.Delete(path);
+        }
+
+        index.Entries.Remove(entry);
+        await WriteIndexAsync(index, cancellationToken);
+        await SetFavoriteAsync(id, false, cancellationToken);
+        return true;
     }
 
     public async Task<IReadOnlyList<UserLibraryRawDocument>> LoadRawDocumentsAsync(CancellationToken cancellationToken = default)

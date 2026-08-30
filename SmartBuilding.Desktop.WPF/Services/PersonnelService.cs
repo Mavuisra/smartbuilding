@@ -279,6 +279,49 @@ public partial class PersonnelService
     public async Task<Employee?> GetEmployeeAsync(Guid id, CancellationToken cancellationToken = default) =>
         await _db.Employees.FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
 
+    public async Task<IReadOnlyList<PersonnelDocumentRow>> GetEmployeeDocumentsAsync(
+        Guid employeeId,
+        CancellationToken cancellationToken = default)
+    {
+        var employee = await _db.Employees.FirstOrDefaultAsync(e => e.Id == employeeId, cancellationToken);
+        if (employee is null)
+            return [];
+
+        var docs = new List<PersonnelDocumentRow>();
+
+        if (!string.IsNullOrWhiteSpace(employee.ContractPdfPath))
+        {
+            docs.Add(new PersonnelDocumentRow
+            {
+                Title = $"Contrat {ResolveContractNumber(employee)}",
+                Category = "Contrat",
+                DateDisplay = employee.ContractStartDate.HasValue
+                    ? FormatDate(employee.ContractStartDate.Value)
+                    : FormatDate(employee.HireDate),
+                FilePath = employee.ContractPdfPath
+            });
+        }
+
+        var paySlips = await _db.SalaryPayments
+            .Where(s => s.EmployeeId == employeeId && s.PaySlipPdfPath != null && s.PaySlipPdfPath != "")
+            .OrderByDescending(s => s.Year).ThenByDescending(s => s.Month)
+            .Take(12)
+            .ToListAsync(cancellationToken);
+
+        foreach (var s in paySlips)
+        {
+            docs.Add(new PersonnelDocumentRow
+            {
+                Title = $"Bulletin {s.Month:00}/{s.Year}",
+                Category = "Paie",
+                DateDisplay = FormatDate(s.PaymentDate),
+                FilePath = s.PaySlipPdfPath
+            });
+        }
+
+        return docs;
+    }
+
     public async Task<PersonnelEmployeeDetailData?> GetEmployeeDetailAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var today = DateTime.Today;

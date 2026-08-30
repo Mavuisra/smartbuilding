@@ -1,5 +1,7 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Globalization;
+using System.IO;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -83,6 +85,12 @@ public partial class PersonnelViewModel : BaseViewModel
     [ObservableProperty] private PersonnelEmployeeItem? _selectedEmployee;
     [ObservableProperty] private int _selectedDetailTab;
     [ObservableProperty] private bool _isEmployeeDetailEditMode;
+    [ObservableProperty] private bool _isSidebarDetailLoading;
+
+    public ObservableCollection<PersonnelDocumentRow> SidebarDocuments { get; } = [];
+    public ObservableCollection<PersonnelActivityRow> SidebarActivities { get; } = [];
+    public bool HasSidebarDocuments => SidebarDocuments.Count > 0;
+    public bool HasSidebarActivities => SidebarActivities.Count > 0;
 
     [ObservableProperty] private string _detailInitials = "E";
     [ObservableProperty] private string _detailSummaryLine = string.Empty;
@@ -669,6 +677,9 @@ public partial class PersonnelViewModel : BaseViewModel
     {
         SelectedEmployee = null;
         IsDetailPanelOpen = false;
+        SidebarDocuments.Clear();
+        SidebarActivities.Clear();
+        NotifySidebarCollectionsChanged();
     }
 
     [RelayCommand]
@@ -751,6 +762,54 @@ public partial class PersonnelViewModel : BaseViewModel
     {
         if (!IsEmployeeDetailPageOpen)
             IsDetailPanelOpen = value is not null;
+        _ = LoadSidebarDetailAsync(value?.Id);
+    }
+
+    private async Task LoadSidebarDetailAsync(Guid? employeeId)
+    {
+        SidebarDocuments.Clear();
+        SidebarActivities.Clear();
+        NotifySidebarCollectionsChanged();
+        if (employeeId is null)
+            return;
+
+        IsSidebarDetailLoading = true;
+        try
+        {
+            foreach (var doc in await _personnelService.GetEmployeeDocumentsAsync(employeeId.Value))
+                SidebarDocuments.Add(doc);
+
+            var detail = await _personnelService.GetEmployeeDetailAsync(employeeId.Value);
+            if (detail is not null)
+            {
+                foreach (var activity in detail.Activities.Take(15))
+                    SidebarActivities.Add(activity);
+            }
+
+            NotifySidebarCollectionsChanged();
+        }
+        finally
+        {
+            IsSidebarDetailLoading = false;
+        }
+    }
+
+    private void NotifySidebarCollectionsChanged()
+    {
+        OnPropertyChanged(nameof(HasSidebarDocuments));
+        OnPropertyChanged(nameof(HasSidebarActivities));
+    }
+
+    [RelayCommand]
+    private void OpenSidebarDocument(PersonnelDocumentRow? doc)
+    {
+        if (doc?.FilePath is null || !File.Exists(doc.FilePath))
+        {
+            StatusMessage = "Fichier introuvable.";
+            return;
+        }
+
+        Process.Start(new ProcessStartInfo(doc.FilePath) { UseShellExecute = true });
     }
 
     partial void OnIsDetailPanelOpenChanged(bool value) =>

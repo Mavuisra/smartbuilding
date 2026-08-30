@@ -83,6 +83,18 @@ public sealed class OrganizationProvisioningService
 
         try
         {
+            if (IsRegisteredTenantDatabase(databaseName))
+            {
+                return new CreateOrganizationResult(
+                    false,
+                    null,
+                    $"Une organisation utilise déjà la base « {databaseName} ».\n\nChoisissez un autre nom de tenant.");
+            }
+
+            // Base laissée par une création interrompue → supprimer pour éviter « table already exists ».
+            if (DesktopLocalDatabaseBootstrap.MySqlDatabaseExists(connectionString))
+                DesktopLocalDatabaseBootstrap.DropMySqlDatabaseIfExists(connectionString);
+
             DesktopLocalDatabaseBootstrap.EnsureMySqlDatabaseExists(connectionString);
         }
         catch (Exception ex)
@@ -102,8 +114,10 @@ public sealed class OrganizationProvisioningService
             City = (request.City ?? "").Trim(),
             CreatedAt = DateTime.UtcNow,
             SyncedToCloud = false,
+            CompanyProfileCompleted = false,
         };
 
+        // Toujours migrer le schéma sur une base tenant neuve (même en mode client LAN).
         var tenantLocalDb = new DesktopLocalDatabaseConfig
         {
             Provider = DesktopLocalDatabaseProvider.MySql,
@@ -111,17 +125,14 @@ public sealed class OrganizationProvisioningService
             DisplayLabel = $"Tenant — {name}",
             DeploymentMode = _localDb.DeploymentMode,
             ServerHost = _localDb.ServerHost,
-            RunsSchemaMigrations = _localDb.RunsSchemaMigrations,
+            RunsSchemaMigrations = true,
             RequiresClientDatabaseConnection = false,
         };
 
         try
         {
             await using var db = CreateDbContext(connectionString);
-            if (tenantLocalDb.RunsSchemaMigrations)
-                await DesktopDatabaseInitializer.InitializeAsync(db, tenantLocalDb, _logger, cancellationToken);
-            else if (!await db.Database.CanConnectAsync(cancellationToken))
-                return new CreateOrganizationResult(false, null, "Connexion à la nouvelle base impossible.");
+            await DesktopDatabaseInitializer.InitializeAsync(db, tenantLocalDb, _logger, cancellationToken);
 
             await DatabaseSeeder.SeedReferenceDataAsync(db);
 
@@ -131,24 +142,29 @@ public sealed class OrganizationProvisioningService
                 FullName = string.IsNullOrWhiteSpace(request.AdminFullName) ? name : request.AdminFullName.Trim(),
                 Email = $"{username}@local.sbms",
                 Role = UserRole.Administrateur,
-                PasswordHash = AuthService.HashPassword(request.AdminPassword),
+                PasswordHash = AuthService.HashPassword(request.AdminPassword!),
                 IsActive = true,
                 IsSynced = false,
             };
             db.Users.Add(admin);
 
-            db.BuildingInfos.Add(new BuildingInfo
+            var building = await db.BuildingInfos.FirstOrDefaultAsync(cancellationToken);
+            if (building is null)
             {
-                Name = name,
-                BuildingDisplayName = name,
-                City = entry.City,
-                Country = "RDC",
-                TimeZoneId = "Africa/Kinshasa",
-                Currency = "USD",
-                DateFormat = "dd/MM/yyyy",
-                Language = "Français",
-                TimeFormat = "24 heures",
-            });
+                building = new BuildingInfo();
+                db.BuildingInfos.Add(building);
+            }
+
+            building.Name = name;
+            building.BuildingDisplayName = name;
+            building.City = entry.City;
+            building.Country = "RDC";
+            building.TimeZoneId = "Africa/Kinshasa";
+            building.Currency = "USD";
+            building.DateFormat = "dd/MM/yyyy";
+            building.Language = "Français";
+            building.TimeFormat = "24 heures";
+            building.MarkUpdated();
 
             await db.SaveChangesAsync(cancellationToken);
             await DatabaseSeeder.EnsureReservedAdminAccountsAsync(db, cancellationToken);
@@ -168,6 +184,10 @@ public sealed class OrganizationProvisioningService
 
         return new CreateOrganizationResult(true, entry, "Tenant créé avec succès.");
     }
+
+    private bool IsRegisteredTenantDatabase(string databaseName) =>
+        _registry.Organizations.Any(
+            o => o.DatabaseName.Equals(databaseName, StringComparison.OrdinalIgnoreCase));
 
     private string BuildConnectionString(string databaseName)
     {

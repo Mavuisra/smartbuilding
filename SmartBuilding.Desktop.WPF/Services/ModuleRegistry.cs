@@ -14,6 +14,7 @@ public static class ModuleRegistry
         new("rapports", "Rapports", "Statistiques consolidées et exports", "ChartBoxOutline", "gestion", PermissionCodes.ReportsExport),
         new("technique", "Technique & Sécurité", "Équipements, maintenance et incidents", "HammerWrench", "gestion", PermissionCodes.TechnicalManage),
         new("fournisseurs", "Fournisseurs", "Partenaires et contrats fournisseurs", "TruckDelivery", "gestion", PermissionCodes.SuppliersManage),
+        new("inventaire", "Inventaire", "Équipements, stocks et maintenance", "PackageVariant", "gestion", PermissionCodes.InventoryManage),
         new("consommations", "Consommations", "Énergie, eau et coûts", "LightningBolt", "gestion", PermissionCodes.ConsumptionManage),
         new("visites", "Visites & Accès", "Visiteurs, accès et réception", "BadgeAccount", "gestion", PermissionCodes.VisitorsManage),
         new("emails", "Emails & Communication", "Boîte mail intégrée Gmail/Outlook", "EmailOutline", "gestion", PermissionCodes.EmailManage),

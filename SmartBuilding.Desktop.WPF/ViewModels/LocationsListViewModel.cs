@@ -38,7 +38,13 @@ public partial class LocationsListViewModel : BaseViewModel
     [ObservableProperty] private bool _isPaymentFormOpen;
     [ObservableProperty] private bool _isGuaranteeFormOpen;
     [ObservableProperty] private bool _isEditMode;
+    [ObservableProperty] private bool _isFormViewOnly;
     [ObservableProperty] private string _premiseFormTitle = "Nouveau local";
+
+    private LocationsContractItem? _viewingContract;
+    private LocationsPremiseItem? _viewingPremise;
+    private LocationsPaymentItem? _viewingPayment;
+    private LocationsGuaranteeItem? _viewingGuarantee;
 
     [ObservableProperty] private Guid _editPremiseId;
     [ObservableProperty] private string _formCode = string.Empty;
@@ -192,18 +198,21 @@ public partial class LocationsListViewModel : BaseViewModel
     #region Contrats
 
     [RelayCommand]
-    private void ViewContract(LocationsContractItem? item)
+    private async Task ViewContractAsync(LocationsContractItem? item)
     {
         if (item is null) return;
-        SbmsDialogService.ShowInfo("Détails du contrat",
-            $"N° {item.ContractNumber}\nLocataire : {item.TenantName}\nLocal : {item.PremiseLabel}\nType : {item.ContractType}\n" +
-            $"Début : {item.StartDisplay} — Fin : {item.EndDisplay}\nLoyer : {item.RentDisplay}\nStatut : {item.StatusLabel}");
+        await OpenContractFormAsync(item, viewOnly: !CanManage);
     }
 
     [RelayCommand]
-    private async Task EditContractAsync(LocationsContractItem? item)
+    private async Task EditContractAsync(LocationsContractItem? item) =>
+        await OpenContractFormAsync(item, viewOnly: false);
+
+    private async Task OpenContractFormAsync(LocationsContractItem? item, bool viewOnly)
     {
-        if (!CanManage || item is null) return;
+        if (item is null) return;
+        if (!viewOnly && !CanManage) return;
+
         var contract = await _locationsService.GetContractAsync(item.Id);
         if (contract is null)
         {
@@ -211,6 +220,8 @@ public partial class LocationsListViewModel : BaseViewModel
             return;
         }
 
+        _viewingContract = item;
+        IsFormViewOnly = viewOnly;
         IsEditMode = true;
         EditContractId = contract.Id;
         FormContractNumber = contract.ContractNumber;
@@ -294,21 +305,20 @@ public partial class LocationsListViewModel : BaseViewModel
     #region Locaux
 
     [RelayCommand]
-    private void ViewPremise(LocationsPremiseItem? item)
-    {
-        if (item is null) return;
-        SbmsDialogService.ShowInfo("Détails du local",
-            $"Code : {item.Code}\nNom : {item.Name}\nBâtiment : {item.Building}\nÉtage : {item.Floor}\n" +
-            $"Type : {item.PremiseType}\nSurface : {item.AreaDisplay}\nLoyer : {item.RentDisplay}\n" +
-            $"Statut : {item.StatusLabel}\nLocataire : {item.TenantName}");
-    }
+    private void ViewPremise(LocationsPremiseItem? item) => OpenPremiseForm(item, viewOnly: !CanManage);
 
     [RelayCommand]
-    private void EditPremise(LocationsPremiseItem? item)
+    private void EditPremise(LocationsPremiseItem? item) => OpenPremiseForm(item, viewOnly: false);
+
+    private void OpenPremiseForm(LocationsPremiseItem? item, bool viewOnly)
     {
-        if (!CanManage || item is null) return;
+        if (item is null) return;
+        if (!viewOnly && !CanManage) return;
+
+        _viewingPremise = item;
+        IsFormViewOnly = viewOnly;
         IsEditMode = true;
-        PremiseFormTitle = "Modifier le local";
+        PremiseFormTitle = viewOnly ? $"Local — {item.Code}" : "Modifier le local";
         EditPremiseId = item.Id;
         FormCode = item.Code;
         FormName = item.Name;
@@ -343,6 +353,7 @@ public partial class LocationsListViewModel : BaseViewModel
 
     private void OpenPremiseCreate()
     {
+        IsFormViewOnly = false;
         IsEditMode = false;
         PremiseFormTitle = "Nouveau local";
         EditPremiseId = Guid.Empty;
@@ -366,19 +377,18 @@ public partial class LocationsListViewModel : BaseViewModel
     #region Paiements
 
     [RelayCommand]
-    private void ViewPayment(LocationsPaymentItem? item)
-    {
-        if (item is null) return;
-        SbmsDialogService.ShowInfo("Détails du paiement",
-            $"Locataire : {item.TenantName}\nLocal : {item.PremiseLabel}\nPériode : {item.PeriodDisplay}\n" +
-            $"Dû : {item.AmountDisplay} — Payé : {item.AmountPaidDisplay}\nÉchéance : {item.DueDisplay}\n" +
-            $"Date paiement : {item.PaidDisplay}\nRetard : {item.LateLabel}\nStatut : {item.StatusLabel}");
-    }
+    private async Task ViewPaymentAsync(LocationsPaymentItem? item) =>
+        await OpenPaymentFormAsync(item, viewOnly: !CanManage);
 
     [RelayCommand]
-    private async Task EditPaymentAsync(LocationsPaymentItem? item)
+    private async Task EditPaymentAsync(LocationsPaymentItem? item) =>
+        await OpenPaymentFormAsync(item, viewOnly: false);
+
+    private async Task OpenPaymentFormAsync(LocationsPaymentItem? item, bool viewOnly)
     {
-        if (!CanManage || item is null) return;
+        if (item is null) return;
+        if (!viewOnly && !CanManage) return;
+
         var payment = await _locationsService.GetRentPaymentAsync(item.Id);
         if (payment is null)
         {
@@ -386,6 +396,8 @@ public partial class LocationsListViewModel : BaseViewModel
             return;
         }
 
+        _viewingPayment = item;
+        IsFormViewOnly = viewOnly;
         IsEditMode = true;
         EditPaymentId = payment.Id;
         FormAmountDueText = payment.AmountDue.ToString("F2", CultureInfo.InvariantCulture);
@@ -442,18 +454,18 @@ public partial class LocationsListViewModel : BaseViewModel
     #region Garanties
 
     [RelayCommand]
-    private void ViewGuarantee(LocationsGuaranteeItem? item)
-    {
-        if (item is null) return;
-        SbmsDialogService.ShowInfo("Détails de la garantie",
-            $"Contrat : {item.ContractNumber}\nLocataire : {item.TenantName}\nType : {item.TypeLabel}\n" +
-            $"Montant : {item.AmountDisplay}\nRemboursé : {item.RefundedDisplay}\nDate : {item.DateDisplay}\nStatut : {item.Status}");
-    }
+    private async Task ViewGuaranteeAsync(LocationsGuaranteeItem? item) =>
+        await OpenGuaranteeFormAsync(item, viewOnly: !CanManage);
 
     [RelayCommand]
-    private async Task EditGuaranteeAsync(LocationsGuaranteeItem? item)
+    private async Task EditGuaranteeAsync(LocationsGuaranteeItem? item) =>
+        await OpenGuaranteeFormAsync(item, viewOnly: false);
+
+    private async Task OpenGuaranteeFormAsync(LocationsGuaranteeItem? item, bool viewOnly)
     {
-        if (!CanManage || item is null) return;
+        if (item is null) return;
+        if (!viewOnly && !CanManage) return;
+
         var guarantee = await _locationsService.GetGuaranteeAsync(item.Id);
         if (guarantee is null)
         {
@@ -466,6 +478,8 @@ public partial class LocationsListViewModel : BaseViewModel
         foreach (var t in (await _locationsService.GetTenantsAsync()).Where(t => tenantIds.Contains(t.Id)).OrderBy(t => t.Name))
             GuaranteeTenants.Add(t);
 
+        _viewingGuarantee = item;
+        IsFormViewOnly = viewOnly;
         IsEditMode = true;
         EditGuaranteeId = guarantee.Id;
         FormGuaranteeAmountText = guarantee.Amount.ToString("F2", CultureInfo.InvariantCulture);
@@ -486,6 +500,48 @@ public partial class LocationsListViewModel : BaseViewModel
 
         FormError = null;
         IsGuaranteeFormOpen = true;
+    }
+
+    [RelayCommand]
+    private async Task EditViewingContractAsync()
+    {
+        if (_viewingContract is null || !CanManage) return;
+        await OpenContractFormAsync(_viewingContract, viewOnly: false);
+    }
+
+    [RelayCommand]
+    private void EditViewingPremise()
+    {
+        if (_viewingPremise is null || !CanManage) return;
+        OpenPremiseForm(_viewingPremise, viewOnly: false);
+    }
+
+    [RelayCommand]
+    private async Task EditViewingPaymentAsync()
+    {
+        if (_viewingPayment is null || !CanManage) return;
+        await OpenPaymentFormAsync(_viewingPayment, viewOnly: false);
+    }
+
+    [RelayCommand]
+    private async Task EditViewingGuaranteeAsync()
+    {
+        if (_viewingGuarantee is null || !CanManage) return;
+        await OpenGuaranteeFormAsync(_viewingGuarantee, viewOnly: false);
+    }
+
+    [RelayCommand]
+    private async Task ViewViewingContractPdfAsync()
+    {
+        if (_viewingContract is not null)
+            await ViewContractPdfAsync(_viewingContract);
+    }
+
+    [RelayCommand]
+    private async Task GenerateViewingReceiptAsync()
+    {
+        if (_viewingPayment is not null)
+            await GenerateReceiptAsync(_viewingPayment);
     }
 
     [RelayCommand]
@@ -554,6 +610,7 @@ public partial class LocationsListViewModel : BaseViewModel
 
     private async Task OpenGuaranteeCreateAsync()
     {
+        IsFormViewOnly = false;
         IsEditMode = false;
         EditGuaranteeId = Guid.Empty;
         FormGuaranteeAmountText = "0";

@@ -20,6 +20,7 @@ public partial class MainWindow : Window
         _services = services;
         _scopeFactory = scopeFactory;
         InitializeComponent();
+        Loaded += MainWindow_OnLoaded;
         ShowLogin();
     }
 
@@ -30,8 +31,17 @@ public partial class MainWindow : Window
         base.OnClosed(e);
     }
 
-    private void ShowLogin()
+    private async void MainWindow_OnLoaded(object sender, RoutedEventArgs e)
     {
+        if (LoginPanel.DataContext is LoginViewModel loginVm && LoginPanel.Visibility == Visibility.Visible)
+            await loginVm.TryRestoreSessionAsync();
+    }
+
+    private void ShowLogin(bool clearPersistentSession = false)
+    {
+        if (clearPersistentSession)
+            _services.GetRequiredService<PersistentSessionStore>().Clear();
+
         _shellScope?.Dispose();
         _shellScope = null;
         _loginScope?.Dispose();
@@ -53,7 +63,9 @@ public partial class MainWindow : Window
         LoginChrome.Visibility = Visibility.Visible;
         LoginPanel.Visibility = Visibility.Visible;
         LoginPanel.DataContext = ActivatorUtilities.CreateInstance<LoginViewModel>(
-            _loginScope!.ServiceProvider, (Action)ShowShell);
+            _loginScope!.ServiceProvider,
+            _services,
+            (Action)ShowShell);
     }
 
     private async void ShowShell()
@@ -86,7 +98,7 @@ public partial class MainWindow : Window
         _shellScope = _scopeFactory.CreateScope();
 
         var shellVm = ActivatorUtilities.CreateInstance<MainShellViewModel>(
-            _shellScope.ServiceProvider, (Action)ShowLogin);
+            _shellScope.ServiceProvider, (Action)(() => ShowLogin(clearPersistentSession: true)));
         DataContext = shellVm;
         ShellPanel.DataContext = shellVm;
 

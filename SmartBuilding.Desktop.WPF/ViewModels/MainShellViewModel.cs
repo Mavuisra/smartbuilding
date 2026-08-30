@@ -170,6 +170,14 @@ public partial class MainShellViewModel : BaseViewModel
     {
         await EnsureShellInitializedAsync();
 
+        if (_session.PendingCompanyProfileSetup)
+        {
+            _settingsViewModel.SetCompanyProfileSetupMode(true);
+            await NavigateAsync("parametres");
+            _settingsViewModel.FocusCategory("general");
+            return;
+        }
+
         if (_session.IsReceptionOnly())
             await NavigateAsync("visites");
         else
@@ -474,7 +482,9 @@ public partial class MainShellViewModel : BaseViewModel
 
         if (moduleId == "inventaire")
         {
-            await ShowDashboardAsync();
+            CurrentViewModel = _inventoryViewModel;
+            await _inventoryViewModel.LoadCommand.ExecuteAsync(null);
+            await RefreshShellStatusAsync();
             return;
         }
 

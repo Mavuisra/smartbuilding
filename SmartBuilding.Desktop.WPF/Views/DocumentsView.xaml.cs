@@ -17,4 +17,10 @@ public partial class DocumentsView
         if (DataContext is DocumentsViewModel vm)
             vm.SelectDocumentCommand.Execute(doc);
     }
+
+    private void NotificationsOverlay_MouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (DataContext is DocumentsViewModel vm)
+            vm.CloseNotificationsCommand.Execute(null);
+    }
 }

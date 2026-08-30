@@ -226,7 +226,7 @@ public partial class TechnicalViewModel
     private void ExportCsv()
     {
         if (TechnicalExportService.ExportCsv(_allEquipment))
-            StatusMessage = "Export PDF enregistré.";
+            StatusMessage = "Export CSV enregistré.";
         else
             StatusMessage = "Export annulé.";
     }

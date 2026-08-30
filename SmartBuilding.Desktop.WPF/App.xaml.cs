@@ -109,6 +109,8 @@ public partial class App : System.Windows.Application
                 {
                     services.AddInfrastructure(context.Configuration, isDesktop: true);
                     services.AddSingleton<SessionService>();
+                    services.AddSingleton<PersistentSessionStore>();
+                    services.AddSingleton<CompanyProfileCompletionService>();
                     services.AddSingleton<NetworkConnectivityWatcher>();
                     services.AddSingleton<AppBrandingState>();
                     services.AddSingleton<AppConfigurationService>();

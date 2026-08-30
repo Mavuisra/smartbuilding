@@ -214,7 +214,7 @@
                                 </Border>
 
                                 <Grid Margin="0,0,0,14">
-                                    <CheckBox Content="Se souvenir de moi" IsChecked="{Binding RememberMe}"
+                                    <CheckBox Content="Rester connecté (session 30 jours)" IsChecked="{Binding RememberMe}"
                                               Style="{StaticResource LoginRememberCheckBox}" HorizontalAlignment="Left"/>
                                     <TextBlock HorizontalAlignment="Right" VerticalAlignment="Center">
                                         <Hyperlink Foreground="{StaticResource LoginEmeraldBrush}" TextDecorations="None"

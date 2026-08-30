@@ -54,7 +54,13 @@ public class SettingsService
 
         var prefs = LoadNotificationPrefs();
         var dbPath = MaskConnectionString(_localDb.ConnectionString);
-        var dbDir = _localDb.DisplayLabel;
+        var dataDirPath = DesktopMySqlDataDirectoryResolver.TryResolve(_localDb.ConnectionString);
+        var isLocalServer = DesktopMySqlDataDirectoryResolver.IsLocalServer(_localDb.ConnectionString);
+        var canOpenDataDir = isLocalServer && !string.IsNullOrWhiteSpace(dataDirPath);
+        var dbDir = dataDirPath
+                    ?? (_localDb.IsLanClient
+                        ? "Poste client — dossier sur le serveur MySQL/XAMPP"
+                        : _localDb.DisplayLabel);
         const long dbSize = 0;
 
         var env = _configuration["ASPNETCORE_ENVIRONMENT"]
@@ -98,7 +104,10 @@ public class SettingsService
                 : "Jamais",
             DatabaseSizeBytes = dbSize,
             DatabaseFilePath = dbPath,
+            DatabaseDeploymentLabel = _localDb.DisplayLabel,
             DatabaseDataDirectory = dbDir,
+            DatabaseDataDirectoryPath = dataDirPath,
+            CanOpenDatabaseDataDirectory = canOpenDataDir,
             AppVersion = $"v{typeof(SettingsService).Assembly.GetName().Version?.ToString(3) ?? "1.0.0"}",
             EnvironmentName = env,
             NotifyEmail = prefs.NotifyEmail,

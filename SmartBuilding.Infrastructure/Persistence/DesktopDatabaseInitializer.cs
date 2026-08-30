@@ -34,17 +34,23 @@ public static class DesktopDatabaseInitializer
             DesktopLocalDatabaseBootstrap.EnsureMySqlDatabaseExists(localDb.ConnectionString);
 
             var pending = (await context.Database.GetPendingMigrationsAsync(cancellationToken)).ToList();
+            var applied = (await context.Database.GetAppliedMigrationsAsync(cancellationToken)).ToList();
+
             if (pending.Count == 0)
             {
                 logger?.LogDebug("MySQL : schéma à jour, aucune migration en attente.");
+                await EnsureMySqlSchemaPatchesAsync(context, cancellationToken);
                 return;
             }
 
-            if (await LegacyEnsureCreatedSchemaExistsAsync(context, cancellationToken)
-                && (await context.Database.GetAppliedMigrationsAsync(cancellationToken)).ToList().Count == 0)
+            if (applied.Count == 0
+                && await LegacyEnsureCreatedSchemaExistsAsync(context, cancellationToken))
             {
                 logger?.LogWarning(
-                    "MySQL : base créée sans migrations EF — application des migrations (peut nécessiter une base vide).");
+                    "MySQL : schéma existant sans historique EF — enregistrement des migrations sans recréer les tables.");
+                await BaselineAppliedMigrationsAsync(context, pending, logger, cancellationToken);
+                await EnsureMySqlSchemaPatchesAsync(context, cancellationToken);
+                return;
             }
 
             logger?.LogInformation(
@@ -130,6 +136,39 @@ public static class DesktopDatabaseInitializer
         await alter.ExecuteNonQueryAsync(cancellationToken);
     }
 
+    private static async Task BaselineAppliedMigrationsAsync(
+        SmartBuildingDbContext context,
+        IReadOnlyList<string> pendingMigrations,
+        ILogger? logger,
+        CancellationToken cancellationToken)
+    {
+        if (pendingMigrations.Count == 0)
+            return;
+
+        await context.Database.ExecuteSqlRawAsync(
+            """
+            CREATE TABLE IF NOT EXISTS `__EFMigrationsHistory` (
+                `MigrationId` varchar(150) NOT NULL,
+                `ProductVersion` varchar(32) NOT NULL,
+                PRIMARY KEY (`MigrationId`)
+            ) ENGINE=InnoDB;
+            """,
+            cancellationToken);
+
+        var productVersion = typeof(DesktopDatabaseInitializer).Assembly.GetName().Version?.ToString(3) ?? "8.0.0";
+
+        foreach (var migrationId in pendingMigrations)
+        {
+            await context.Database.ExecuteSqlInterpolatedAsync(
+                $"""
+                 INSERT IGNORE INTO `__EFMigrationsHistory` (`MigrationId`, `ProductVersion`)
+                 VALUES ({migrationId}, {productVersion});
+                 """,
+                cancellationToken);
+            logger?.LogDebug("MySQL : migration baselinée {MigrationId}", migrationId);
+        }
+    }
+
     /// <summary>Détecte une base créée par l'ancien EnsureCreated (tables sans __EFMigrationsHistory).</summary>
     private static async Task<bool> LegacyEnsureCreatedSchemaExistsAsync(
         SmartBuildingDbContext context,
@@ -147,7 +186,8 @@ public static class DesktopDatabaseInitializer
                 await using var cmd = connection.CreateCommand();
                 cmd.CommandText = """
                     SELECT COUNT(*) FROM information_schema.tables
-                    WHERE table_schema = DATABASE() AND table_name = 'Users'
+                    WHERE table_schema = DATABASE()
+                      AND table_name IN ('Users', 'BuildingInfos')
                     """;
                 var count = Convert.ToInt32(await cmd.ExecuteScalarAsync(cancellationToken));
                 return count > 0;

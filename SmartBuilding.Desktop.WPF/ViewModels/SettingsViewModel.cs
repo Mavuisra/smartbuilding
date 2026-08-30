@@ -24,6 +24,11 @@ public partial class SettingsViewModel : BaseViewModel
     private readonly CloudDatabaseResetService _cloudDatabaseReset;
     private readonly AppConfigurationService _appConfiguration;
     private readonly SessionService _session;
+    private readonly CompanyProfileCompletionService _companyProfileCompletion;
+
+    [ObservableProperty] private bool _isCompanyProfileSetupMode;
+    [ObservableProperty] private string _companyProfileSetupBanner =
+        "Complétez le profil de votre entreprise pour accéder à toutes les fonctionnalités.";
 
     [ObservableProperty] private string _userName = string.Empty;
     [ObservableProperty] private string _userRole = string.Empty;
@@ -69,8 +74,12 @@ public partial class SettingsViewModel : BaseViewModel
     [ObservableProperty] private string _databaseLabel = "MySQL (XAMPP)";
     [ObservableProperty] private string _databasePathDisplay = "—";
     [ObservableProperty] private string _databaseDataDirectoryDisplay = "—";
+    [ObservableProperty] private bool _canOpenDatabaseDataDirectory;
     [ObservableProperty] private string _databasePersistenceMessage =
-        "Vos données sont stockées hors du dossier d'installation. Les mises à jour de SBMS ne suppriment pas ce fichier. Ne supprimez pas ce dossier.";
+        "Vos données MySQL sont stockées hors du dossier d'installation SBMS. Les mises à jour de l'application ne les suppriment pas. Ne supprimez pas ce dossier.";
+    [ObservableProperty] private bool _canRestoreBackup;
+    [ObservableProperty] private string _restoreBackupTooltip =
+        "La restauration de sauvegarde MySQL n'est pas encore disponible. Utilisez phpMyAdmin ou mysqldump sur le serveur.";
     [ObservableProperty] private string _storageLabel = "—";
     [ObservableProperty] private string _environmentName = "Développement";
     [ObservableProperty] private string _updateCurrentVersion = "v—";
@@ -85,6 +94,7 @@ public partial class SettingsViewModel : BaseViewModel
     [ObservableProperty] private bool _isUpdateProgressVisible;
 
     private AppAutoUpdater.AvailableUpdate? _availableUpdate;
+    private string? _databaseDataDirectoryPath;
 
     [ObservableProperty] private ISeries[] _usersSparkline = [];
     [ObservableProperty] private ISeries[] _rolesSparkline = [];
@@ -164,11 +174,13 @@ public partial class SettingsViewModel : BaseViewModel
         SettingsService settingsService,
         CloudDatabaseResetService cloudDatabaseReset,
         AppConfigurationService appConfiguration,
-        SessionService session)
+        SessionService session,
+        CompanyProfileCompletionService companyProfileCompletion)
     {
         _settingsService = settingsService;
         _cloudDatabaseReset = cloudDatabaseReset;
         _appConfiguration = appConfiguration;
+        _companyProfileCompletion = companyProfileCompletion;
         _appConfiguration.ConfigurationChanged += (_, _) =>
         {
             SyncAppearanceFromGlobalConfig();
@@ -279,9 +291,12 @@ public partial class SettingsViewModel : BaseViewModel
             AuthorizedDevicesLabel = data.AuthorizedDevices.ToString();
             AppVersion = data.AppVersion;
             EnvironmentName = data.EnvironmentName;
-            DatabaseLabel = data.DatabaseDataDirectory;
+            DatabaseLabel = data.DatabaseDeploymentLabel;
             DatabasePathDisplay = data.DatabaseFilePath;
             DatabaseDataDirectoryDisplay = data.DatabaseDataDirectory;
+            _databaseDataDirectoryPath = data.DatabaseDataDirectoryPath;
+            CanOpenDatabaseDataDirectory = data.CanOpenDatabaseDataDirectory;
+            CanRestoreBackup = false;
             StorageLabel = FormatBytes(data.DatabaseSizeBytes);
 
             UsersSparkline = BuildSparkline([data.ActiveUsers], "#8B5CF6");
@@ -399,6 +414,7 @@ public partial class SettingsViewModel : BaseViewModel
 
             _settingsService.SaveNotificationPrefs(NotifyEmail, NotifyPush, NotifyCritical, NotifyDailyReports);
             StatusMessage = "Configuration globale enregistrée et appliquée à toute l'application.";
+            await CompleteCompanyProfileIfReadyAsync();
             await LoadAsync();
         }
         catch (Exception ex)
@@ -419,6 +435,28 @@ public partial class SettingsViewModel : BaseViewModel
         SelectedCategoryId = categoryId;
         UpdateCategoryHeader(categoryId);
         ErrorMessage = null;
+    }
+
+    public void SetCompanyProfileSetupMode(bool enabled)
+    {
+        IsCompanyProfileSetupMode = enabled;
+        if (enabled)
+            CompanyProfileSetupBanner =
+                "Première connexion — renseignez les coordonnées de votre entreprise, puis cliquez sur « Enregistrer ».";
+    }
+
+    private async Task CompleteCompanyProfileIfReadyAsync()
+    {
+        if (!IsCompanyProfileSetupMode)
+            return;
+
+        if (!await _companyProfileCompletion.IsDatabaseProfileCompleteAsync())
+            return;
+
+        _companyProfileCompletion.MarkCompleted();
+        _session.SetPendingCompanyProfileSetup(false);
+        SetCompanyProfileSetupMode(false);
+        StatusMessage = "Profil entreprise complété. Vous pouvez utiliser l'application normalement.";
     }
 
     [RelayCommand]
@@ -655,10 +693,31 @@ public partial class SettingsViewModel : BaseViewModel
     [RelayCommand]
     private void OpenDatabaseFolder()
     {
-        var dir = AppContext.BaseDirectory;
+        if (!CanOpenDatabaseDataDirectory || string.IsNullOrWhiteSpace(_databaseDataDirectoryPath))
+        {
+            MessageBox.Show(
+                "Le dossier des données MySQL n'est pas accessible depuis ce poste.\n\n"
+                + "En mode client, les fichiers se trouvent sur le PC serveur (XAMPP → mysql\\data).\n"
+                + "Sur le serveur, démarrez MySQL puis réessayez.",
+                "Dossier des données",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+            return;
+        }
+
+        if (!Directory.Exists(_databaseDataDirectoryPath))
+        {
+            MessageBox.Show(
+                $"Le dossier n'existe pas encore :\n{_databaseDataDirectoryPath}",
+                "Dossier des données",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return;
+        }
+
         Process.Start(new ProcessStartInfo
         {
-            FileName = dir,
+            FileName = _databaseDataDirectoryPath,
             UseShellExecute = true
         });
     }
@@ -855,13 +914,15 @@ public partial class SettingsViewModel : BaseViewModel
         CategoryTitle = item?.Label ?? "Paramètres";
         CategoryDescription = categoryId switch
         {
-            "general" => "Nom, devise, langue, logo et emplacement des données locales",
+            "general" => IsCompanyProfileSetupMode
+                ? "Complétez le nom, les coordonnées et les paramètres régionaux de votre entreprise"
+                : "Nom, devise, langue, logo et emplacement des données locales",
             "buildings" => "Coordonnées du bailleur sur les quittances — patrimoine dans le module Location",
             "utilisateurs" => "Comptes, rôles et activité des utilisateurs",
             "permissions" => "Droits d'accès par rôle et module",
             "emails" => "Boîtes mail et communication intégrée",
             "synchronisation" => "État cloud et dernières synchronisations",
-            "backups" => "Historique des opérations de synchronisation",
+            "backups" => "Historique des synchronisations cloud (restauration MySQL à venir)",
             "security" => "Authentification, sessions et accès",
             "notifications" => "Alertes email, push et rapports",
             "documents" => "Contrats, factures et pièces jointes",
@@ -901,7 +962,7 @@ public partial class SettingsViewModel : BaseViewModel
         Categories.Clear();
         var items = new[]
         {
-            ("general", "Général", "Tune"),
+            ("general", "Profil de l'entreprise", "Tune"),
             ("buildings", "Société & bailleur", "Domain"),
             ("utilisateurs", "Utilisateurs & rôles", "AccountGroup"),
             ("permissions", "Permissions", "ShieldKey"),
@@ -940,7 +1001,7 @@ public partial class SettingsViewModel : BaseViewModel
         QuickAccessItems.Add(new SettingsQuickAccessItem
         {
             CategoryId = "backups", Title = "Sauvegardes",
-            Description = "Historique et restauration", IconKind = "BackupRestore",
+            Description = "Historique de synchronisation", IconKind = "BackupRestore",
             IconColor = "#2D6A4F", IconBg = "#D1FAE5"
         });
         QuickAccessItems.Add(new SettingsQuickAccessItem

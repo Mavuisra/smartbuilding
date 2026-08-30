@@ -13,18 +13,22 @@ public partial class CreateTenantWindow : Window
         InitializeComponent();
         _vm = ActivatorUtilities.CreateInstance<CreateTenantViewModel>(services);
         DataContext = _vm;
+        _vm.TenantCreated += OnTenantCreated;
+        Loaded += (_, _) => AdminPasswordBox.Focus();
+    }
+
+    public string? CreatedAdminUsername => _vm.Succeeded ? _vm.AdminUsername.Trim() : null;
+    public string? CreatedAdminPassword => _vm.Succeeded ? _vm.AdminPassword : null;
+
+    private void OnTenantCreated()
+    {
+        DialogResult = true;
+        Close();
     }
 
     private async void Create_Click(object sender, RoutedEventArgs e)
     {
-        if (_vm.CreateCommand.CanExecute(null))
-            await _vm.CreateCommand.ExecuteAsync(null);
-
-        if (_vm.Succeeded)
-        {
-            DialogResult = true;
-            Close();
-        }
+        await _vm.CreateCommand.ExecuteAsync(null);
     }
 
     private void Cancel_Click(object sender, RoutedEventArgs e)

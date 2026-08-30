@@ -102,7 +102,14 @@ public class EmailService : IEmailService
         return results;
     }
 
-    public async Task SendReplyAsync(
+    public Task SendReplyAsync(
+        Guid accountId, string to, string subject, string body, CancellationToken cancellationToken = default)
+    {
+        var replySubject = subject.StartsWith("Re:", StringComparison.OrdinalIgnoreCase) ? subject : $"Re: {subject}";
+        return SendEmailAsync(accountId, to, replySubject, body, cancellationToken);
+    }
+
+    public async Task SendEmailAsync(
         Guid accountId, string to, string subject, string body, CancellationToken cancellationToken = default)
     {
         var account = await _context.EmailAccounts.FindAsync([accountId], cancellationToken)
@@ -111,7 +118,7 @@ public class EmailService : IEmailService
         var message = new MimeMessage();
         message.From.Add(new MailboxAddress(account.EmailAddress, account.EmailAddress));
         message.To.Add(MailboxAddress.Parse(to));
-        message.Subject = subject.StartsWith("Re:", StringComparison.OrdinalIgnoreCase) ? subject : $"Re: {subject}";
+        message.Subject = subject;
         message.Body = new TextPart("plain") { Text = body };
 
         using var client = new SmtpClient();

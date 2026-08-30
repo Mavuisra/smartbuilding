@@ -151,11 +151,88 @@
                             </StackPanel>
                             <StackPanel Visibility="{Binding DataContext.SelectedDetailTab, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource IntEqualsToVisibilityConverter}, ConverterParameter=3}">
                                 <TextBlock Text="Documents RH" FontWeight="SemiBold" Foreground="#1B3D3B"/>
-                                <TextBlock Text="Contrats et pièces jointes liés à cet employé." Foreground="#94A3B8" FontSize="12" Margin="0,8,0,0" TextWrapping="Wrap"/>
+                                <ProgressBar IsIndeterminate="True" Height="3" Margin="0,10,0,10"
+                                             Visibility="{Binding DataContext.IsSidebarDetailLoading, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                <TextBlock Text="Aucun document associé à cet employé." Foreground="#94A3B8" FontSize="12" Margin="0,8,0,0" TextWrapping="Wrap">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <MultiDataTrigger>
+                                                    <MultiDataTrigger.Conditions>
+                                                        <Condition Binding="{Binding DataContext.IsSidebarDetailLoading, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="False"/>
+                                                        <Condition Binding="{Binding DataContext.HasSidebarDocuments, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="False"/>
+                                                    </MultiDataTrigger.Conditions>
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </MultiDataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <ItemsControl ItemsSource="{Binding DataContext.SidebarDocuments, RelativeSource={RelativeSource AncestorType=UserControl}}" Margin="0,8,0,0">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Background="#F8FAFC" CornerRadius="8" Padding="12" Margin="0,0,0,8" BorderBrush="#E8EFED" BorderThickness="1">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <StackPanel>
+                                                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" Foreground="#1B3D3B" TextWrapping="Wrap"/>
+                                                        <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                                            <TextBlock Text="{Binding Category}" FontSize="10" Foreground="#94A3B8" Margin="0,0,8,0"/>
+                                                            <TextBlock Text="{Binding DateDisplay}" FontSize="10" Foreground="#94A3B8"/>
+                                                        </StackPanel>
+                                                    </StackPanel>
+                                                    <Button Grid.Column="1" Style="{StaticResource MaterialDesignIconButton}" ToolTip="Ouvrir"
+                                                            Command="{Binding DataContext.OpenSidebarDocumentCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                            CommandParameter="{Binding}"
+                                                            Visibility="{Binding HasFile, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                        <materialDesign:PackIcon Kind="FileDocumentOutline" Width="18" Height="18" Foreground="#2D6A4F"/>
+                                                    </Button>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
                             </StackPanel>
                             <StackPanel Visibility="{Binding DataContext.SelectedDetailTab, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource IntEqualsToVisibilityConverter}, ConverterParameter=4}">
                                 <TextBlock Text="Historique" FontWeight="SemiBold" Foreground="#1B3D3B"/>
-                                <TextBlock Text="Historique des modifications et pointages à venir." Foreground="#94A3B8" FontSize="12" Margin="0,8,0,0" TextWrapping="Wrap"/>
+                                <ProgressBar IsIndeterminate="True" Height="3" Margin="0,10,0,10"
+                                             Visibility="{Binding DataContext.IsSidebarDetailLoading, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                <TextBlock Text="Aucun événement enregistré pour cet employé." Foreground="#94A3B8" FontSize="12" Margin="0,8,0,0" TextWrapping="Wrap">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                            <Style.Triggers>
+                                                <MultiDataTrigger>
+                                                    <MultiDataTrigger.Conditions>
+                                                        <Condition Binding="{Binding DataContext.IsSidebarDetailLoading, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="False"/>
+                                                        <Condition Binding="{Binding DataContext.HasSidebarActivities, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="False"/>
+                                                    </MultiDataTrigger.Conditions>
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </MultiDataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <ItemsControl ItemsSource="{Binding DataContext.SidebarActivities, RelativeSource={RelativeSource AncestorType=UserControl}}" Margin="0,8,0,0">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Background="#F8FAFC" CornerRadius="8" Padding="12" Margin="0,0,0,8" BorderBrush="#E8EFED" BorderThickness="1">
+                                                <StackPanel>
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Text="{Binding Category}" FontSize="10" Foreground="#94A3B8" Margin="0,0,8,0"/>
+                                                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" Foreground="#1B3D3B" TextWrapping="Wrap"/>
+                                                    </StackPanel>
+                                                    <TextBlock Text="{Binding Description}" FontSize="12" Foreground="#64748B" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                                    <TextBlock Text="{Binding DateDisplay}" FontSize="10" Foreground="#94A3B8" Margin="0,6,0,0"/>
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
                             </StackPanel>
                         </StackPanel>
                     </ScrollViewer>

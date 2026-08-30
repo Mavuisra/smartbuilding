@@ -14,6 +14,7 @@
             <conv:IntEqualsToVisibilityConverter x:Key="IntEqualsToVisibilityConverter"/>
             <conv:TabIndexActiveConverter x:Key="TabIndexActiveConverter"/>
             <conv:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
+            <conv:InverseBoolConverter x:Key="InverseBoolConverter"/>
 
             <Style x:Key="StatusBadgeBorder" TargetType="Border">
                 <Setter Property="CornerRadius" Value="8"/>
@@ -397,26 +398,45 @@
                             <UniformGrid Columns="2" Margin="0,0,0,8">
                                 <TextBox Margin="0,0,8,8" Style="{StaticResource MaterialDesignOutlinedTextBox}"
                                          materialDesign:HintAssist.Hint="Code" Text="{Binding FormCode, UpdateSourceTrigger=PropertyChanged}"
-                                         IsReadOnly="{Binding IsEditMode}"/>
+                                         IsReadOnly="{Binding IsFormViewOnly}"/>
                                 <TextBox Margin="8,0,0,8" Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                         materialDesign:HintAssist.Hint="Nom *" Text="{Binding FormName, UpdateSourceTrigger=PropertyChanged}"/>
+                                         materialDesign:HintAssist.Hint="Nom *" Text="{Binding FormName, UpdateSourceTrigger=PropertyChanged}"
+                                         IsReadOnly="{Binding IsFormViewOnly}"/>
                                 <TextBox Margin="0,0,8,8" Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                         materialDesign:HintAssist.Hint="Bâtiment" Text="{Binding FormBuilding, UpdateSourceTrigger=PropertyChanged}"/>
+                                         materialDesign:HintAssist.Hint="Bâtiment" Text="{Binding FormBuilding, UpdateSourceTrigger=PropertyChanged}"
+                                         IsReadOnly="{Binding IsFormViewOnly}"/>
                                 <TextBox Margin="8,0,0,8" Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                         materialDesign:HintAssist.Hint="Étage" Text="{Binding FormFloor, UpdateSourceTrigger=PropertyChanged}"/>
+                                         materialDesign:HintAssist.Hint="Étage" Text="{Binding FormFloor, UpdateSourceTrigger=PropertyChanged}"
+                                         IsReadOnly="{Binding IsFormViewOnly}"/>
                                 <TextBox Margin="0,0,8,8" Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                         materialDesign:HintAssist.Hint="Type" Text="{Binding FormType, UpdateSourceTrigger=PropertyChanged}"/>
+                                         materialDesign:HintAssist.Hint="Type" Text="{Binding FormType, UpdateSourceTrigger=PropertyChanged}"
+                                         IsReadOnly="{Binding IsFormViewOnly}"/>
                                 <TextBox Margin="8,0,0,8" Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                         materialDesign:HintAssist.Hint="Loyer mensuel" Text="{Binding FormRentText, UpdateSourceTrigger=PropertyChanged}"/>
+                                         materialDesign:HintAssist.Hint="Loyer mensuel" Text="{Binding FormRentText, UpdateSourceTrigger=PropertyChanged}"
+                                         IsReadOnly="{Binding IsFormViewOnly}"/>
                             </UniformGrid>
                             <TextBlock Text="{Binding FormError}" Foreground="#DC2626" FontSize="12" Margin="0,0,0,8"
                                        Visibility="{Binding FormError, Converter={StaticResource NullToVisibilityConverter}}"/>
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                <Button Content="Modifier" Command="{Binding EditViewingPremiseCommand}"
+                                        Style="{StaticResource LocationsPrimaryButton}" Padding="18,9" Margin="0,0,10,0"
+                                        Visibility="{Binding IsFormViewOnly, Converter={StaticResource BoolToVisibilityConverter}}"/>
                                 <Button Content="Annuler" Command="{Binding ClosePremiseFormCommand}"
                                         Style="{StaticResource MaterialDesignOutlinedButton}" Foreground="#111827" BorderBrush="#111827"
                                         Padding="18,9" Margin="0,0,10,0"/>
                                 <Button Content="Enregistrer" Command="{Binding SavePremiseFormCommand}"
-                                        Style="{StaticResource SbmsLoginPrimaryButton}" Padding="22,10"/>
+                                        Padding="22,10">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource SbmsLoginPrimaryButton}">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsFormViewOnly}" Value="True">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
                             </StackPanel>
                         </StackPanel>
                     </StackPanel>
@@ -427,18 +447,51 @@
             <Border Background="#80000000" Visibility="{Binding IsContractFormOpen, Converter={StaticResource BoolToVisibilityConverter}}">
                 <Border Background="White" CornerRadius="12" Padding="24" MaxWidth="480" VerticalAlignment="Center" HorizontalAlignment="Center">
                     <StackPanel>
-                        <TextBlock Text="Modifier le contrat" FontSize="18" FontWeight="Bold" Foreground="#111827" Margin="0,0,0,16"/>
+                        <TextBlock FontSize="18" FontWeight="Bold" Foreground="#111827" Margin="0,0,0,16">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Text" Value="Modifier le contrat"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsFormViewOnly}" Value="True">
+                                            <Setter Property="Text" Value="Détails du contrat"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
                         <TextBox materialDesign:HintAssist.Hint="N° contrat" Text="{Binding FormContractNumber}" IsReadOnly="True" Margin="0,0,0,8"/>
-                        <ComboBox ItemsSource="{Binding ContractTypes}" SelectedItem="{Binding FormContractType}" Margin="0,0,0,8"/>
-                        <TextBox materialDesign:HintAssist.Hint="Date début (jj/mm/aaaa)" Text="{Binding FormStartDate, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
-                        <TextBox materialDesign:HintAssist.Hint="Date fin (jj/mm/aaaa)" Text="{Binding FormEndDate, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
-                        <TextBox materialDesign:HintAssist.Hint="Loyer mensuel (USD)" Text="{Binding FormContractRentText, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
-                        <TextBox materialDesign:HintAssist.Hint="Caution (USD)" Text="{Binding FormDepositText, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
+                        <ComboBox ItemsSource="{Binding ContractTypes}" SelectedItem="{Binding FormContractType}" Margin="0,0,0,8"
+                                  IsEnabled="{Binding IsFormViewOnly, Converter={StaticResource InverseBoolConverter}}"/>
+                        <TextBox materialDesign:HintAssist.Hint="Date début (jj/mm/aaaa)" Text="{Binding FormStartDate, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"
+                                 IsReadOnly="{Binding IsFormViewOnly}"/>
+                        <TextBox materialDesign:HintAssist.Hint="Date fin (jj/mm/aaaa)" Text="{Binding FormEndDate, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"
+                                 IsReadOnly="{Binding IsFormViewOnly}"/>
+                        <TextBox materialDesign:HintAssist.Hint="Loyer mensuel (USD)" Text="{Binding FormContractRentText, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"
+                                 IsReadOnly="{Binding IsFormViewOnly}"/>
+                        <TextBox materialDesign:HintAssist.Hint="Caution (USD)" Text="{Binding FormDepositText, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"
+                                 IsReadOnly="{Binding IsFormViewOnly}"/>
                         <TextBlock Text="{Binding FormError}" Foreground="#DC2626" FontSize="12" Margin="0,0,0,8"
                                    Visibility="{Binding FormError, Converter={StaticResource NullToVisibilityConverter}}"/>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <Button Content="PDF" Command="{Binding ViewViewingContractPdfCommand}"
+                                    Style="{StaticResource LocationsToolbarButton}" Margin="0,0,8,0"
+                                    Visibility="{Binding IsFormViewOnly, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                            <Button Content="Modifier" Command="{Binding EditViewingContractCommand}"
+                                    Style="{StaticResource LocationsPrimaryButton}" Margin="0,0,8,0"
+                                    Visibility="{Binding IsFormViewOnly, Converter={StaticResource BoolToVisibilityConverter}}"/>
                             <Button Content="Annuler" Command="{Binding CloseContractFormCommand}" Style="{StaticResource LocationsToolbarButton}" Margin="0,0,8,0"/>
-                            <Button Content="Enregistrer" Command="{Binding SaveContractFormCommand}" Style="{StaticResource LocationsPrimaryButton}"/>
+                            <Button Content="Enregistrer" Command="{Binding SaveContractFormCommand}">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource LocationsPrimaryButton}">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsFormViewOnly}" Value="True">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
                         </StackPanel>
                     </StackPanel>
                 </Border>
@@ -448,17 +501,50 @@
             <Border Background="#80000000" Visibility="{Binding IsPaymentFormOpen, Converter={StaticResource BoolToVisibilityConverter}}">
                 <Border Background="White" CornerRadius="12" Padding="24" MaxWidth="460" VerticalAlignment="Center" HorizontalAlignment="Center">
                     <StackPanel>
-                        <TextBlock Text="Modifier le paiement" FontSize="18" FontWeight="Bold" Foreground="#111827" Margin="0,0,0,16"/>
-                        <TextBox materialDesign:HintAssist.Hint="Montant dû (USD)" Text="{Binding FormAmountDueText, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
-                        <TextBox materialDesign:HintAssist.Hint="Montant payé (USD)" Text="{Binding FormAmountPaidText, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
-                        <TextBox materialDesign:HintAssist.Hint="Échéance (jj/mm/aaaa)" Text="{Binding FormDueDate, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
-                        <TextBox materialDesign:HintAssist.Hint="Date paiement (jj/mm/aaaa)" Text="{Binding FormPaidDate, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
-                        <ComboBox ItemsSource="{Binding PaymentStatuses}" SelectedItem="{Binding FormPaymentStatus}" Margin="0,0,0,8"/>
+                        <TextBlock FontSize="18" FontWeight="Bold" Foreground="#111827" Margin="0,0,0,16">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Text" Value="Modifier le paiement"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsFormViewOnly}" Value="True">
+                                            <Setter Property="Text" Value="Détails du paiement"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <TextBox materialDesign:HintAssist.Hint="Montant dû (USD)" Text="{Binding FormAmountDueText, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"
+                                 IsReadOnly="{Binding IsFormViewOnly}"/>
+                        <TextBox materialDesign:HintAssist.Hint="Montant payé (USD)" Text="{Binding FormAmountPaidText, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"
+                                 IsReadOnly="{Binding IsFormViewOnly}"/>
+                        <TextBox materialDesign:HintAssist.Hint="Échéance (jj/mm/aaaa)" Text="{Binding FormDueDate, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"
+                                 IsReadOnly="{Binding IsFormViewOnly}"/>
+                        <TextBox materialDesign:HintAssist.Hint="Date paiement (jj/mm/aaaa)" Text="{Binding FormPaidDate, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"
+                                 IsReadOnly="{Binding IsFormViewOnly}"/>
+                        <ComboBox ItemsSource="{Binding PaymentStatuses}" SelectedItem="{Binding FormPaymentStatus}" Margin="0,0,0,8"
+                                  IsEnabled="{Binding IsFormViewOnly, Converter={StaticResource InverseBoolConverter}}"/>
                         <TextBlock Text="{Binding FormError}" Foreground="#DC2626" FontSize="12" Margin="0,0,0,8"
                                    Visibility="{Binding FormError, Converter={StaticResource NullToVisibilityConverter}}"/>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <Button Content="Quittance" Command="{Binding GenerateViewingReceiptCommand}"
+                                    Style="{StaticResource LocationsToolbarButton}" Margin="0,0,8,0"
+                                    Visibility="{Binding IsFormViewOnly, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                            <Button Content="Modifier" Command="{Binding EditViewingPaymentCommand}"
+                                    Style="{StaticResource LocationsPrimaryButton}" Margin="0,0,8,0"
+                                    Visibility="{Binding IsFormViewOnly, Converter={StaticResource BoolToVisibilityConverter}}"/>
                             <Button Content="Annuler" Command="{Binding ClosePaymentFormCommand}" Style="{StaticResource LocationsToolbarButton}" Margin="0,0,8,0"/>
-                            <Button Content="Enregistrer" Command="{Binding SavePaymentFormCommand}" Style="{StaticResource LocationsPrimaryButton}"/>
+                            <Button Content="Enregistrer" Command="{Binding SavePaymentFormCommand}">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource LocationsPrimaryButton}">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsFormViewOnly}" Value="True">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
                         </StackPanel>
                     </StackPanel>
                 </Border>
@@ -476,12 +562,16 @@
                                         <DataTrigger Binding="{Binding IsEditMode}" Value="True">
                                             <Setter Property="Text" Value="Modifier la garantie"/>
                                         </DataTrigger>
+                                        <DataTrigger Binding="{Binding IsFormViewOnly}" Value="True">
+                                            <Setter Property="Text" Value="Détails de la garantie"/>
+                                        </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
                             </TextBlock.Style>
                         </TextBlock>
                         <TextBlock Text="Locataire *" FontWeight="SemiBold" Foreground="#334155" Margin="0,0,0,6"/>
-                        <ComboBox ItemsSource="{Binding GuaranteeTenants}" SelectedItem="{Binding FormSelectedTenant}" DisplayMemberPath="Label" Margin="0,0,0,10"/>
+                        <ComboBox ItemsSource="{Binding GuaranteeTenants}" SelectedItem="{Binding FormSelectedTenant}" DisplayMemberPath="Label" Margin="0,0,0,10"
+                                  IsEnabled="{Binding IsFormViewOnly, Converter={StaticResource InverseBoolConverter}}"/>
 
                         <StackPanel Visibility="{Binding FormSelectedTenant, Converter={StaticResource NullToVisibilityConverter}}">
                             <TextBlock Text="Contrat *" FontWeight="SemiBold" Foreground="#334155" Margin="0,0,0,6"/>
@@ -494,13 +584,19 @@
                                             <DataTrigger Binding="{Binding IsEditMode}" Value="True">
                                                 <Setter Property="IsEnabled" Value="False"/>
                                             </DataTrigger>
+                                            <DataTrigger Binding="{Binding IsFormViewOnly}" Value="True">
+                                                <Setter Property="IsEnabled" Value="False"/>
+                                            </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
                                 </ComboBox.Style>
                             </ComboBox>
-                            <TextBox materialDesign:HintAssist.Hint="Montant caution (USD) *" Text="{Binding FormGuaranteeAmountText, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
-                            <ComboBox ItemsSource="{Binding GuaranteeStatuses}" SelectedItem="{Binding FormGuaranteeStatus}" Margin="0,0,0,8"/>
-                            <TextBox materialDesign:HintAssist.Hint="Notes" Text="{Binding FormGuaranteeNotes, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"/>
+                            <TextBox materialDesign:HintAssist.Hint="Montant caution (USD) *" Text="{Binding FormGuaranteeAmountText, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"
+                                     IsReadOnly="{Binding IsFormViewOnly}"/>
+                            <ComboBox ItemsSource="{Binding GuaranteeStatuses}" SelectedItem="{Binding FormGuaranteeStatus}" Margin="0,0,0,8"
+                                      IsEnabled="{Binding IsFormViewOnly, Converter={StaticResource InverseBoolConverter}}"/>
+                            <TextBox materialDesign:HintAssist.Hint="Notes" Text="{Binding FormGuaranteeNotes, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"
+                                     IsReadOnly="{Binding IsFormViewOnly}"/>
                         </StackPanel>
 
                         <Border Background="#F8FAFC" CornerRadius="8" Padding="12" Margin="0,0,0,8"
@@ -512,8 +608,22 @@
                         <TextBlock Text="{Binding FormError}" Foreground="#DC2626" FontSize="12" Margin="0,0,0,8"
                                    Visibility="{Binding FormError, Converter={StaticResource NullToVisibilityConverter}}"/>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <Button Content="Modifier" Command="{Binding EditViewingGuaranteeCommand}"
+                                    Style="{StaticResource LocationsPrimaryButton}" Margin="0,0,8,0"
+                                    Visibility="{Binding IsFormViewOnly, Converter={StaticResource BoolToVisibilityConverter}}"/>
                             <Button Content="Annuler" Command="{Binding CloseGuaranteeFormCommand}" Style="{StaticResource LocationsToolbarButton}" Margin="0,0,8,0"/>
-                            <Button Content="Enregistrer" Command="{Binding SaveGuaranteeFormCommand}" Style="{StaticResource LocationsPrimaryButton}"/>
+                            <Button Content="Enregistrer" Command="{Binding SaveGuaranteeFormCommand}">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource LocationsPrimaryButton}">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsFormViewOnly}" Value="True">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
                         </StackPanel>
                     </StackPanel>
                 </Border>

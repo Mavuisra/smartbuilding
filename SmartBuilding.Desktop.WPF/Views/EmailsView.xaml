@@ -760,7 +760,7 @@
                                Visibility="{Binding ComposeError, Converter={StaticResource NullToVisibilityConverter}}"/>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
                         <Button Content="Annuler" Command="{Binding CloseComposeCommand}" Style="{StaticResource EmailsToolbarButton}" Margin="0,0,8,0"/>
-                        <Button Content="Envoyer" Command="{Binding SendReplyCommand}" Style="{StaticResource EmailsPrimaryButton}"/>
+                        <Button Content="Envoyer" Command="{Binding SendComposeCommand}" Style="{StaticResource EmailsPrimaryButton}"/>
                     </StackPanel>
                 </StackPanel>
             </Border>

@@ -271,6 +271,78 @@ public partial class EmailsViewModel : BaseViewModel
     [RelayCommand] private void CloseCompose() => IsComposeOpen = false;
 
     [RelayCommand]
+    private async Task SendComposeAsync()
+    {
+        var to = (ComposeTo ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(to))
+        {
+            ComposeError = "Destinataire requis.";
+            StatusMessage = ComposeError;
+            return;
+        }
+
+        if (!to.Contains('@') || !to.Contains('.'))
+        {
+            ComposeError = "Adresse destinataire invalide.";
+            StatusMessage = ComposeError;
+            return;
+        }
+
+        var subject = (ComposeSubject ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(subject))
+        {
+            ComposeError = "Objet requis.";
+            StatusMessage = ComposeError;
+            return;
+        }
+
+        var body = (ComposeBody ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(body))
+        {
+            ComposeError = "Le message ne peut pas être vide.";
+            StatusMessage = ComposeError;
+            return;
+        }
+
+        var sender = (AccountEmail ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(sender) || sender == "—")
+        {
+            var msg = "Email expéditeur non configuré. Renseignez-le dans Paramètres → Société & bailleur.";
+            ComposeError = msg;
+            StatusMessage = msg;
+            return;
+        }
+
+        IsBusy = true;
+        try
+        {
+            var accountId = await _emailsModuleService.GetDefaultAccountIdAsync();
+            if (accountId.HasValue)
+            {
+                await _emailService.SendEmailAsync(accountId.Value, to, subject, body);
+                StatusMessage = "Message envoyé.";
+                ComposeError = null;
+            }
+            else
+            {
+                StatusMessage = "Message enregistré (mode démo — configurez un compte email).";
+                ComposeError = null;
+            }
+
+            ComposeTo = string.Empty;
+            ComposeSubject = string.Empty;
+            ComposeBody = string.Empty;
+            IsComposeOpen = false;
+        }
+        catch (Exception ex)
+        {
+            ComposeError = ex.Message;
+            StatusMessage = $"Échec envoi : {ex.Message}";
+        }
+        finally { IsBusy = false; }
+    }
+
+    [RelayCommand]
     private async Task SendReplyAsync()
     {
         if (SelectedEmail is null) return;

@@ -46,6 +46,11 @@ public partial class DashboardViewModel : BaseViewModel
     [ObservableProperty] private int _notificationCount;
     [ObservableProperty] private string _searchQuery = string.Empty;
     [ObservableProperty] private DateTime _selectedDate = DateTime.Today;
+    [ObservableProperty] private bool _isNotificationsOpen;
+
+    private List<RecentMovementDto> _allRecentMovements = [];
+    private List<ActivityItemDto> _allRecentActivity = [];
+    private List<DashboardAlertDto> _allAlerts = [];
 
     public ObservableCollection<DashboardAlertDto> Alerts { get; } = [];
     public ObservableCollection<RecentMovementDto> RecentMovements { get; } = [];
@@ -98,21 +103,16 @@ public partial class DashboardViewModel : BaseViewModel
                 ? Math.Min(100, (double)(Summary.RentCollected / Summary.RentPlanned) * 100)
                 : Summary.RentCollected > 0 ? 100 : 0;
             RentCollectionRateDisplay = $"{RentCollectionRate:F0} %";
-            NotificationCount = Summary.Alerts.Count(a => a.Severity is "Warning" or "Error");
-
-            Alerts.Clear();
-            foreach (var a in Summary.Alerts) Alerts.Add(a);
-
-            RecentMovements.Clear();
-            foreach (var m in Summary.RecentMovements) RecentMovements.Add(m);
-
-            RecentActivity.Clear();
-            foreach (var a in Summary.RecentActivity) RecentActivity.Add(a);
+            _allAlerts = Summary.Alerts.ToList();
+            _allRecentMovements = Summary.RecentMovements.ToList();
+            _allRecentActivity = Summary.RecentActivity.ToList();
+            NotificationCount = _allAlerts.Count(a => a.Severity is "Warning" or "Error");
 
             QuickStats.Clear();
             foreach (var s in Summary.QuickStats) QuickStats.Add(s);
 
             BuildCharts();
+            ApplyFilters();
         }
         finally
         {
@@ -244,6 +244,87 @@ public partial class DashboardViewModel : BaseViewModel
             }
         ];
     }
+
+    partial void OnSearchQueryChanged(string value) => ApplyFilters();
+
+    partial void OnSelectedDateChanged(DateTime value) => ApplyFilters();
+
+    [RelayCommand]
+    private void OpenNotifications()
+    {
+        if (Alerts.Count == 0)
+        {
+            SbmsDialogService.ShowInfo("Notifications", "Aucune alerte pour la date sélectionnée.");
+            return;
+        }
+
+        IsNotificationsOpen = true;
+    }
+
+    [RelayCommand]
+    private void CloseNotifications() => IsNotificationsOpen = false;
+
+    private void ApplyFilters()
+    {
+        var query = SearchQuery.Trim();
+        var date = SelectedDate.Date;
+
+        var movements = _allRecentMovements.Where(m => m.Date.Date == date);
+        var activity = _allRecentActivity.Where(a => a.Timestamp.Date == date);
+        var alerts = _allAlerts.Where(a => a.Timestamp.Date == date);
+
+        if (!string.IsNullOrEmpty(query))
+        {
+            movements = movements.Where(m => MatchesMovement(m, query));
+            activity = activity.Where(a => MatchesActivity(a, query));
+            alerts = alerts.Where(a => MatchesAlert(a, query));
+        }
+
+        var movementList = movements.ToList();
+        var activityList = activity.ToList();
+        var alertList = alerts.ToList();
+
+        Alerts.Clear();
+        foreach (var a in alertList) Alerts.Add(a);
+
+        RecentMovements.Clear();
+        foreach (var m in movementList) RecentMovements.Add(m);
+
+        RecentActivity.Clear();
+        foreach (var a in activityList) RecentActivity.Add(a);
+
+        NotificationCount = alertList.Count(a => a.Severity is "Warning" or "Error");
+
+        if (!string.IsNullOrEmpty(query))
+        {
+            StatusMessage = movementList.Count + activityList.Count + alertList.Count > 0
+                ? $"Recherche « {query} » — {movementList.Count} mouvement(s), {activityList.Count} activité(s), {alertList.Count} alerte(s)"
+                : $"Aucun résultat pour « {query} » le {date:dd/MM/yyyy}";
+        }
+        else if (date != DateTime.Today)
+        {
+            StatusMessage = $"{movementList.Count} mouvement(s), {activityList.Count} activité(s) — {date:dd/MM/yyyy}";
+        }
+        else
+        {
+            StatusMessage = null;
+        }
+    }
+
+    private static bool MatchesMovement(RecentMovementDto m, string query) =>
+        m.Category.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+        m.Description.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+        m.Reference.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+        m.Type.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+        m.AmountDisplay.Contains(query, StringComparison.OrdinalIgnoreCase);
+
+    private static bool MatchesActivity(ActivityItemDto a, string query) =>
+        a.Text.Contains(query, StringComparison.OrdinalIgnoreCase);
+
+    private static bool MatchesAlert(DashboardAlertDto a, string query) =>
+        a.Title.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+        a.Message.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+        a.Severity.Contains(query, StringComparison.OrdinalIgnoreCase);
 
     [RelayCommand]
     private async Task SyncNowAsync()

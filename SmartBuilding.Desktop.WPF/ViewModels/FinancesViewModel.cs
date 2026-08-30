@@ -217,7 +217,7 @@ public partial class FinancesViewModel : BaseViewModel
 
         var path = FinancesExportService.ExportCsv(list);
         TryOpenFile(path);
-        StatusMessage = $"Export PDF enregistré ({list.Count} lignes).";
+        StatusMessage = $"Export CSV enregistré ({list.Count} lignes).";
     }
 
     [RelayCommand]

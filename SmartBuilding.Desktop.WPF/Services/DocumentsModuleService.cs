@@ -86,7 +86,8 @@ public class DocumentsModuleService
 
         var categories = BuildCategories(active);
         var tags = BuildPopularTags(active);
-        var items = active.OrderByDescending(d => d.UpdatedAt).Select(MapItem).ToList();
+        var favoriteIds = await _userLibrary.GetFavoriteIdsAsync(cancellationToken);
+        var items = active.OrderByDescending(d => d.UpdatedAt).Select(d => MapItem(d, favoriteIds)).ToList();
 
         var buildings = active.Select(d => d.Building)
             .Where(b => !string.IsNullOrWhiteSpace(b) && b != "—")
@@ -148,6 +149,15 @@ public class DocumentsModuleService
 
     public bool IsUserLibraryDocument(Guid id) =>
         _userLibrary.IsUserLibraryItem(id);
+
+    public Task<IReadOnlySet<Guid>> GetFavoriteIdsAsync(CancellationToken cancellationToken = default) =>
+        _userLibrary.GetFavoriteIdsAsync(cancellationToken);
+
+    public Task SetFavoriteAsync(Guid id, bool isFavorite, CancellationToken cancellationToken = default) =>
+        _userLibrary.SetFavoriteAsync(id, isFavorite, cancellationToken);
+
+    public Task<bool> DeleteUserDocumentAsync(Guid id, CancellationToken cancellationToken = default) =>
+        _userLibrary.DeleteItemAsync(id, cancellationToken);
 
     private async Task<List<RawDocument>> LoadUserLibraryAsync(CancellationToken ct)
     {
@@ -711,7 +721,7 @@ public class DocumentsModuleService
         }).ToList();
     }
 
-    private static DocumentListItem MapItem(RawDocument d) => new()
+    private static DocumentListItem MapItem(RawDocument d, IReadOnlySet<Guid> favoriteIds) => new()
     {
         Id = d.Id,
         FileName = d.FileName,
@@ -740,7 +750,7 @@ public class DocumentsModuleService
         IsCritical = d.IsCritical,
         IsArchived = d.IsArchived,
         IsDeleted = d.IsDeleted,
-        IsFavorite = d.IsFavorite,
+        IsFavorite = d.IsFavorite || favoriteIds.Contains(d.Id),
         Tags = d.Tags.Select(t => new DocumentTagItem
         {
             Label = t,

@@ -19,7 +19,10 @@ public sealed class SettingsPageData
     public string SyncStatusLabel { get; init; } = "—";
     public long DatabaseSizeBytes { get; init; }
     public string DatabaseFilePath { get; init; } = string.Empty;
+    public string DatabaseDeploymentLabel { get; init; } = string.Empty;
     public string DatabaseDataDirectory { get; init; } = string.Empty;
+    public string? DatabaseDataDirectoryPath { get; init; }
+    public bool CanOpenDatabaseDataDirectory { get; init; }
     public string AppVersion { get; init; } = "v1.0.0";
     public string EnvironmentName { get; init; } = "Développement";
     public bool NotifyEmail { get; init; } = true;

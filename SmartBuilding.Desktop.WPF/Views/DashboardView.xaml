@@ -56,7 +56,8 @@
                          VerticalAlignment="Center" Margin="16,0"/>
 
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button Style="{StaticResource MaterialDesignIconButton}" Margin="4,0">
+                    <Button Style="{StaticResource MaterialDesignIconButton}" Margin="4,0"
+                            Command="{Binding OpenNotificationsCommand}">
                         <materialDesign:PackIcon Kind="Bell"/>
                     </Button>
                     <Border Background="#E63946" CornerRadius="8" Padding="5,1" Margin="-20,0,12,16" VerticalAlignment="Top">
@@ -70,7 +71,7 @@
                         <TextBlock Text="{Binding UserInitials}" Foreground="White" FontWeight="Bold"
                                    HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
-                    <DatePicker SelectedDate="{Binding SelectedDate}" Margin="12,0,0,0" Width="140"/>
+                    <DatePicker SelectedDate="{Binding SelectedDate, Mode=TwoWay}" Margin="12,0,0,0" Width="140"/>
                 </StackPanel>
             </Grid>
         </Border>
@@ -454,5 +455,65 @@
                 </Grid>
             </StackPanel>
         </ScrollViewer>
+
+        <!-- Popup notifications -->
+        <Grid Grid.Row="0" Grid.RowSpan="2" Panel.ZIndex="50"
+              Visibility="{Binding IsNotificationsOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+            <Border Background="#800F172A" MouseDown="NotificationsOverlay_MouseDown"/>
+            <Border Background="White" CornerRadius="12" MaxWidth="420" MinWidth="320" Width="400"
+                    VerticalAlignment="Top" HorizontalAlignment="Right" Margin="24,72,24,24" Padding="0">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="24" ShadowDepth="0" Opacity="0.18" Color="#0F172A"/>
+                </Border.Effect>
+                <StackPanel>
+                    <DockPanel Margin="16,14,12,10">
+                        <Button DockPanel.Dock="Right" Command="{Binding CloseNotificationsCommand}"
+                                Style="{StaticResource MaterialDesignIconButton}">
+                            <materialDesign:PackIcon Kind="Close"/>
+                        </Button>
+                        <StackPanel>
+                            <TextBlock Text="Notifications" FontSize="18" FontWeight="Bold" Foreground="#1B3D3B"/>
+                            <TextBlock Text="{Binding NotificationCount, StringFormat={}{0} alerte(s) importante(s)}"
+                                       FontSize="11" Foreground="{StaticResource SbmsTextMutedBrush}" Margin="0,2,0,0"/>
+                        </StackPanel>
+                    </DockPanel>
+                    <Border Height="1" Background="#E2E8F0"/>
+                    <ScrollViewer MaxHeight="360" VerticalScrollBarVisibility="Auto" Padding="12,8">
+                        <ItemsControl ItemsSource="{Binding Alerts}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border CornerRadius="8" Padding="10" Margin="0,0,0,8" BorderThickness="1" BorderBrush="#E2E8F0">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Background" Value="#F8FAF9"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Severity}" Value="Error">
+                                                        <Setter Property="Background" Value="#FEF2F2"/>
+                                                        <Setter Property="BorderBrush" Value="#FECACA"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Severity}" Value="Warning">
+                                                        <Setter Property="Background" Value="#FFFBEB"/>
+                                                        <Setter Property="BorderBrush" Value="#FDE68A"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Severity}" Value="Success">
+                                                        <Setter Property="Background" Value="#F0FDF4"/>
+                                                        <Setter Property="BorderBrush" Value="#BBF7D0"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="12"/>
+                                            <TextBlock Text="{Binding Message}" FontSize="11" Foreground="{StaticResource SbmsTextMutedBrush}" TextWrapping="Wrap"/>
+                                            <TextBlock Text="{Binding Timestamp, StringFormat=dd/MM/yyyy HH:mm}" FontSize="10" Foreground="#AAA" Margin="0,4,0,0"/>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </StackPanel>
+            </Border>
+        </Grid>
     </Grid>
 </UserControl>

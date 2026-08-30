@@ -216,7 +216,7 @@ public partial class RapportsViewModel : BaseViewModel
         {
             var (title, headers, rows, _) = GetExportData();
             var path = RapportsExportService.ExportExcel(title, headers, rows);
-            StatusMessage = $"PDF exporté : {path}";
+            StatusMessage = $"Excel exporté : {path}";
             Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
         }
         catch (Exception ex)

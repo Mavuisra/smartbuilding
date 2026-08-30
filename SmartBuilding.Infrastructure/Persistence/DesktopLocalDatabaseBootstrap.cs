@@ -145,6 +145,49 @@ public static class DesktopLocalDatabaseBootstrap
         cmd.ExecuteNonQuery();
     }
 
+    /// <summary>Supprime une base tenant orpheline (échec précédent, schéma partiel).</summary>
+    public static void DropMySqlDatabaseIfExists(string connectionString)
+    {
+        var builder = new MySqlConnectionStringBuilder(connectionString);
+        var databaseName = builder.Database;
+        if (string.IsNullOrWhiteSpace(databaseName))
+            return;
+
+        builder.Database = "";
+        using var connection = new MySqlConnection(builder.ConnectionString);
+        connection.Open();
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = $"DROP DATABASE IF EXISTS `{databaseName}`;";
+        cmd.ExecuteNonQuery();
+    }
+
+    public static bool MySqlDatabaseExists(string connectionString)
+    {
+        try
+        {
+            var builder = new MySqlConnectionStringBuilder(connectionString);
+            var databaseName = builder.Database;
+            if (string.IsNullOrWhiteSpace(databaseName))
+                return false;
+
+            builder.Database = "";
+            using var connection = new MySqlConnection(builder.ConnectionString);
+            connection.Open();
+            using var cmd = connection.CreateCommand();
+            cmd.CommandText =
+                "SELECT COUNT(*) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = @db";
+            var p = cmd.CreateParameter();
+            p.ParameterName = "@db";
+            p.Value = databaseName;
+            cmd.Parameters.Add(p);
+            return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     private static void EnsureNetworkClientUser(
         IConfigurationSection section,
         string adminConnectionString,

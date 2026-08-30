@@ -36,6 +36,12 @@ public partial class DocumentsViewModel : BaseViewModel
     [ObservableProperty] private string _selectedCategoryId = "all";
     [ObservableProperty] private DocumentListItem? _selectedDocument;
     [ObservableProperty] private bool _isGridView = true;
+    [ObservableProperty] private bool _isTagsExpanded;
+    [ObservableProperty] private bool _isAdvancedFiltersOpen;
+    [ObservableProperty] private bool _isNotificationsOpen;
+    [ObservableProperty] private bool _filterFavoritesOnly;
+    [ObservableProperty] private bool _filterSharedOnly;
+    [ObservableProperty] private bool _filterCriticalOnly;
     [ObservableProperty] private int _notificationCount;
 
     [ObservableProperty] private int _totalCount;
@@ -67,6 +73,12 @@ public partial class DocumentsViewModel : BaseViewModel
     public ObservableCollection<DocumentListItem> PagedDocuments { get; } = [];
     public ObservableCollection<DocumentCategoryItem> Categories { get; } = [];
     public ObservableCollection<DocumentTagItem> PopularTags { get; } = [];
+    public ObservableCollection<DocumentTagItem> AllTags { get; } = [];
+    public ObservableCollection<DocumentListItem> CriticalNotifications { get; } = [];
+
+    public string TagsToggleLabel => IsTagsExpanded ? "− Moins" : "+ Plus";
+
+    public bool HasCriticalNotifications => CriticalNotifications.Count > 0;
     public ObservableCollection<int> PageNumbers { get; } = [];
     public ObservableCollection<string> SortOptions { get; } = ["Plus récents", "Plus anciens", "Par nom"];
     public ObservableCollection<string> TypeFilters { get; } = [AllTypes];
@@ -116,6 +128,11 @@ public partial class DocumentsViewModel : BaseViewModel
             PopularTags.Clear();
             foreach (var t in data.PopularTags) PopularTags.Add(t);
 
+            AllTags.Clear();
+            foreach (var t in BuildAllTags(_allDocuments)) AllTags.Add(t);
+
+            RefreshCriticalNotifications();
+
             TypeFilters.Clear();
             foreach (var t in data.TypeFilters) TypeFilters.Add(t);
 
@@ -154,6 +171,8 @@ public partial class DocumentsViewModel : BaseViewModel
         foreach (var d in _allDocuments) d.IsSelected = false;
         if (doc is not null) doc.IsSelected = true;
         SelectedDocument = doc;
+        if (IsNotificationsOpen)
+            IsNotificationsOpen = false;
     }
 
     [RelayCommand]
@@ -166,20 +185,38 @@ public partial class DocumentsViewModel : BaseViewModel
     private void SetTableView() => IsGridView = false;
 
     [RelayCommand]
-    private void ToggleFavorite(DocumentListItem? doc)
+    private async Task ToggleFavoriteAsync(DocumentListItem? doc)
     {
         if (doc is null) return;
-        doc.IsFavorite = !doc.IsFavorite;
+
+        var newValue = !doc.IsFavorite;
+        doc.IsFavorite = newValue;
+        try
+        {
+            await _documentsService.SetFavoriteAsync(doc.Id, newValue);
+            StatusMessage = newValue
+                ? $"« {doc.FileName} » ajouté aux favoris."
+                : $"« {doc.FileName} » retiré des favoris.";
+        }
+        catch (Exception ex)
+        {
+            doc.IsFavorite = !newValue;
+            SbmsDialogService.ShowError("Favoris", ex.Message);
+        }
     }
 
     [RelayCommand]
     private async Task RefreshAsync() => await LoadAsync();
 
     [RelayCommand]
-    private void ToggleNotifications() =>
-        StatusMessage = NotificationCount > 0
-            ? $"{NotificationCount} document(s) critique(s) à traiter."
-            : "Aucune notification critique.";
+    private void ToggleNotifications()
+    {
+        RefreshCriticalNotifications();
+        IsNotificationsOpen = !IsNotificationsOpen;
+    }
+
+    [RelayCommand]
+    private void CloseNotifications() => IsNotificationsOpen = false;
 
     [RelayCommand]
     private async Task CreateFolderAsync()
@@ -256,12 +293,14 @@ public partial class DocumentsViewModel : BaseViewModel
     }
 
     [RelayCommand]
-    private void ShowMoreTags() =>
-        StatusMessage = "Recherche par tag activée. Utilisez la barre de recherche pour filtrer finement.";
+    private void ShowMoreTags()
+    {
+        IsTagsExpanded = !IsTagsExpanded;
+        OnPropertyChanged(nameof(TagsToggleLabel));
+    }
 
     [RelayCommand]
-    private void OpenAdvancedFilters() =>
-        StatusMessage = "Filtres avancés actifs (type, catégorie, date, bâtiment).";
+    private void OpenAdvancedFilters() => IsAdvancedFiltersOpen = !IsAdvancedFiltersOpen;
 
     [RelayCommand]
     private async Task OpenDocumentAsync(DocumentListItem? doc)
@@ -321,11 +360,73 @@ public partial class DocumentsViewModel : BaseViewModel
     }
 
     [RelayCommand]
-    private void ShowDocumentActions(DocumentListItem? doc)
+    private async Task ShowDocumentActionsAsync(DocumentListItem? doc)
     {
         doc ??= SelectedDocument;
         if (doc is null) return;
-        StatusMessage = $"Actions actives pour {doc.FileName}: ouvrir, télécharger, favoris.";
+
+        var actions = new List<string> { "Ouvrir", "Télécharger", doc.IsFavorite ? "Retirer des favoris" : "Ajouter aux favoris" };
+        if (_documentsService.IsUserLibraryDocument(doc.Id))
+            actions.Add("Supprimer");
+
+        var choice = SbmsDialogService.ShowActionMenu($"Actions — {doc.FileName}", actions);
+        if (choice is null) return;
+
+        switch (choice)
+        {
+            case "Ouvrir":
+                await OpenDocumentAsync(doc);
+                break;
+            case "Télécharger":
+                await DownloadDocumentAsync(doc);
+                break;
+            case "Ajouter aux favoris":
+            case "Retirer des favoris":
+                await ToggleFavoriteAsync(doc);
+                break;
+            case "Supprimer":
+                await DeleteDocumentAsync(doc);
+                break;
+        }
+    }
+
+    [RelayCommand]
+    private async Task DeleteDocumentAsync(DocumentListItem? doc)
+    {
+        doc ??= SelectedDocument;
+        if (doc is null) return;
+
+        if (!_documentsService.IsUserLibraryDocument(doc.Id))
+        {
+            SbmsDialogService.ShowInfo("Supprimer", "Seuls les documents importés peuvent être supprimés.");
+            return;
+        }
+
+        if (!SbmsDialogService.Confirm("Supprimer", $"Supprimer « {doc.FileName} » ? Cette action est irréversible."))
+            return;
+
+        IsBusy = true;
+        try
+        {
+            var deleted = await _documentsService.DeleteUserDocumentAsync(doc.Id);
+            if (!deleted)
+            {
+                SbmsDialogService.ShowWarning("Supprimer", "Document introuvable dans la bibliothèque.");
+                return;
+            }
+
+            StatusMessage = $"« {doc.FileName} » supprimé.";
+            SelectedDocument = null;
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            SbmsDialogService.ShowError("Supprimer", ex.Message);
+        }
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
     [RelayCommand]
@@ -392,6 +493,9 @@ public partial class DocumentsViewModel : BaseViewModel
     partial void OnFilterDateChanged(string value) { CurrentPage = 1; ApplyFilters(); }
     partial void OnFilterBuildingChanged(string value) { CurrentPage = 1; ApplyFilters(); }
     partial void OnSelectedSortChanged(string value) { CurrentPage = 1; ApplyFilters(); }
+    partial void OnFilterFavoritesOnlyChanged(bool value) { CurrentPage = 1; ApplyFilters(); }
+    partial void OnFilterSharedOnlyChanged(bool value) { CurrentPage = 1; ApplyFilters(); }
+    partial void OnFilterCriticalOnlyChanged(bool value) { CurrentPage = 1; ApplyFilters(); }
 
     private void ApplyFilters(bool skipResetPage = false)
     {
@@ -434,6 +538,15 @@ public partial class DocumentsViewModel : BaseViewModel
                 d.Tags.Any(t => t.Label.ToLowerInvariant().Contains(query)) ||
                 d.PreviewBody.ToLowerInvariant().Contains(query));
         }
+
+        if (FilterFavoritesOnly)
+            filtered = filtered.Where(d => d.IsFavorite);
+
+        if (FilterSharedOnly)
+            filtered = filtered.Where(d => d.IsShared);
+
+        if (FilterCriticalOnly)
+            filtered = filtered.Where(d => d.IsCritical);
 
         var list = SelectedSort switch
         {
@@ -607,5 +720,53 @@ public partial class DocumentsViewModel : BaseViewModel
         var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         return parts.Length >= 2 ? $"{parts[0][0]}{parts[^1][0]}".ToUpperInvariant()
             : name.Length >= 2 ? name[..2].ToUpperInvariant() : "AD";
+    }
+
+    private void RefreshCriticalNotifications()
+    {
+        CriticalNotifications.Clear();
+        foreach (var doc in _allDocuments
+                     .Where(d => d.IsCritical && !d.IsDeleted && !d.IsArchived)
+                     .OrderByDescending(ParseDocDate))
+            CriticalNotifications.Add(doc);
+        OnPropertyChanged(nameof(HasCriticalNotifications));
+    }
+
+    private static List<DocumentTagItem> BuildAllTags(IEnumerable<DocumentListItem> documents)
+    {
+        var palette = new Dictionary<string, (string Bg, string Fg)>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["URGENT"] = ("#FEE2E2", "#DC2626"),
+            ["CONTRAT"] = ("#FFEDD5", "#EA580C"),
+            ["FACTURE"] = ("#DCFCE7", "#166534"),
+            ["CONFIDENTIEL"] = ("#EDE9FE", "#6D28D9"),
+            ["MAINTENANCE"] = ("#DBEAFE", "#2563EB"),
+            ["FOURNISSEUR"] = ("#FEF3C7", "#D97706"),
+            ["INSPECTION"] = ("#E0F2FE", "#0369A1"),
+            ["INVENTAIRE"] = ("#F1F5F9", "#475569"),
+            ["RAPPORT"] = ("#F3E8FF", "#7C3AED"),
+            ["IMPORT"] = ("#E0F2FE", "#0369A1"),
+            ["ARCHIVE"] = ("#F1F5F9", "#64748B")
+        };
+
+        return documents
+            .Where(d => !d.IsDeleted && !d.IsArchived)
+            .SelectMany(d => d.Tags)
+            .GroupBy(t => t.Label, StringComparer.OrdinalIgnoreCase)
+            .OrderByDescending(g => g.Count())
+            .ThenBy(g => g.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(g =>
+            {
+                palette.TryGetValue(g.Key, out var colors);
+                colors = colors == default ? ("#F1F5F9", "#475569") : colors;
+                return new DocumentTagItem
+                {
+                    Label = g.Key,
+                    Background = colors.Bg,
+                    Foreground = colors.Fg,
+                    Count = g.Count()
+                };
+            })
+            .ToList();
     }
 }

@@ -15,6 +15,9 @@ public sealed class OrganizationEntry
     public string City { get; set; } = "";
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public bool SyncedToCloud { get; set; }
+
+    /// <summary>False pour les nouveaux tenants — l'admin doit compléter le profil entreprise.</summary>
+    public bool CompanyProfileCompleted { get; set; } = true;
 }
 
 public sealed class OrganizationRegistryFile
@@ -126,6 +129,15 @@ public sealed class OrganizationRegistry
         if (org is null)
             return;
         org.SyncedToCloud = true;
+        Save();
+    }
+
+    public void MarkCompanyProfileCompleted(Guid organizationId)
+    {
+        var org = _file.Organizations.FirstOrDefault(o => o.Id == organizationId);
+        if (org is null)
+            return;
+        org.CompanyProfileCompleted = true;
         Save();
     }
 

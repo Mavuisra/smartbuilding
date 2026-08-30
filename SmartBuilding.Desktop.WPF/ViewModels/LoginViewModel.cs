@@ -15,11 +15,13 @@ namespace SmartBuilding.Desktop.WPF.ViewModels;
 public partial class LoginViewModel : BaseViewModel
 {
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IServiceProvider _rootServices;
     private readonly CloudIdentityService _cloudIdentity;
     private readonly OrganizationCloudSyncService _organizationCloudSync;
     private readonly OrganizationLoginResolver _loginResolver;
-    private readonly IServiceProvider _services;
     private readonly SessionService _session;
+    private readonly PersistentSessionStore _persistentSession;
+    private readonly CompanyProfileCompletionService _companyProfileCompletion;
     private readonly Action _onLoginSuccess;
 
     [ObservableProperty] private string _username = string.Empty;
@@ -34,39 +36,81 @@ public partial class LoginViewModel : BaseViewModel
 
     public LoginViewModel(
         IServiceScopeFactory scopeFactory,
+        IServiceProvider rootServices,
         CloudIdentityService cloudIdentity,
         OrganizationCloudSyncService organizationCloudSync,
         OrganizationLoginResolver loginResolver,
-        IServiceProvider services,
         SessionService session,
+        PersistentSessionStore persistentSession,
+        CompanyProfileCompletionService companyProfileCompletion,
         AppBrandingState branding,
         Action onLoginSuccess)
     {
         _scopeFactory = scopeFactory;
+        _rootServices = rootServices;
         _cloudIdentity = cloudIdentity;
         _organizationCloudSync = organizationCloudSync;
         _loginResolver = loginResolver;
-        _services = services;
         _session = session;
+        _persistentSession = persistentSession;
+        _companyProfileCompletion = companyProfileCompletion;
         Branding = branding;
         _onLoginSuccess = onLoginSuccess;
-        Username = LoadRememberedUsername() ?? string.Empty;
 
-        // Écran de connexion neutre — pas le branding du dernier tenant connecté.
+        if (_persistentSession.TryLoad(out var stored))
+        {
+            Username = stored.Username;
+            RememberMe = true;
+        }
+        else
+        {
+            Username = LoadRememberedUsername() ?? string.Empty;
+        }
+
         Branding.CompanyName = "Smart Building MS";
         Branding.AppSubtitle = AppBrandingState.DefaultSubtitle;
     }
 
     public void ClearPassword() => Password = string.Empty;
 
-    [RelayCommand]
-    private void CreateTenant()
+    public async Task<bool> TryRestoreSessionAsync()
     {
-        var window = new CreateTenantWindow(_services)
+        if (!_persistentSession.TryLoad(out var stored) || !stored.IsValid())
+            return false;
+
+        var password = _persistentSession.UnprotectPassword(stored);
+        if (string.IsNullOrWhiteSpace(password))
+        {
+            _persistentSession.Clear();
+            return false;
+        }
+
+        Username = stored.Username;
+        Password = password;
+        RememberMe = true;
+        await LoginAsync();
+        return _session.IsAuthenticated;
+    }
+
+    [RelayCommand]
+    private async Task CreateTenantAsync()
+    {
+        var window = new CreateTenantWindow(_rootServices)
         {
             Owner = System.Windows.Application.Current?.MainWindow
         };
-        window.ShowDialog();
+
+        if (window.ShowDialog() != true)
+            return;
+
+        Username = window.CreatedAdminUsername ?? string.Empty;
+        Password = window.CreatedAdminPassword ?? string.Empty;
+        RememberMe = true;
+
+        if (string.IsNullOrWhiteSpace(Username) || string.IsNullOrWhiteSpace(Password))
+            return;
+
+        await LoginAsync();
     }
 
     [RelayCommand]
@@ -88,17 +132,32 @@ public partial class LoginViewModel : BaseViewModel
             }
 
             _session.SetOrganization(loginResult.Organization);
+            _session.SetUser(loginResult.User);
+
+            var needsProfile = await _companyProfileCompletion.NeedsSetupAsync();
+            _session.SetPendingCompanyProfileSetup(needsProfile);
 
             if (RememberMe)
+            {
                 SaveRememberedUsername(Username.Trim());
-
-            _session.SetUser(loginResult.User);
+                _persistentSession.Save(
+                    Username.Trim(),
+                    loginResult.Organization.Id,
+                    Password);
+            }
+            else
+            {
+                _persistentSession.Clear();
+            }
 
             await _organizationCloudSync.RegisterActiveOrganizationAsync(Username.Trim(), Password);
 
             using var syncScope = _scopeFactory.CreateScope();
             var syncService = syncScope.ServiceProvider.GetRequiredService<ISyncService>();
             await PublishAndSyncToCloudAsync(syncService, Username.Trim(), Password);
+
+            if (RememberMe && _persistentSession.TryLoad(out var stored))
+                _persistentSession.RefreshExpiry(stored);
 
             LoginProgressText = "Ouverture de l'application…";
 
@@ -139,6 +198,8 @@ public partial class LoginViewModel : BaseViewModel
     {
         Username = string.Empty;
         Password = string.Empty;
+        RememberMe = false;
+        _persistentSession.Clear();
         DismissErrorDialog();
     }
 

@@ -17,6 +17,66 @@ public static class SbmsDialogService
     public static bool Confirm(string title, string message) =>
         MessageBox.Show(message, title, MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes;
 
+    public static string? ShowActionMenu(string title, IReadOnlyList<string> actions)
+    {
+        if (actions.Count == 0)
+            return null;
+
+        var owner = System.Windows.Application.Current?.MainWindow;
+        string? result = null;
+
+        var window = new Window
+        {
+            Title = title,
+            Width = 320,
+            SizeToContent = SizeToContent.Height,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Owner = owner,
+            ResizeMode = ResizeMode.NoResize,
+            Background = System.Windows.Media.Brushes.White
+        };
+
+        var panel = new StackPanel { Margin = new Thickness(16) };
+        panel.Children.Add(new TextBlock
+        {
+            Text = title,
+            FontWeight = FontWeights.SemiBold,
+            FontSize = 13,
+            Margin = new Thickness(0, 0, 0, 12),
+            TextWrapping = TextWrapping.Wrap
+        });
+
+        foreach (var action in actions)
+        {
+            var button = new Button
+            {
+                Content = action,
+                Padding = new Thickness(12, 8, 12, 8),
+                Margin = new Thickness(0, 0, 0, 8),
+                HorizontalAlignment = HorizontalAlignment.Stretch
+            };
+            button.Click += (_, _) =>
+            {
+                result = action;
+                window.Close();
+            };
+            panel.Children.Add(button);
+        }
+
+        var cancel = new Button
+        {
+            Content = "Annuler",
+            Padding = new Thickness(12, 8, 12, 8),
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
+        cancel.Click += (_, _) => window.Close();
+        panel.Children.Add(cancel);
+
+        window.Content = panel;
+        window.ShowDialog();
+        return result;
+    }
+
     public static string? PromptText(string title, string message, string defaultValue = "")
     {
         var owner = System.Windows.Application.Current?.MainWindow;
