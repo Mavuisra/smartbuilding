@@ -1,0 +1,131 @@
+﻿{% extends 'base.twig' %}
+{% block title %}Rapports — SBMS{% endblock %}
+{% block extra_head %}{% include 'partials/desktop_module_styles.twig' %}{% endblock %}
+{% block body %}
+<div class="app-shell dm-page">
+  {% include 'partials/sidebar.twig' %}
+  <main class="app-main">
+    <div class="dm-header">
+      <div>
+        <h1 class="dm-title">Rapports &amp; Statistiques</h1>
+        <p class="dm-subtitle">Indicateurs, exports et synthèses</p>
+      </div>
+      <div class="d-flex gap-2 align-items-center flex-wrap">
+        <input type="date" id="date-from" class="form-control form-control-sm" />
+        <span>→</span>
+        <input type="date" id="date-to" class="form-control form-control-sm" />
+        <input id="search" class="dm-search form-control form-control-sm" placeholder="Rechercher…" />
+        <button class="btn btn-sm btn-success" id="refresh-btn">Actualiser</button>
+        <button class="btn btn-sm btn-outline-secondary" id="logout-btn">Déconnexion</button>
+      </div>
+    </div>
+    <div class="sb-page-wrap">
+      <div id="load-error" class="alert alert-danger d-none"></div>
+      <div class="dm-tabs" id="section-tabs"></div>
+      <div class="dm-kpi-grid" id="kpi-row"></div>
+      <div class="dm-card">
+        <div class="dm-table-count" id="table-count"></div>
+        <div class="dm-table-wrap">
+          <table class="table dm-table mb-0">
+            <thead id="table-head"></thead>
+            <tbody id="table-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+{% endblock %}
+{% block scripts %}
+{% include 'partials/nav_script.twig' %}
+<script>
+if (!Sbms.requireAuth()) throw new Error('auth');
+document.getElementById('logout-btn').onclick = Sbms.logout;
+const apiFetch = Sbms.apiFetch;
+let data = null, activeTab = 0, filteredRows = [];
+
+function renderTabs() {
+  const el = document.getElementById('section-tabs');
+  el.innerHTML = (data?.sectionTabs || []).map((t, i) =>
+    `<button class="dm-tab${i === activeTab ? ' active' : ''}" data-i="${i}">${t}</button>`).join('');
+  el.querySelectorAll('.dm-tab').forEach(b => b.onclick = () => { activeTab = +b.dataset.i; renderAll(); });
+}
+
+function currentSection() {
+  return (data?.sections || []).find(s => s.index === activeTab) || { rows: [] };
+}
+
+function renderKpis() {
+  const kpis = data?.kpisBySection?.[String(activeTab)] || [
+    { label: 'Lignes', value: currentSection().rows.length },
+    { label: 'Période', value: `${data?.dateFrom || ''} → ${data?.dateTo || ''}` },
+  ];
+  document.getElementById('kpi-row').innerHTML = kpis.map(k =>
+    `<div class="dm-kpi"><small>${k.label}</small><strong>${k.value}</strong></div>`).join('');
+}
+
+function applySearch(rows) {
+  const q = (document.getElementById('search').value || '').toLowerCase().trim();
+  if (!q) return rows;
+  return rows.filter(r => JSON.stringify(r).toLowerCase().includes(q));
+}
+
+function renderTable() {
+  const rows = applySearch(currentSection().rows || []);
+  filteredRows = rows;
+  Sbms.renderDataTable(
+    document.getElementById('table-head'),
+    document.getElementById('table-body'),
+    rows,
+    {
+      countEl: document.getElementById('table-count'),
+      emptyMessage: 'Aucune donnée pour cette section.',
+      badgeCols: {
+        'Statut': (v) => {
+          const s = String(v).toLowerCase();
+          if (s.includes('retard') || s.includes('échec') || s === 'non') return 'err';
+          if (s.includes('pay') || s.includes('actif') || s === 'oui') return 'ok';
+          return '';
+        },
+        'Statut paiement': (v) => {
+          const s = String(v).toLowerCase();
+          if (s.includes('retard') || s.includes('attente')) return 'warn';
+          if (s.includes('pay')) return 'ok';
+          return '';
+        },
+        'Succès': (v) => String(v).toLowerCase() === 'oui' ? 'ok' : 'err',
+        'En retard': (v) => String(v).toLowerCase() === 'oui' ? 'err' : '',
+      },
+    }
+  );
+}
+
+function renderAll() { renderTabs(); renderKpis(); renderTable(); }
+
+async function load() {
+  const err = document.getElementById('load-error');
+  err.classList.add('d-none');
+  const df = document.getElementById('date-from').value;
+  const dt = document.getElementById('date-to').value;
+  const qs = new URLSearchParams();
+  if (df) qs.set('dateFrom', df);
+  if (dt) qs.set('dateTo', dt);
+  try {
+    data = await apiFetch(`/api/executive/modules/rapports/?${qs}`);
+    if (!document.getElementById('date-from').value && data.dateFrom) document.getElementById('date-from').value = data.dateFrom.slice(0, 10);
+    if (!document.getElementById('date-to').value && data.dateTo) document.getElementById('date-to').value = data.dateTo.slice(0, 10);
+    renderAll();
+  } catch (e) {
+    err.textContent = e.message || 'Erreur de chargement';
+    err.classList.remove('d-none');
+  }
+}
+
+document.getElementById('refresh-btn').onclick = load;
+document.getElementById('search').oninput = renderTable;
+document.getElementById('date-from').onchange = load;
+document.getElementById('date-to').onchange = load;
+load();
+</script>
+{% endblock %}
+

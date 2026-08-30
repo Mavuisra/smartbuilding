@@ -13,7 +13,7 @@ jobs:
     env:
       DESKTOP_API_BASE_URL: ${{ secrets.DESKTOP_API_BASE_URL }}
       DESKTOP_API_BASE_URL_VAR: ${{ vars.DESKTOP_API_BASE_URL }}
-      DEFAULT_DESKTOP_API_BASE_URL: https://smartbuilding-0kbk.onrender.com/
+      DEFAULT_DESKTOP_API_BASE_URL: https://sbms.lasaveur.store/
     steps:
       - name: Checkout
         uses: actions/checkout@v4

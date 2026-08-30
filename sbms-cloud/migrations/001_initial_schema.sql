@@ -1,0 +1,284 @@
+-- SmartBuilding Cloud — schéma MySQL (port Django → PHP)
+-- Charset utf8mb4 pour accents français
+
+SET NAMES utf8mb4;
+SET FOREIGN_KEY_CHECKS = 0;
+
+CREATE TABLE IF NOT EXISTS users (
+    id CHAR(36) NOT NULL PRIMARY KEY,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    is_synced TINYINT(1) NOT NULL DEFAULT 1,
+    deleted_at DATETIME NULL,
+    username VARCHAR(150) NOT NULL UNIQUE,
+    email VARCHAR(254) NOT NULL DEFAULT '',
+    full_name VARCHAR(200) NOT NULL DEFAULT '',
+    password_hash_sync VARCHAR(200) NOT NULL DEFAULT '',
+    role VARCHAR(32) NOT NULL DEFAULT 'Gestionnaire',
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
+    is_staff TINYINT(1) NOT NULL DEFAULT 0,
+    last_login_at DATETIME NULL,
+    INDEX idx_users_username (username),
+    INDEX idx_users_role (role)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS synced_entity_store (
+    id CHAR(36) NOT NULL PRIMARY KEY,
+    entity_type VARCHAR(64) NOT NULL,
+    json_data JSON NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted_at DATETIME NULL,
+    INDEX idx_sync_type_updated (entity_type, updated_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS server_sync_events (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(150) NOT NULL DEFAULT '',
+    user_role VARCHAR(32) NOT NULL DEFAULT '',
+    entity_type VARCHAR(64) NOT NULL,
+    direction VARCHAR(16) NOT NULL DEFAULT 'push',
+    records_count INT NOT NULL DEFAULT 0,
+    success TINYINT(1) NOT NULL DEFAULT 1,
+    error_message TEXT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_sync_events_created (created_at),
+    INDEX idx_sync_events_type (entity_type)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS synced_documents (
+    id CHAR(36) NOT NULL PRIMARY KEY,
+    entity_type VARCHAR(64) NOT NULL,
+    entity_id CHAR(36) NOT NULL,
+    category VARCHAR(32) NOT NULL DEFAULT 'rapports',
+    file_name VARCHAR(260) NOT NULL,
+    mime_type VARCHAR(120) NOT NULL DEFAULT 'application/pdf',
+    file_data LONGBLOB NOT NULL,
+    file_size BIGINT NOT NULL DEFAULT 0,
+    content_sha256 VARCHAR(64) NOT NULL DEFAULT '',
+    added_by VARCHAR(150) NOT NULL DEFAULT '',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_doc_entity (entity_type, entity_id),
+    INDEX idx_doc_category (category, updated_at),
+    INDEX idx_doc_sha (content_sha256)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS executive_notifications (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(200) NOT NULL,
+    message TEXT NOT NULL,
+    severity VARCHAR(16) NOT NULL DEFAULT 'Info',
+    source VARCHAR(80) NOT NULL DEFAULT '',
+    action_type VARCHAR(80) NOT NULL DEFAULT '',
+    entity_type VARCHAR(64) NOT NULL DEFAULT '',
+    entity_count INT NOT NULL DEFAULT 0,
+    created_by VARCHAR(150) NOT NULL DEFAULT '',
+    is_read TINYINT(1) NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_notif_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS buildings (
+    id CHAR(36) NOT NULL PRIMARY KEY,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    is_synced TINYINT(1) NOT NULL DEFAULT 1,
+    deleted_at DATETIME NULL,
+    name VARCHAR(200) NOT NULL DEFAULT '',
+    address TEXT NOT NULL,
+    city VARCHAR(100) NOT NULL DEFAULT '',
+    floors INT NOT NULL DEFAULT 1
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS premises (
+    id CHAR(36) NOT NULL PRIMARY KEY,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    is_synced TINYINT(1) NOT NULL DEFAULT 1,
+    deleted_at DATETIME NULL,
+    code VARCHAR(50) NOT NULL DEFAULT '',
+    name VARCHAR(200) NOT NULL DEFAULT '',
+    floor VARCHAR(50) NOT NULL DEFAULT '',
+    building_name VARCHAR(200) NOT NULL DEFAULT '',
+    premise_type VARCHAR(100) NOT NULL DEFAULT '',
+    monthly_rent DECIMAL(14,2) NOT NULL DEFAULT 0,
+    is_occupied TINYINT(1) NOT NULL DEFAULT 0,
+    area_sq_m DECIMAL(10,2) NOT NULL DEFAULT 0,
+    building_ref_id CHAR(36) NULL,
+    INDEX idx_premises_building (building_ref_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS tenants (
+    id CHAR(36) NOT NULL PRIMARY KEY,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    is_synced TINYINT(1) NOT NULL DEFAULT 1,
+    deleted_at DATETIME NULL,
+    dossier_number VARCHAR(50) NOT NULL DEFAULT '',
+    name VARCHAR(200) NOT NULL DEFAULT '',
+    email VARCHAR(254) NOT NULL DEFAULT '',
+    phone VARCHAR(50) NOT NULL DEFAULT '',
+    company VARCHAR(200) NOT NULL DEFAULT '',
+    rental_status VARCHAR(50) NOT NULL DEFAULT 'Actif',
+    tenant_category VARCHAR(50) NOT NULL DEFAULT 'Particulier'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS lease_contracts (
+    id CHAR(36) NOT NULL PRIMARY KEY,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    is_synced TINYINT(1) NOT NULL DEFAULT 1,
+    deleted_at DATETIME NULL,
+    premise_id_sync CHAR(36) NULL,
+    tenant_id_sync CHAR(36) NULL,
+    contract_number VARCHAR(80) NOT NULL DEFAULT '',
+    start_date DATE NULL,
+    end_date DATE NULL,
+    monthly_rent DECIMAL(14,2) NOT NULL DEFAULT 0,
+    deposit DECIMAL(14,2) NOT NULL DEFAULT 0,
+    status VARCHAR(50) NOT NULL DEFAULT 'Actif',
+    premise_id CHAR(36) NULL,
+    tenant_id CHAR(36) NULL,
+    INDEX idx_lease_premise (premise_id),
+    INDEX idx_lease_tenant (tenant_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS rent_payments (
+    id CHAR(36) NOT NULL PRIMARY KEY,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    is_synced TINYINT(1) NOT NULL DEFAULT 1,
+    deleted_at DATETIME NULL,
+    lease_contract_id_sync CHAR(36) NULL,
+    year INT NOT NULL DEFAULT 2026,
+    month INT NOT NULL DEFAULT 1,
+    amount_due DECIMAL(14,2) NOT NULL DEFAULT 0,
+    amount_paid DECIMAL(14,2) NOT NULL DEFAULT 0,
+    due_date DATE NULL,
+    paid_date DATE NULL,
+    is_late TINYINT(1) NOT NULL DEFAULT 0,
+    payment_status VARCHAR(50) NOT NULL DEFAULT 'En attente',
+    lease_contract_id CHAR(36) NULL,
+    INDEX idx_rent_lease (lease_contract_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS financial_transactions (
+    id CHAR(36) NOT NULL PRIMARY KEY,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    is_synced TINYINT(1) NOT NULL DEFAULT 1,
+    deleted_at DATETIME NULL,
+    type INT NOT NULL DEFAULT 1,
+    category VARCHAR(120) NOT NULL DEFAULT '',
+    description TEXT NOT NULL,
+    amount DECIMAL(14,2) NOT NULL DEFAULT 0,
+    transaction_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    reference VARCHAR(120) NOT NULL DEFAULT '',
+    payment_method VARCHAR(80) NOT NULL DEFAULT '',
+    status VARCHAR(50) NOT NULL DEFAULT 'Payé',
+    recorded_by VARCHAR(120) NOT NULL DEFAULT '',
+    requires_pdg_approval TINYINT(1) NOT NULL DEFAULT 0,
+    approved_at DATETIME NULL,
+    approved_by VARCHAR(120) NOT NULL DEFAULT ''
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS employees (
+    id CHAR(36) NOT NULL PRIMARY KEY,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    is_synced TINYINT(1) NOT NULL DEFAULT 1,
+    deleted_at DATETIME NULL,
+    employee_number VARCHAR(50) NOT NULL DEFAULT '',
+    full_name VARCHAR(200) NOT NULL DEFAULT '',
+    position VARCHAR(120) NOT NULL DEFAULT '',
+    department VARCHAR(120) NOT NULL DEFAULT '',
+    email VARCHAR(254) NOT NULL DEFAULT '',
+    phone VARCHAR(50) NOT NULL DEFAULT '',
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
+    monthly_salary DECIMAL(14,2) NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS suppliers (
+    id CHAR(36) NOT NULL PRIMARY KEY,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    is_synced TINYINT(1) NOT NULL DEFAULT 1,
+    deleted_at DATETIME NULL,
+    name VARCHAR(200) NOT NULL DEFAULT '',
+    contact_person VARCHAR(120) NOT NULL DEFAULT '',
+    email VARCHAR(254) NOT NULL DEFAULT '',
+    phone VARCHAR(50) NOT NULL DEFAULT '',
+    category VARCHAR(100) NOT NULL DEFAULT ''
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS incidents (
+    id CHAR(36) NOT NULL PRIMARY KEY,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    is_synced TINYINT(1) NOT NULL DEFAULT 1,
+    deleted_at DATETIME NULL,
+    code VARCHAR(50) NOT NULL DEFAULT '',
+    title VARCHAR(300) NOT NULL DEFAULT '',
+    description TEXT NOT NULL,
+    incident_type VARCHAR(100) NOT NULL DEFAULT '',
+    severity VARCHAR(50) NOT NULL DEFAULT 'Moyenne',
+    status VARCHAR(50) NOT NULL DEFAULT 'Ouvert',
+    location VARCHAR(200) NOT NULL DEFAULT '',
+    building VARCHAR(200) NOT NULL DEFAULT '',
+    reported_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    cost DECIMAL(14,2) NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS equipment (
+    id CHAR(36) NOT NULL PRIMARY KEY,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    is_synced TINYINT(1) NOT NULL DEFAULT 1,
+    deleted_at DATETIME NULL,
+    name VARCHAR(200) NOT NULL DEFAULT '',
+    category VARCHAR(100) NOT NULL DEFAULT '',
+    status VARCHAR(50) NOT NULL DEFAULT '',
+    location VARCHAR(200) NOT NULL DEFAULT ''
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS consumption_records (
+    id CHAR(36) NOT NULL PRIMARY KEY,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    is_synced TINYINT(1) NOT NULL DEFAULT 1,
+    deleted_at DATETIME NULL,
+    consumption_type VARCHAR(50) NOT NULL DEFAULT '',
+    period_start DATE NULL,
+    period_end DATE NULL,
+    quantity DECIMAL(14,2) NOT NULL DEFAULT 0,
+    cost DECIMAL(14,2) NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS visitors (
+    id CHAR(36) NOT NULL PRIMARY KEY,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    is_synced TINYINT(1) NOT NULL DEFAULT 1,
+    deleted_at DATETIME NULL,
+    full_name VARCHAR(200) NOT NULL DEFAULT '',
+    company VARCHAR(200) NOT NULL DEFAULT '',
+    purpose VARCHAR(300) NOT NULL DEFAULT '',
+    check_in_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    check_out_at DATETIME NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS inventory_items (
+    id CHAR(36) NOT NULL PRIMARY KEY,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    is_synced TINYINT(1) NOT NULL DEFAULT 1,
+    deleted_at DATETIME NULL,
+    name VARCHAR(200) NOT NULL DEFAULT '',
+    category VARCHAR(100) NOT NULL DEFAULT '',
+    quantity INT NOT NULL DEFAULT 0,
+    unit VARCHAR(30) NOT NULL DEFAULT '',
+    location VARCHAR(200) NOT NULL DEFAULT ''
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+SET FOREIGN_KEY_CHECKS = 1;

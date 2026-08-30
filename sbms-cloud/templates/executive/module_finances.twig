@@ -1,0 +1,326 @@
+﻿{% extends 'base.twig' %}
+{% block title %}{{ module.title }} — Portail PDG{% endblock %}
+{% block extra_head %}
+<style>
+  .module-hero {
+    background: linear-gradient(135deg, #1b3d3b 0%, #2d6a4f 55%, #4cc26b 100%);
+    border-radius: 18px;
+    color: #fff;
+    padding: 22px;
+    box-shadow: 0 18px 38px rgba(15, 23, 42, .12);
+  }
+  .module-kpis {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(150px, 1fr));
+    gap: 12px;
+  }
+  .module-kpi {
+    border: 1px solid var(--sb-border);
+    border-radius: 14px;
+    background: #fff;
+    padding: 14px;
+  }
+  .module-kpi small {
+    color: var(--sb-muted);
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: .72rem;
+  }
+  .module-kpi strong { display: block; color: #3d6b52; font-size: 1.35rem; margin-top: 4px; }
+  .module-kpi.kpi-warning { border-color: #fcd34d; background: #fffbeb; }
+  .module-kpi.kpi-warning strong { color: #b45309; }
+  .module-kpi .kpi-hint { font-size: .8rem; color: #92400e; margin-top: 2px; }
+
+  .pending-banner {
+    border-radius: 14px;
+    border: 1px solid #fcd34d;
+    background: linear-gradient(90deg, #fffbeb 0%, #fef3c7 100%);
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .pending-banner strong { color: #92400e; }
+  .section-card {
+    border: 1px solid var(--sb-border);
+    border-radius: 16px;
+    background: #fff;
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+  .section-card-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--sb-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .section-card-header h2 {
+    font-size: 1.05rem;
+    font-weight: 800;
+    margin: 0;
+    color: #1b3d3b;
+  }
+  .section-badge {
+    font-size: .75rem;
+    font-weight: 800;
+    padding: .25rem .65rem;
+    border-radius: 999px;
+    background: #fef3c7;
+    color: #92400e;
+  }
+  .section-badge.ok { background: #dcfce7; color: #166534; }
+  .module-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 18px; }
+  .module-search { max-width: 420px; border-radius: 12px; border: 1px solid var(--sb-border); padding: .58rem .8rem; }
+  .action-btn {
+    border-radius: 999px;
+    padding: .35rem .75rem;
+    font-size: .78rem;
+    font-weight: 700;
+    border: 0;
+    cursor: pointer;
+  }
+  .approve-btn { background: #166534; color: #fff; }
+  .approve-btn:hover { background: #14532d; }
+  .reject-btn { background: #fff; color: #991b1b; border: 1px solid #fecaca; }
+  .reject-btn:hover { background: #fef2f2; }
+  tr.row-priority-high { background: #fffbeb; }
+  .toast-pdg {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 2000;
+    min-width: 280px;
+    padding: 12px 16px;
+    border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(0,0,0,.15);
+    display: none;
+  }
+  .toast-pdg.show { display: block; }
+  .toast-pdg.success { background: #166534; color: #fff; }
+  .toast-pdg.error { background: #991b1b; color: #fff; }
+  @media (max-width: 1100px) { .module-kpis { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 640px) { .module-kpis { grid-template-columns: 1fr; } }
+</style>
+{% endblock %}
+{% block body %}
+<div class="app-shell">
+  {% include 'partials/sidebar.twig' %}
+
+  <main class="app-main">
+    <div class="sb-topbar">
+      <div>
+        <div class="fw-bold fs-5">{{ module.title }}</div>
+        <div class="text-muted small">{{ module.subtitle }}</div>
+      </div>
+      <div class="d-flex align-items-center gap-2">
+        <button class="btn btn-sm btn-success" id="refresh-btn">Actualiser</button>
+        <button class="btn btn-sm btn-outline-secondary" id="logout-btn">Déconnexion</button>
+      </div>
+    </div>
+
+    <div class="sb-page-wrap">
+      <div class="module-hero mb-3">
+        <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+          <div>
+            <div class="text-uppercase small opacity-75">{{ module.group }}</div>
+            <h1 class="h3 fw-bold mb-1">Trésorerie &amp; validation PDG</h1>
+            <div class="opacity-75">Recettes, dépenses et décisions de paiement</div>
+          </div>
+          <span class="sb-pill" id="hero-pill">Chargement…</span>
+        </div>
+      </div>
+
+      <div id="load-error" class="alert alert-danger d-none"></div>
+      <div id="pending-banner" class="pending-banner mb-3 d-none"></div>
+      <div class="module-kpis mb-3" id="kpi-row"></div>
+
+      <div class="section-card" id="section-pending">
+        <div class="section-card-header">
+          <div>
+            <h2>Dépenses non validées</h2>
+            <div class="text-muted small" id="pending-subtitle">En attente de votre décision</div>
+          </div>
+          <span class="section-badge" id="pending-badge">—</span>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover sb-table align-middle mb-0" id="pending-table">
+            <thead id="pending-head"></thead>
+            <tbody id="pending-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="section-card" id="section-ledger">
+        <div class="section-card-header">
+          <div>
+            <h2>Journal des mouvements</h2>
+            <div class="text-muted small">Toutes les écritures synchronisées</div>
+          </div>
+          <span class="section-badge ok" id="ledger-badge">—</span>
+        </div>
+        <div class="module-toolbar">
+          <input id="ledger-search" class="module-search form-control" placeholder="Filtrer le journal…" />
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover sb-table align-middle mb-0" id="ledger-table">
+            <thead id="ledger-head"></thead>
+            <tbody id="ledger-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+<div id="toast-pdg" class="toast-pdg" role="status"></div>
+{% endblock %}
+{% block scripts %}
+{% include 'partials/nav_script.twig' %}
+<script>
+if (!Sbms.requireAuth()) throw new Error('auth');
+document.getElementById('logout-btn').onclick = Sbms.logout;
+
+const apiFetch = Sbms.apiFetch;
+let ledgerRows = [];
+let pendingRows = [];
+
+function formatValue(value) {
+  if (value === null || value === undefined || value === '') return '—';
+  if (typeof value === 'number') return value.toLocaleString('fr-FR');
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) {
+    return new Date(value).toLocaleString('fr-FR');
+  }
+  return String(value);
+}
+
+function showToast(message, type) {
+  const el = document.getElementById('toast-pdg');
+  el.textContent = message;
+  el.className = `toast-pdg show ${type}`;
+  setTimeout(() => el.classList.remove('show'), 4200);
+}
+
+function renderKpis(kpis) {
+  const wrap = document.getElementById('kpi-row');
+  wrap.innerHTML = (kpis || []).map(k => {
+    const warn = k.variant === 'warning';
+    return `
+    <div class="module-kpi${warn ? ' kpi-warning' : ''}">
+      <small>${k.label}</small>
+      <strong>${formatValue(k.value)}</strong>
+      ${k.hint ? `<div class="kpi-hint">${k.hint}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function renderTable(headId, bodyId, rows, options = {}) {
+  const head = document.getElementById(headId);
+  const body = document.getElementById(bodyId);
+  const withActions = options.withActions || rows.some(r => r._actions);
+  const cols = [...new Set(rows.flatMap(r => Object.keys(r).filter(k => !k.startsWith('_') && k !== 'id')))];
+  if (withActions) cols.push('Actions');
+
+  head.innerHTML = `<tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr>`;
+  body.innerHTML = rows.map(row => {
+    const prio = row._priority === 'high' ? 'row-priority-high' : '';
+    return `<tr class="${prio}">
+      ${cols.map(col => {
+        if (col === 'Actions') {
+          if (!row._actions || !row.id) return '<td>—</td>';
+          return `<td class="text-nowrap">
+            <button class="action-btn approve-btn me-1" onclick="validateExpense('${row.id}', 'approve')">Valider</button>
+            <button class="action-btn reject-btn" onclick="validateExpense('${row.id}', 'reject')">Refuser</button>
+          </td>`;
+        }
+        return `<td>${formatValue(row[col])}</td>`;
+      }).join('')}
+    </tr>`;
+  }).join('') || `<tr><td colspan="99" class="text-muted text-center py-4">${options.emptyMessage || 'Aucune donnée'}</td></tr>`;
+}
+
+function updatePendingUi(pv) {
+  const summary = pv?.summary || {};
+  const count = summary.count || 0;
+  const banner = document.getElementById('pending-banner');
+  const badge = document.getElementById('pending-badge');
+  const hero = document.getElementById('hero-pill');
+  const subtitle = document.getElementById('pending-subtitle');
+
+  if (count > 0) {
+    banner.classList.remove('d-none');
+    banner.innerHTML = `
+      <div>
+        <strong>${count} dépense(s) nécessitent votre validation</strong>
+        <div class="small text-muted">Montant total en attente : <strong>${summary.totalAmountLabel || '—'}</strong>
+        ${summary.pdgRequiredCount ? ` · ${summary.pdgRequiredCount} avec validation PDG obligatoire` : ''}</div>
+      </div>
+      <a href="#section-pending" class="btn btn-sm btn-warning fw-bold">Voir les demandes</a>`;
+    badge.textContent = `${count} en attente`;
+    badge.classList.remove('ok');
+    hero.textContent = `${count} validation(s) requise(s)`;
+    subtitle.textContent = pv?.subtitle || 'Décision PDG requise avant paiement';
+  } else {
+    banner.classList.add('d-none');
+    badge.textContent = 'À jour';
+    badge.classList.add('ok');
+    hero.textContent = 'Trésorerie à jour';
+    subtitle.textContent = 'Aucune dépense en attente';
+  }
+}
+
+async function validateExpense(id, action) {
+  const label = action === 'approve' ? 'Valider et autoriser le paiement' : 'Refuser cette dépense';
+  if (!confirm(`${label} ?\n\nCette action sera enregistrée et synchronisée avec le Desktop.`)) return;
+  try {
+    await apiFetch(`/api/executive/validations/expenses/${id}/${action}/`, { method: 'POST', body: '{}' });
+    showToast(action === 'approve' ? 'Dépense validée.' : 'Dépense refusée.', 'success');
+    await loadModule();
+  } catch (e) {
+    showToast(e.message || 'Échec de la validation.', 'error');
+  }
+}
+window.validateExpense = validateExpense;
+
+function filterLedger() {
+  const q = document.getElementById('ledger-search').value.trim().toLowerCase();
+  const filtered = !q ? ledgerRows : ledgerRows.filter(r => JSON.stringify(r).toLowerCase().includes(q));
+  document.getElementById('ledger-badge').textContent = `${filtered.length} ligne(s)`;
+  renderTable('ledger-head', 'ledger-body', filtered, { emptyMessage: 'Aucun mouvement pour ce filtre.' });
+}
+
+async function loadModule() {
+  const err = document.getElementById('load-error');
+  err.classList.add('d-none');
+  try {
+    const data = await apiFetch('/api/executive/modules/finances/');
+    renderKpis(data.kpis);
+    pendingRows = (data.pendingValidation && data.pendingValidation.rows) || [];
+    ledgerRows = data.rows || [];
+    updatePendingUi(data.pendingValidation);
+    renderTable('pending-head', 'pending-body', pendingRows, {
+      withActions: true,
+      emptyMessage: (data.pendingValidation && data.pendingValidation.summary && data.pendingValidation.summary.count === 0)
+        ? 'Aucune dépense en attente — excellent travail.'
+        : 'Aucune dépense en attente.',
+    });
+    document.getElementById('ledger-badge').textContent = `${ledgerRows.length} ligne(s)`;
+    renderTable('ledger-head', 'ledger-body', ledgerRows, { emptyMessage: 'Aucun mouvement pour l\'instant — en attente du bureau local (actualisation auto).' });
+  } catch (e) {
+    err.textContent = e.status === 403
+      ? 'Accès refusé : votre rôle ne permet pas d\'ouvrir ce module.'
+      : (e.message || 'Erreur de chargement');
+    err.classList.remove('d-none');
+  }
+}
+
+document.getElementById('refresh-btn').onclick = loadModule;
+document.getElementById('ledger-search').addEventListener('input', filterLedger);
+loadModule();
+setInterval(loadModule, 20000);
+</script>
+{% endblock %}
+

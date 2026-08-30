@@ -1,0 +1,241 @@
+﻿{% extends 'base.twig' %}
+{% block title %}Documents — SBMS{% endblock %}
+{% block extra_head %}{% include 'partials/desktop_module_styles.twig' %}{% endblock %}
+{% block body %}
+<div class="app-shell dm-page">
+  {% include 'partials/sidebar.twig' %}
+  <main class="app-main">
+    <div class="dm-header">
+      <div>
+        <h1 class="dm-title">Documents</h1>
+        <p class="dm-subtitle">Fichiers PDF synchronisés depuis le desktop SBMS</p>
+      </div>
+      <div class="d-flex gap-2 align-items-center flex-wrap">
+        <select id="filter-type" class="form-select form-select-sm" style="width:auto"></select>
+        <input id="search" class="dm-search form-control form-control-sm" placeholder="Rechercher un document…" />
+        <button class="btn btn-sm btn-success" id="refresh-btn">Actualiser</button>
+        <button class="btn btn-sm btn-outline-secondary" id="logout-btn">Déconnexion</button>
+      </div>
+    </div>
+    <div class="sb-page-wrap">
+      <div id="load-error" class="alert alert-danger d-none"></div>
+      <div id="empty-banner" class="alert alert-info d-none"></div>
+      <div class="dm-kpi-grid" id="kpi-row"></div>
+      <div class="dm-card mb-3">
+        <h2 class="h6 fw-bold mb-2">Tableau complet des documents</h2>
+        <div class="dm-table-count" id="docs-table-count"></div>
+        <div class="dm-table-wrap">
+          <table class="table dm-table mb-0">
+            <thead id="docs-table-head"></thead>
+            <tbody id="docs-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="dm-settings-grid">
+        <div class="dm-card">
+          <div class="fw-bold mb-2">Catégories</div>
+          <div class="dm-cat-nav" id="cat-nav"></div>
+        </div>
+        <div>
+          <div id="doc-list"></div>
+          <div class="d-flex justify-content-between mt-2">
+            <small class="text-muted" id="page-info"></small>
+            <div class="btn-group btn-group-sm">
+              <button class="btn btn-outline-secondary" id="prev-page">‹</button>
+              <button class="btn btn-outline-secondary" id="next-page">›</button>
+            </div>
+          </div>
+        </div>
+        <div class="dm-detail" id="doc-detail">
+          <p class="text-muted">Sélectionnez un document pour voir les détails.</p>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+{% endblock %}
+{% block scripts %}
+{% include 'partials/nav_script.twig' %}
+<script>
+if (!Sbms.requireAuth()) throw new Error('auth');
+document.getElementById('logout-btn').onclick = Sbms.logout;
+const apiFetch = Sbms.apiFetch;
+let data = null, selectedCat = 'all', selectedId = null, page = 1, pageSize = 12;
+
+function filteredDocs() {
+  const q = (document.getElementById('search').value || '').toLowerCase().trim();
+  const t = document.getElementById('filter-type').value;
+  return (data?.documents || []).filter(d => {
+    if (selectedCat !== 'all' && d.categoryId !== selectedCat) return false;
+    if (t && t !== 'Tous types' && d.entityType !== t) return false;
+    if (q && !JSON.stringify(d).toLowerCase().includes(q)) return false;
+    return true;
+  });
+}
+
+function filteredTableRows() {
+  const q = (document.getElementById('search').value || '').toLowerCase().trim();
+  const t = document.getElementById('filter-type').value;
+  return (data?.tableRows || []).filter(r => {
+    if (selectedCat !== 'all') {
+      const catLabel = (data?.categories || []).find(c => c.categoryId === selectedCat)?.label;
+      if (catLabel && r['Catégorie'] !== catLabel) return false;
+    }
+    if (t && t !== 'Tous types' && r['Type entité'] !== t) return false;
+    if (q && !JSON.stringify(r).toLowerCase().includes(q)) return false;
+    return true;
+  });
+}
+
+function renderDocsTable() {
+  Sbms.renderDataTable(
+    document.getElementById('docs-table-head'),
+    document.getElementById('docs-table-body'),
+    filteredTableRows(),
+    {
+      countEl: document.getElementById('docs-table-count'),
+      badgeCols: { 'Statut': () => 'ok' },
+    }
+  );
+}
+
+function renderKpis() {
+  const k = [
+    ['Total', data.totalCount, data.totalTrend],
+    ['Cette semaine', data.recentCount, data.recentTrend],
+    ['Contrats', data.activeContractsCount, data.contractsTrend],
+    ['Partagés', data.sharedCount, data.sharedTrend],
+    ['Stockage', data.storageDisplay, data.storageTrend],
+    ['Critiques', data.criticalCount, data.criticalTrend],
+  ];
+  document.getElementById('kpi-row').innerHTML = k.map(([l, v, t]) =>
+    `<div class="dm-kpi"><small>${l}</small><strong>${v}</strong><div class="trend">${t || '—'}</div></div>`
+  ).join('');
+}
+
+function renderCategories() {
+  document.getElementById('cat-nav').innerHTML = (data?.categories || []).map(c =>
+    `<button class="dm-cat-link${c.categoryId === selectedCat ? ' active' : ''}" data-cat="${c.categoryId}">
+      <span style="color:${c.iconColor}">●</span> ${c.label}
+      <span class="badge bg-light text-dark ms-1">${c.count}</span>
+    </button>`
+  ).join('');
+  document.querySelectorAll('.dm-cat-link').forEach(btn => {
+    btn.onclick = () => {
+      selectedCat = btn.dataset.cat;
+      page = 1;
+      selectedId = null;
+      renderAll();
+    };
+  });
+}
+
+function renderList() {
+  const items = filteredDocs();
+  const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
+  if (page > totalPages) page = totalPages;
+  const slice = items.slice((page - 1) * pageSize, page * pageSize);
+  document.getElementById('doc-list').innerHTML = slice.length
+    ? slice.map(d => `
+      <div class="dm-list-item${selectedId === d.id ? ' active' : ''}" data-id="${d.id}">
+        <div class="d-flex justify-content-between align-items-start gap-2">
+          <div>
+            <div class="fw-bold">${d.fileName}</div>
+            <small class="text-muted">${d.categoryLabel} · ${d.entityType} · ${d.sizeDisplay}</small>
+          </div>
+          <span class="dm-badge ok">${d.status}</span>
+        </div>
+        <small class="text-muted">${d.dateDisplay} · ${d.addedBy}</small>
+      </div>`).join('')
+    : `<p class="text-muted py-4 text-center">${data?.emptyMessage || 'Aucun document pour ce filtre.'}</p>`;
+  document.getElementById('page-info').textContent =
+    items.length ? `Page ${page}/${totalPages} · ${items.length} document(s)` : '0 document';
+  document.querySelectorAll('.dm-list-item').forEach(el => {
+    el.onclick = () => showDetail(el.dataset.id);
+  });
+}
+
+function showDetail(id) {
+  selectedId = id;
+  renderList();
+  const d = (data?.documents || []).find(x => x.id === id);
+  if (!d) return;
+  document.getElementById('doc-detail').innerHTML = `
+    <h5 class="mb-3">${d.fileName}</h5>
+    <p><strong>Catégorie :</strong> ${d.categoryLabel}</p>
+    <p><strong>Type entité :</strong> ${d.entityType}</p>
+    <p><strong>ID document :</strong> ${d.id}</p>
+    <p><strong>ID entité :</strong> ${d.entityId || '—'}</p>
+    <p><strong>Format :</strong> ${d.fileType} (${d.mimeType})</p>
+    <p><strong>Taille :</strong> ${d.sizeDisplay} (${d.sizeBytes} octets)</p>
+    <p><strong>SHA-256 :</strong> <code class="small">${d.contentSha256 || '—'}</code></p>
+    <p><strong>Ajouté le :</strong> ${d.addedAtDisplay}</p>
+    <p><strong>Modifié le :</strong> ${d.modifiedAtDisplay}</p>
+    <p><strong>Ajouté par :</strong> ${d.addedBy}</p>
+    <div class="d-flex gap-2 mt-3">
+      <button class="btn btn-success btn-sm" id="download-btn">Télécharger</button>
+      <button class="btn btn-outline-secondary btn-sm" id="open-btn">Ouvrir</button>
+    </div>`;
+  document.getElementById('download-btn').onclick = () =>
+    Sbms.downloadFile(d.downloadUrl, d.fileName).catch(e => alert(e.message));
+  document.getElementById('open-btn').onclick = async () => {
+    try {
+      const token = Sbms.getToken();
+      const res = await fetch(d.downloadUrl, {
+        headers: token ? { Authorization: 'Bearer ' + token } : {},
+        credentials: 'same-origin',
+      });
+      if (!res.ok) throw new Error('Ouverture impossible');
+      const blob = await res.blob();
+      window.open(URL.createObjectURL(blob), '_blank');
+    } catch (e) {
+      alert(e.message || 'Erreur');
+    }
+  };
+}
+
+function renderFilters() {
+  const sel = document.getElementById('filter-type');
+  const opts = data?.entityTypeFilters || ['Tous types'];
+  sel.innerHTML = opts.map(o => `<option value="${o}">${o}</option>`).join('');
+}
+
+function renderAll() {
+  renderKpis();
+  renderCategories();
+  renderList();
+  renderDocsTable();
+  const banner = document.getElementById('empty-banner');
+  if (data?.emptyMessage && !(data?.documents || []).length) {
+    banner.textContent = data.emptyMessage;
+    banner.classList.remove('d-none');
+  } else {
+    banner.classList.add('d-none');
+  }
+}
+
+async function load() {
+  const err = document.getElementById('load-error');
+  err.classList.add('d-none');
+  try {
+    data = await apiFetch('/api/executive/modules/documents/');
+    renderFilters();
+    renderAll();
+  } catch (e) {
+    err.textContent = e.message || 'Erreur de chargement';
+    err.classList.remove('d-none');
+  }
+}
+
+document.getElementById('refresh-btn').onclick = load;
+document.getElementById('search').oninput = () => { page = 1; renderList(); renderDocsTable(); };
+document.getElementById('filter-type').onchange = () => { page = 1; renderList(); renderDocsTable(); };
+document.getElementById('prev-page').onclick = () => { if (page > 1) { page--; renderList(); } };
+document.getElementById('next-page').onclick = () => {
+  const total = Math.ceil(filteredDocs().length / pageSize);
+  if (page < total) { page++; renderList(); }
+};
+load();
+</script>
+{% endblock %}
+

@@ -5,7 +5,7 @@
 | Couche | Base de données | Rôle |
 |--------|-----------------|------|
 | **Desktop WPF** | **MySQL (XAMPP)** — voir `docs/OFFLINE_FIRST_XAMPP.md` | **Maître local** — toute saisie, modification, suppression |
-| **Web (Render)** | **PostgreSQL** | **Réplica / consommateur** — reçoit les données via `POST /api/sync/push`, affiche le PDG |
+| **Web (LWS)** | **MySQL** (via PHP) | **Réplica / consommateur** — reçoit les données via `POST /api/sync/push`, affiche le PDG |
 
 - Le desktop **fonctionne sans Internet** : login, CRUD, rapports, PDF.
 - Le web **ne crée pas** la base métier du desktop ; il **lit** (et valide certaines dépenses) ce que le desktop a poussé.
@@ -16,7 +16,7 @@
 | Composant | Rôle |
 |-----------|------|
 | **SmartBuilding.Desktop.WPF** | Application opérationnelle complète (CRUD, MySQL locale, sync push/pull) |
-| **smartbuilding-web** | API REST (JWT) + portail de **consultation / supervision** sur données synchronisées |
+| **sbms-cloud** | API REST PHP (JWT) + portail de **consultation / supervision** sur données synchronisées |
 | **SmartBuilding.API** | API ASP.NET alternative (si déployée) |
 
 Le portail web **ne remplace pas** l’ensemble des écrans WPF MVVM (formulaires multi-étapes, PDF, IMAP, etc.). Il expose les **mêmes modules**, **permissions** et **données reçues par sync**, avec validations PDG pour les dépenses.
@@ -55,7 +55,7 @@ Le portail web **ne remplace pas** l’ensemble des écrans WPF MVVM (formulaire
 
 ## Permissions (`PermissionCodes`)
 
-Définies dans `SmartBuilding.Shared` (desktop) et `smartbuilding-web/api/permission_codes.py` (web).
+Définies dans `SmartBuilding.Shared` (desktop) et `sbms-cloud/src/Infrastructure/Security/PermissionService.php` (web).
 
 Le login JWT renvoie désormais `permissions[]` selon le rôle. Le menu est filtré via `GET /api/executive/navigation/`.
 
@@ -69,16 +69,16 @@ Le login JWT renvoie désormais `permissions[]` selon le rôle. Le menu est filt
 
 ## Fichiers clés (web)
 
-- `executive/module_registry.py` — registre modules
-- `api/module_handlers.py` — données par module
-- `api/permission_codes.py` — rôles / permissions
-- `executive/templates/executive/partials/sidebar.html` — menu dynamique
+- `sbms-cloud/src/Infrastructure/Services/ModuleRegistry.php` — registre modules
+- `sbms-cloud/src/Infrastructure/Services/ModuleHandlerRegistry.php` — données par module
+- `sbms-cloud/src/Infrastructure/Security/PermissionService.php` — rôles / permissions
+- `sbms-cloud/templates/executive/partials/sidebar.twig` — menu dynamique
 
 ## Implémenté (parité navigation & permissions)
 
-- Registre `executive/module_registry.py` (modules + 8 sous-menus Location)
-- Permissions `api/permission_codes.py` + `GET /api/executive/navigation/`
-- Données par module : `api/module_handlers.py`
+- Registre `ModuleRegistry.php` (modules portail PDG)
+- Permissions `PermissionService.php` + `GET /api/executive/navigation/`
+- Données par module : `ModuleHandlerRegistry.php`
 - Contrôle d'accès API (403) selon le rôle
 - Menu dynamique côté client (`Sbms.apiFetch`, permissions JWT)
 - Redirections URL historiques (`/finance/` → `/finances/`, etc.)

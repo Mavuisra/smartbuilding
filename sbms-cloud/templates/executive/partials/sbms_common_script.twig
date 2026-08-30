@@ -1,0 +1,215 @@
+﻿<script>
+/** Utilitaires SBMS — auth JWT + session Django, API, permissions (parité desktop). */
+window.Sbms = window.Sbms || {};
+
+Sbms.getToken = () => {
+  const t = localStorage.getItem('sbms_token');
+  return t && t !== 'null' && t !== 'undefined' ? t : null;
+};
+
+Sbms.getUser = () => {
+  try { return JSON.parse(localStorage.getItem('sbms_user') || '{}'); }
+  catch { return {}; }
+};
+
+Sbms.hasPermission = (code) => {
+  const user = Sbms.getUser();
+  if (user.role === 'Administrateur' || user.role === 'PDG') return true;
+  const perms = user.permissions || [];
+  if (!code) return true;
+  return perms.includes(code);
+};
+
+Sbms.requireAuth = () => {
+  if (Sbms.getToken() || window.location.pathname.startsWith('/login')) {
+    return true;
+  }
+  return false;
+};
+
+Sbms.ensureAuth = async () => {
+  if (window.location.pathname.startsWith('/login')) return true;
+  if (Sbms.getToken()) return true;
+  try {
+    const res = await fetch('/api/auth/session/', {
+      credentials: 'same-origin',
+      headers: { Accept: 'application/json' },
+    });
+    const json = await res.json();
+    if (json?.success && json.data?.authenticated) {
+      const u = Sbms.getUser();
+      if (!u.username) {
+        localStorage.setItem(
+          'sbms_user',
+          JSON.stringify({
+            username: json.data.username,
+            fullName: json.data.fullName,
+            role: json.data.role,
+            permissions: [],
+          })
+        );
+      }
+      return true;
+    }
+  } catch (_) { /* ignore */ }
+  window.location.href =
+    '/login/?next=' + encodeURIComponent(window.location.pathname);
+  return false;
+};
+
+function sbmsCsrfToken() {
+  const m = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+  return m ? decodeURIComponent(m[1]) : '';
+}
+
+Sbms.apiFetch = async (path, options = {}) => {
+  const token = Sbms.getToken();
+  const headers = {
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+    ...(options.headers || {}),
+  };
+  if (token) {
+    headers.Authorization = 'Bearer ' + token;
+  }
+  const method = (options.method || 'GET').toUpperCase();
+  if (method !== 'GET' && method !== 'HEAD') {
+    const csrf = sbmsCsrfToken();
+    if (csrf) headers['X-CSRFToken'] = csrf;
+  }
+
+  const res = await fetch(path, {
+    ...options,
+    method,
+    headers,
+    credentials: 'same-origin',
+  });
+
+  const contentType = res.headers.get('Content-Type') || '';
+  let json = null;
+  if (contentType.includes('application/json')) {
+    json = await res.json();
+  } else {
+    const text = await res.text();
+    throw new Error(
+      text ? `Réponse serveur invalide (${res.status})` : `Erreur HTTP ${res.status}`
+    );
+  }
+
+  const authMessage =
+    (json && (json.message || json.detail)) ||
+    'Session expirée — reconnectez-vous.';
+
+  if (res.status === 401 || (res.status === 403 && !token)) {
+    localStorage.removeItem('sbms_token');
+    localStorage.removeItem('sbms_user');
+    if (!window.location.pathname.startsWith('/login')) {
+      window.location.href = '/login/?next=' + encodeURIComponent(window.location.pathname);
+    }
+    throw new Error(typeof authMessage === 'string' ? authMessage : 'Session expirée');
+  }
+
+  if (res.status === 403) {
+    throw new Error(typeof authMessage === 'string' ? authMessage : 'Accès refusé');
+  }
+
+  if (!res.ok) {
+    const err = new Error(
+      (json && json.message) || `Erreur HTTP ${res.status}`
+    );
+    err.status = res.status;
+    throw err;
+  }
+
+  if (json && json.success === false) {
+    const err = new Error(json.message || 'Erreur API');
+    err.status = res.status;
+    throw err;
+  }
+
+  if (json && Object.prototype.hasOwnProperty.call(json, 'success')) {
+    return json.data;
+  }
+
+  return json;
+};
+
+Sbms.escapeHtml = (value) => {
+  if (value === null || value === undefined) return '—';
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+};
+
+/**
+ * Rendu tableau exhaustif — toutes les colonnes, texte intégral (dates/heures incluses).
+ */
+Sbms.renderDataTable = (headEl, bodyEl, rows, options = {}) => {
+  const countEl = options.countEl || null;
+  const badgeCols = options.badgeCols || {};
+  const emptyMessage = options.emptyMessage || 'Aucune donnée.';
+  const safeRows = Array.isArray(rows) ? rows : [];
+  if (countEl) {
+    countEl.textContent = `${safeRows.length} ligne(s) · ${safeRows.length ? Object.keys(safeRows[0]).length : 0} colonne(s)`;
+  }
+  if (!safeRows.length) {
+    headEl.innerHTML = '';
+    bodyEl.innerHTML = `<tr><td class="text-muted text-center py-4">${Sbms.escapeHtml(emptyMessage)}</td></tr>`;
+    return;
+  }
+  const cols = Object.keys(safeRows[0]);
+  headEl.innerHTML = `<tr>${cols.map(c => `<th title="${Sbms.escapeHtml(c)}">${Sbms.escapeHtml(c)}</th>`).join('')}</tr>`;
+  bodyEl.innerHTML = safeRows.map(r => `<tr>${cols.map(c => {
+    const raw = r[c];
+    const text = raw === null || raw === undefined || raw === '' ? '—' : String(raw);
+    const badge = badgeCols[c];
+    if (badge) {
+      const cls = badge(text);
+      if (cls) return `<td><span class="dm-badge ${cls}">${Sbms.escapeHtml(text)}</span></td>`;
+    }
+    return `<td title="${Sbms.escapeHtml(text)}">${Sbms.escapeHtml(text)}</td>`;
+  }).join('')}</tr>`).join('');
+};
+
+Sbms.downloadFile = async (url, fileName) => {
+  const token = Sbms.getToken();
+  const headers = {};
+  if (token) headers.Authorization = 'Bearer ' + token;
+  const res = await fetch(url, { headers, credentials: 'same-origin' });
+  if (res.status === 401 || res.status === 403) {
+    localStorage.removeItem('sbms_token');
+    localStorage.removeItem('sbms_user');
+    window.location.href = '/login/?next=' + encodeURIComponent(window.location.pathname);
+    throw new Error('Session expirée');
+  }
+  if (!res.ok) throw new Error(`Téléchargement impossible (${res.status})`);
+  const blob = await res.blob();
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = fileName || 'document.pdf';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(link.href);
+};
+
+Sbms.logout = async () => {
+  try {
+    await fetch('/api/auth/logout/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': sbmsCsrfToken(),
+        ...(Sbms.getToken() ? { Authorization: 'Bearer ' + Sbms.getToken() } : {}),
+      },
+      credentials: 'same-origin',
+    });
+  } catch (_) { /* ignore */ }
+  localStorage.removeItem('sbms_token');
+  localStorage.removeItem('sbms_user');
+  window.location.href = '/login/';
+};
+</script>
+

@@ -20,14 +20,17 @@ _testout/
 
 ## Local build artifacts
 artifacts/
+.tmp-build/
+.tmp-sync-test.csx
 
-## Python / Django web
-smartbuilding-web/.venv/
-smartbuilding-web/**/__pycache__/
-smartbuilding-web/**/*.pyc
-smartbuilding-web/db.sqlite3
-smartbuilding-web/.env
-smartbuilding-web/staticfiles/
+## PHP cloud (LWS)
+deploy/lws-sbms-upload/
+sbms-cloud/vendor/
+sbms-cloud/.env
+sbms-cloud/composer.phar
+
+## Unrelated experiments
+black-panther-web/
 
 ## Logs
 *.log

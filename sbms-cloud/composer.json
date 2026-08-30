@@ -1,0 +1,21 @@
+{
+  "name": "bloom-prosperity/sbms-cloud",
+  "description": "API cloud SmartBuilding / Bloom Prosperity — PHP Clean Architecture pour hébergement LWS",
+  "type": "project",
+  "require": {
+    "php": ">=8.1",
+    "slim/slim": "^4.14",
+    "slim/psr7": "^1.7",
+    "firebase/php-jwt": "^7.0",
+    "vlucas/phpdotenv": "^5.6",
+    "twig/twig": "^3.14"
+  },
+  "autoload": {
+    "psr-4": {
+      "Sbms\\Cloud\\": "src/"
+    }
+  },
+  "config": {
+    "sort-packages": true
+  }
+}
