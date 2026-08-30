@@ -82,6 +82,16 @@ runSqlFile($pdo, $root . '/migrations/002_desktop_full_schema.sql');
 echo "Import 003_cloud_extensions.sql …\n";
 runSqlFile($pdo, $root . '/migrations/003_cloud_extensions.sql');
 
+echo "Import 004_organizations_multitenant.sql …\n";
+try {
+    runSqlFile($pdo, $root . '/migrations/004_organizations_multitenant.sql');
+} catch (PDOException $e) {
+    if (!str_contains($e->getMessage(), 'Duplicate column')) {
+        throw $e;
+    }
+    echo "  (colonnes organisation déjà présentes — ignoré)\n";
+}
+
 $pdo->exec('SET FOREIGN_KEY_CHECKS = 1');
 
 $tables = $pdo->query('SHOW TABLES')->fetchAll(PDO::FETCH_COLUMN);

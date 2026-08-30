@@ -17,7 +17,7 @@ final class SyncRegistry
     ) {
     }
 
-    public function applyPush(string $entityType, array $entities): int
+    public function applyPush(string $entityType, array $entities, ?string $organizationId = null): int
     {
         if (!SyncEntityTypes::isSyncable($entityType)) {
             return 0;
@@ -31,7 +31,7 @@ final class SyncRegistry
         foreach ($entities as $payload) {
             try {
                 $this->pdo->beginTransaction();
-                if ($this->applySinglePush($entityType, $payload)) {
+                if ($this->applySinglePush($entityType, $payload, $organizationId)) {
                     $applied++;
                 }
                 $this->pdo->commit();
@@ -44,15 +44,15 @@ final class SyncRegistry
         return $applied;
     }
 
-    public function getChangesSince(string $entityType, \DateTimeImmutable $since): array
+    public function getChangesSince(string $entityType, \DateTimeImmutable $since, ?string $organizationId = null): array
     {
         if (!SyncEntityTypes::isSyncable($entityType)) {
             return [];
         }
-        return $this->store->changesSince($entityType, $since);
+        return $this->store->changesSince($entityType, $since, $organizationId);
     }
 
-    private function applySinglePush(string $entityType, array $payload): bool
+    private function applySinglePush(string $entityType, array $payload, ?string $organizationId = null): bool
     {
         $entityId = SyncUtils::parseUuid($payload['id'] ?? $payload['Id'] ?? null);
         if (!$entityId) {
@@ -71,12 +71,12 @@ final class SyncRegistry
             return false;
         }
 
-        $existing = $this->store->find($entityId);
+        $existing = $this->store->find($entityId, $organizationId);
         if ($existing) {
             $data = SyncUtils::mergeSyncPayload($existing['json_data'], $data);
         }
 
-        $this->store->save($entityId, $entityType, $data, $updatedAt, $deletedAt);
+        $this->store->save($entityId, $entityType, $data, $updatedAt, $deletedAt, null, $organizationId);
 
         $handler = $this->materializers->handler($entityType);
         if ($handler !== null) {

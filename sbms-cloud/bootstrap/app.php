@@ -6,6 +6,7 @@ use Sbms\Cloud\Presentation\Http\Controllers\AuthController;
 use Sbms\Cloud\Presentation\Http\Controllers\DocumentController;
 use Sbms\Cloud\Presentation\Http\Controllers\ExecutiveController;
 use Sbms\Cloud\Presentation\Http\Controllers\HealthController;
+use Sbms\Cloud\Presentation\Http\Controllers\OrganizationController;
 use Sbms\Cloud\Presentation\Http\Controllers\SyncController;
 use Sbms\Cloud\Presentation\Http\Middleware\JwtAuthMiddleware;
 use Sbms\Cloud\Presentation\Web\ExecutiveWebController;
@@ -69,6 +70,13 @@ $app->get('/api/sync/pull', fn ($req, $res) => $resolve(SyncController::class)->
 $app->get('/api/sync/pull/', fn ($req, $res) => $resolve(SyncController::class)->pull($req))->add($auth);
 $app->get('/api/sync/status', fn ($req, $res) => $resolve(SyncController::class)->status($req))->add($auth);
 $app->get('/api/sync/status/', fn ($req, $res) => $resolve(SyncController::class)->status($req))->add($auth);
+
+$org = static fn () => $resolve(OrganizationController::class);
+$app->post('/api/organizations/register', fn ($req, $res) => $org()->register($req))->add($auth);
+$app->post('/api/organizations/register/', fn ($req, $res) => $org()->register($req))->add($auth);
+$app->get('/api/organizations', fn ($req, $res) => $org()->list($req))->add($auth);
+$app->get('/api/organizations/', fn ($req, $res) => $org()->list($req))->add($auth);
+
 $app->post('/api/sync/documents/upload', fn ($req, $res) => $resolve(DocumentController::class)->upload($req))->add($auth);
 $app->post('/api/sync/documents/upload/', fn ($req, $res) => $resolve(DocumentController::class)->upload($req))->add($auth);
 $app->get('/api/documents/{document_id}', fn ($req, $res, $args) => $resolve(DocumentController::class)->download($req, $args))->add($auth);

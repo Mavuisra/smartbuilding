@@ -8,6 +8,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Sbms\Cloud\Domain\Sync\SyncEntityTypes;
 use Sbms\Cloud\Infrastructure\Persistence\SyncEventRepository;
+use Sbms\Cloud\Infrastructure\Security\OrganizationContext;
 use Sbms\Cloud\Infrastructure\Sync\SyncRegistry;
 use Sbms\Cloud\Infrastructure\Sync\SyncUtils;
 use Sbms\Cloud\Presentation\Http\ApiResponse;
@@ -17,12 +18,14 @@ final class SyncController
     public function __construct(
         private readonly SyncRegistry $registry,
         private readonly SyncEventRepository $events,
+        private readonly OrganizationContext $orgContext,
     ) {
     }
 
     public function push(ServerRequestInterface $request): ResponseInterface
     {
         $user = $request->getAttribute('user');
+        $orgId = $this->orgContext->resolve($request, is_array($user) ? $user : null);
         $body = (array) ($request->getParsedBody() ?? []);
         $entityType = (string) ($body['entityType'] ?? $body['EntityType'] ?? '');
         $entities = $body['entities'] ?? $body['Entities'] ?? [];
@@ -35,7 +38,7 @@ final class SyncController
         }
 
         try {
-            $applied = $this->registry->applyPush($entityType, $entities);
+            $applied = $this->registry->applyPush($entityType, $entities, $orgId);
             $this->events->log(
                 $user['username'] ?? '',
                 $user['role'] ?? '',
@@ -62,6 +65,7 @@ final class SyncController
     public function pull(ServerRequestInterface $request): ResponseInterface
     {
         $user = $request->getAttribute('user');
+        $orgId = $this->orgContext->resolve($request, is_array($user) ? $user : null);
         $params = $request->getQueryParams();
         $entityType = (string) ($params['entityType'] ?? $params['EntityType'] ?? '');
         $sinceRaw = $params['since'] ?? $params['Since'] ?? SyncUtils::MIN_SYNC_DATETIME;
@@ -78,7 +82,7 @@ final class SyncController
             new \DateTimeImmutable(SyncUtils::MIN_SYNC_DATETIME)
         ) ?? new \DateTimeImmutable(SyncUtils::MIN_SYNC_DATETIME);
 
-        $entities = $this->registry->getChangesSince($entityType, $since);
+        $entities = $this->registry->getChangesSince($entityType, $since, $orgId);
         $this->events->log(
             $user['username'] ?? '',
             $user['role'] ?? '',

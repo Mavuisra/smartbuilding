@@ -14,10 +14,16 @@ final class SyncStoreRepository
     {
     }
 
-    public function find(string $id): ?array
+    public function find(string $id, ?string $organizationId = null): ?array
     {
-        $stmt = $this->pdo->prepare('SELECT * FROM synced_entity_store WHERE id = ?');
-        $stmt->execute([$id]);
+        $sql = 'SELECT * FROM synced_entity_store WHERE id = ?';
+        $params = [$id];
+        if ($organizationId !== null) {
+            $sql .= ' AND (organization_id IS NULL OR organization_id = ?)';
+            $params[] = $organizationId;
+        }
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
         $row = $stmt->fetch();
         if (!$row) {
             return null;
@@ -26,12 +32,16 @@ final class SyncStoreRepository
         return $row;
     }
 
-    public function findByTypeAndId(string $entityType, string $id): ?array
+    public function findByTypeAndId(string $entityType, string $id, ?string $organizationId = null): ?array
     {
-        $stmt = $this->pdo->prepare(
-            'SELECT * FROM synced_entity_store WHERE id = ? AND entity_type = ?'
-        );
-        $stmt->execute([$id, $entityType]);
+        $sql = 'SELECT * FROM synced_entity_store WHERE id = ? AND entity_type = ?';
+        $params = [$id, $entityType];
+        if ($organizationId !== null) {
+            $sql .= ' AND (organization_id IS NULL OR organization_id = ?)';
+            $params[] = $organizationId;
+        }
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
         $row = $stmt->fetch();
         if (!$row) {
             return null;
@@ -47,35 +57,39 @@ final class SyncStoreRepository
         DateTimeImmutable $updatedAt,
         ?DateTimeImmutable $deletedAt,
         ?DateTimeImmutable $createdAt = null,
+        ?string $organizationId = null,
     ): void {
-        $existing = $this->find($id);
+        $existing = $this->find($id, $organizationId);
         $created = SyncUtils::toMysqlDatetime($createdAt ?? ($existing ? null : SyncUtils::nowUtc()));
         if ($existing && !$created) {
             $created = $existing['created_at'];
         }
+        $orgId = $organizationId ?? OrganizationRepository::DEFAULT_ORG_ID;
 
         if ($existing) {
             $stmt = $this->pdo->prepare(
                 'UPDATE synced_entity_store SET entity_type = ?, json_data = ?, updated_at = ?,
-                 deleted_at = ? WHERE id = ?'
+                 deleted_at = ?, organization_id = ? WHERE id = ?'
             );
             $stmt->execute([
                 $entityType,
                 json_encode($jsonData, JSON_UNESCAPED_UNICODE),
                 SyncUtils::toMysqlDatetime($updatedAt),
                 SyncUtils::toMysqlDatetime($deletedAt),
+                $orgId,
                 $id,
             ]);
             return;
         }
 
         $stmt = $this->pdo->prepare(
-            'INSERT INTO synced_entity_store (id, entity_type, json_data, created_at, updated_at, deleted_at)
-             VALUES (?, ?, ?, ?, ?, ?)'
+            'INSERT INTO synced_entity_store (id, entity_type, organization_id, json_data, created_at, updated_at, deleted_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?)'
         );
         $stmt->execute([
             $id,
             $entityType,
+            $orgId,
             json_encode($jsonData, JSON_UNESCAPED_UNICODE),
             $created ?? SyncUtils::toMysqlDatetime(SyncUtils::nowUtc()),
             SyncUtils::toMysqlDatetime($updatedAt),
@@ -83,15 +97,23 @@ final class SyncStoreRepository
         ]);
     }
 
-    public function changesSince(string $entityType, DateTimeImmutable $since, int $limit = 500): array
+    public function changesSince(string $entityType, DateTimeImmutable $since, ?string $organizationId = null, int $limit = 500): array
     {
-        $stmt = $this->pdo->prepare(
-            'SELECT id, updated_at, deleted_at, json_data FROM synced_entity_store
-             WHERE entity_type = ? AND updated_at > ? ORDER BY updated_at ASC LIMIT ?'
-        );
-        $stmt->bindValue(1, $entityType);
-        $stmt->bindValue(2, SyncUtils::toMysqlDatetime($since));
-        $stmt->bindValue(3, $limit, PDO::PARAM_INT);
+        $sql = 'SELECT id, updated_at, deleted_at, json_data FROM synced_entity_store
+             WHERE entity_type = ? AND updated_at > ?';
+        $params = [$entityType, SyncUtils::toMysqlDatetime($since)];
+        if ($organizationId !== null) {
+            $sql .= ' AND (organization_id IS NULL OR organization_id = ?)';
+            $params[] = $organizationId;
+        }
+        $sql .= ' ORDER BY updated_at ASC LIMIT ?';
+        $params[] = $limit;
+
+        $stmt = $this->pdo->prepare($sql);
+        foreach ($params as $i => $param) {
+            $type = ($i === count($params) - 1) ? PDO::PARAM_INT : PDO::PARAM_STR;
+            $stmt->bindValue($i + 1, $param, $type);
+        }
         $stmt->execute();
 
         $rows = [];
@@ -109,23 +131,36 @@ final class SyncStoreRepository
         return $rows;
     }
 
-    public function countByType(string $entityType): int
+    public function countByType(string $entityType, ?string $organizationId = null): int
     {
-        $stmt = $this->pdo->prepare(
-            'SELECT COUNT(*) FROM synced_entity_store WHERE entity_type = ? AND deleted_at IS NULL'
-        );
-        $stmt->execute([$entityType]);
+        $sql = 'SELECT COUNT(*) FROM synced_entity_store WHERE entity_type = ? AND deleted_at IS NULL';
+        $params = [$entityType];
+        if ($organizationId !== null) {
+            $sql .= ' AND (organization_id IS NULL OR organization_id = ?)';
+            $params[] = $organizationId;
+        }
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
         return (int) $stmt->fetchColumn();
     }
 
-    public function rowsByType(string $entityType, int $limit = 500): array
+    public function rowsByType(string $entityType, int $limit = 500, ?string $organizationId = null): array
     {
-        $stmt = $this->pdo->prepare(
-            'SELECT id, json_data FROM synced_entity_store
-             WHERE entity_type = ? AND deleted_at IS NULL ORDER BY updated_at DESC LIMIT ?'
-        );
-        $stmt->bindValue(1, $entityType);
-        $stmt->bindValue(2, $limit, PDO::PARAM_INT);
+        $sql = 'SELECT id, json_data FROM synced_entity_store
+             WHERE entity_type = ? AND deleted_at IS NULL';
+        $params = [$entityType];
+        if ($organizationId !== null) {
+            $sql .= ' AND (organization_id IS NULL OR organization_id = ?)';
+            $params[] = $organizationId;
+        }
+        $sql .= ' ORDER BY updated_at DESC LIMIT ?';
+        $params[] = $limit;
+
+        $stmt = $this->pdo->prepare($sql);
+        foreach ($params as $i => $param) {
+            $type = ($i === count($params) - 1) ? PDO::PARAM_INT : PDO::PARAM_STR;
+            $stmt->bindValue($i + 1, $param, $type);
+        }
         $stmt->execute();
         $out = [];
         foreach ($stmt->fetchAll() as $row) {
