@@ -52,7 +52,36 @@ function runSqlFile(PDO $pdo, string $path): void
     if (str_starts_with($sql, "\xEF\xBB\xBF")) {
         $sql = substr($sql, 3);
     }
-    $pdo->exec($sql);
+
+    // Exécution statement par statement — plus fiable sur LWS (gros dumps, timeouts).
+    $buffer = '';
+    $lines = preg_split('/\R/', $sql) ?: [];
+    foreach ($lines as $line) {
+        $trim = trim($line);
+        if ($trim === '' || str_starts_with($trim, '--')) {
+            continue;
+        }
+        $buffer .= $line . "\n";
+        if (!str_ends_with(rtrim($line), ';')) {
+            continue;
+        }
+        $statement = trim($buffer);
+        $buffer = '';
+        if ($statement === '' || $statement === ';') {
+            continue;
+        }
+        try {
+            $pdo->exec($statement);
+        } catch (PDOException $e) {
+            $msg = $e->getMessage();
+            if (str_contains($msg, 'Duplicate column')
+                || str_contains($msg, 'Duplicate key name')
+                || str_contains($msg, 'already exists')) {
+                continue;
+            }
+            throw $e;
+        }
+    }
 }
 
 echo "=== Migration parité SBMS Cloud ===\n";
